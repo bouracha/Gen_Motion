@@ -94,7 +94,7 @@ def main(opt):
                 plt.cla()
                 figure_title = "action:{}, seq:{},".format(act, (k + 1))
                 viz.plot_predictions(targ_expmap[k, :, :], pred_expmap[k, :, :], fig, ax, figure_title)
-                plt.pause(1)
+                #plt.pause(1)
 
 
 if __name__ == "__main__":
