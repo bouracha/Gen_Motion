@@ -124,14 +124,21 @@ def plot_predictions(expmap_gt, expmap_pred, fig, ax, f_title):
     for i in range(nframes_pred):
         xyz_pred[i, :] = fk.fkl(expmap_pred[i, :], parent, offset, rotInd, expmapInd).reshape([96])
 
+    #print(xyz_gt.shape)
+    #print(xyz_gt)
+    #print("separation")
+    #print(xyz_pred.shape)
+    #print(xyz_pred)
     # === Plot and animate ===
     ob = Ax3DPose(ax)
     # Plot the prediction
     for i in range(nframes_pred):
 
         ob.update(xyz_gt[i, :], xyz_pred[i, :])
-        ax.set_title(f_title + ' frame:{:d}'.format(i + 1), loc="left")
-        plt.show(block=False)
+        #ax.set_title(f_title + ' frame:{:d}'.format(i + 1), loc="left")
+        plt.savefig('demo/' + f_title + ' frame:{:d}.png'.format(i + 1))
+        #plt.show(block=False)
 
-        fig.canvas.draw()
-        plt.pause(0.05)
+        #fig.canvas.draw()
+
+        #plt.pause(0.05)
