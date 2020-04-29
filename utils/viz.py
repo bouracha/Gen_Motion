@@ -107,7 +107,7 @@ class Ax3DPose(object):
         self.ax.set_xlim3d([-r + xroot, r + xroot])
         self.ax.set_zlim3d([-r + zroot, r + zroot])
         self.ax.set_ylim3d([-r + yroot, r + yroot])
-        self.ax.set_aspect('equal')
+        #self.ax.set_aspect('equal')
 
 
 def plot_predictions(expmap_gt, expmap_pred, fig, ax, f_title):
