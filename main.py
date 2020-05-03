@@ -50,7 +50,7 @@ def main(opt):
 
     # continue from checkpoint
     if opt.is_load:
-        model_path_len = 'checkpoint/test/ckpt_main_gcn_muti_att_best.pth.tar'
+        model_path_len = 'checkpoint/test/ckpt_main_in10_out10_dctn20_last.pth.tar'
         print(">>> loading ckpt len from '{}'".format(model_path_len))
         if is_cuda:
             ckpt = torch.load(model_path_len)
