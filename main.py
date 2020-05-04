@@ -186,7 +186,7 @@ def train(train_loader, model, optimizer, input_n=20, dct_n=20, lr_now=None, max
         if is_cuda:
             inputs = Variable(inputs.cuda()).float()
             # targets = Variable(targets.cuda(async=True)).float()
-            all_seq = Variable(all_seq.cuda(async=True)).float()
+            all_seq = Variable(all_seq.cuda(non_blocking=True)).float()
 
         outputs = model(inputs)
         n = outputs.shape[0]
@@ -241,7 +241,7 @@ def test(train_loader, model, input_n=20, output_n=50, dct_n=20, is_cuda=False, 
         if is_cuda:
             inputs = Variable(inputs.cuda()).float()
             # targets = Variable(targets.cuda(async=True)).float()
-            all_seq = Variable(all_seq.cuda(async=True)).float()
+            all_seq = Variable(all_seq.cuda(non_blocking=True)).float()
 
         outputs = model(inputs)
         n = outputs.shape[0]
@@ -313,7 +313,7 @@ def val(train_loader, model, input_n=20, dct_n=20, is_cuda=False, dim_used=[]):
         if is_cuda:
             inputs = Variable(inputs.cuda()).float()
             # targets = Variable(targets.cuda(async=True)).float()
-            all_seq = Variable(all_seq.cuda(async=True)).float()
+            all_seq = Variable(all_seq.cuda(non_blocking=True)).float()
 
         outputs = model(inputs)
         n = outputs.shape[0]
