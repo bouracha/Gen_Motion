@@ -24,7 +24,8 @@ class H36motion(Dataset):
         self.split = split
         subs = np.array([[1, 6, 7, 8, 9], [5], [11]])
 
-        acts = data_utils.define_actions(actions)
+        #acts = data_utils.define_actions(actions)
+        acts = actions
 
         # subs = np.array([[1], [5], [11]])
         # acts = ['walking']
