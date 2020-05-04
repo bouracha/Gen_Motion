@@ -63,14 +63,18 @@ def main(opt):
         optimizer.load_state_dict(ckpt['optimizer'])
         print(">>> ckpt len loaded (epoch: {} | err: {})".format(start_epoch, err_best))
 
+    actions_list = ["eating", "smoking", "discussion", "directions",
+               "greeting", "phoning", "posing", "purchases", "sitting",
+               "sittingdown", "takingphoto", "waiting", "walkingdog",
+               "walkingtogether"] #Walking has been excluded here from train and test
     # data loading
     print(">>> loading data")
-    train_dataset = H36motion(path_to_data=opt.data_dir, actions='all', input_n=input_n, output_n=output_n,
+    train_dataset = H36motion(path_to_data=opt.data_dir, actions=actions_list, input_n=input_n, output_n=output_n,
                               split=0, sample_rate=sample_rate, dct_n=dct_n)
     data_std = train_dataset.data_std
     data_mean = train_dataset.data_mean
 
-    val_dataset = H36motion(path_to_data=opt.data_dir, actions='all', input_n=input_n, output_n=output_n,
+    val_dataset = H36motion(path_to_data=opt.data_dir, actions=actions_list, input_n=input_n, output_n=output_n,
                             split=2, sample_rate=sample_rate, data_mean=data_mean, data_std=data_std, dct_n=dct_n)
 
     # load dadasets for training
