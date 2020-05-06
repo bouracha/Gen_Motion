@@ -27,9 +27,21 @@ def main(opt):
     lr_now = opt.lr
     is_cuda = torch.cuda.is_available()
 
+    if opt.out_of_distribution != None:
+        out_of_distribution = True
+        acts_train = data_utils.define_actions(opt.out_of_distribution, out_of_distribution=True)
+        acts_test = data_utils.define_actions(opt.out_of_distribution, out_of_distribution=True)
+    else:
+        out_of_distribution = False
+        acts_train = data_utils.define_actions('all', out_of_distribution=False)
+        acts_test = data_utils.define_actions('all', out_of_distribution=False)
+
     # define log csv file
     script_name = os.path.basename(__file__).split('.')[0]
-    script_name = script_name + "_in{:d}_out{:d}_dctn{:d}".format(opt.input_n, opt.output_n, opt.dct_n)
+    if out_of_distribution:
+        script_name = script_name + "_in{:d}_out{:d}_dctn{:d}_OOD_{}".format(opt.input_n, opt.output_n, opt.dct_n, str(opt.out_of_distribution))
+    else:
+        script_name = script_name + "_in{:d}_out{:d}_dctn{:d}".format(opt.input_n, opt.output_n, opt.dct_n)
 
     # create model
     print(">>> creating model")
@@ -63,18 +75,14 @@ def main(opt):
         optimizer.load_state_dict(ckpt['optimizer'])
         print(">>> ckpt len loaded (epoch: {} | err: {})".format(start_epoch, err_best))
 
-    actions_list = ["eating", "smoking", "discussion", "directions",
-               "greeting", "phoning", "posing", "purchases", "sitting",
-               "sittingdown", "takingphoto", "waiting", "walkingdog",
-               "walkingtogether"] #Walking has been excluded here from train and test
     # data loading
     print(">>> loading data")
-    train_dataset = H36motion(path_to_data=opt.data_dir, actions=actions_list, input_n=input_n, output_n=output_n,
+    train_dataset = H36motion(path_to_data=opt.data_dir, actions=acts_train, input_n=input_n, output_n=output_n,
                               split=0, sample_rate=sample_rate, dct_n=dct_n)
     data_std = train_dataset.data_std
     data_mean = train_dataset.data_mean
 
-    val_dataset = H36motion(path_to_data=opt.data_dir, actions=actions_list, input_n=input_n, output_n=output_n,
+    val_dataset = H36motion(path_to_data=opt.data_dir, actions=acts_train, input_n=input_n, output_n=output_n,
                             split=2, sample_rate=sample_rate, data_mean=data_mean, data_std=data_std, dct_n=dct_n)
 
     # load dadasets for training
@@ -91,9 +99,8 @@ def main(opt):
         num_workers=opt.job,
         pin_memory=True)
 
-    acts = data_utils.define_actions('all')
     test_data = dict()
-    for act in acts:
+    for act in acts_test:
         test_dataset = H36motion(path_to_data=opt.data_dir, actions=act, input_n=input_n, output_n=output_n, split=1,
                                  sample_rate=sample_rate, data_mean=data_mean, data_std=data_std, dct_n=dct_n)
         test_data[act] = DataLoader(
@@ -129,7 +136,7 @@ def main(opt):
 
         test_3d_temp = np.array([])
         test_3d_head = np.array([])
-        for act in acts:
+        for act in acts_test:
             test_e, test_3d = test(test_data[act], model, input_n=input_n, output_n=output_n, is_cuda=is_cuda,
                                    dim_used=train_dataset.dim_used, dct_n=dct_n)
             ret_log = np.append(ret_log, test_e)

@@ -276,7 +276,7 @@ def normalization_stats(completeData):
     return data_mean, data_std, dimensions_to_ignore, dimensions_to_use
 
 
-def define_actions(action):
+def define_actions(action, out_of_distribution=False):
     """
     Define the list of actions we are using.
 
@@ -288,13 +288,21 @@ def define_actions(action):
       ValueError if the action is not included in H3.6M
     """
 
-    if isinstance(action, list):
-        return action
-
     actions = ["walking", "eating", "smoking", "discussion", "directions",
                "greeting", "phoning", "posing", "purchases", "sitting",
                "sittingdown", "takingphoto", "waiting", "walkingdog",
                "walkingtogether"]
+
+    if out_of_distribution:
+        assert (action in actions)
+        actions = [x for i, x in enumerate(actions) if x != action]
+        print("Training leaving '{}' out of distribution ".format(action))
+        return actions
+
+    if isinstance(action, list):
+        actions = action
+        return actions
+
     if action in actions:
         return [action]
 

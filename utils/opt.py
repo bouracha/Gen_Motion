@@ -50,6 +50,8 @@ class Options:
         self.parser.add_argument('--is_norm_dct', dest='is_norm_dct', action='store_true', help='whether to normalize the dct coeff')
         self.parser.add_argument('--is_norm', dest='is_norm', action='store_true', help='whether to normalize the angles/3d coordinates')
 
+        self.parser.add_argument('--out_of_distribution', type=str, default=None, help='input the out of distribution action')
+
         self.parser.set_defaults(max_norm=True)
         self.parser.set_defaults(is_load=False)
         # self.parser.set_defaults(is_norm_dct=True)
