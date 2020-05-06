@@ -188,7 +188,7 @@ def train(train_loader, model, optimizer, input_n=20, dct_n=20, lr_now=None, max
             # targets = Variable(targets.cuda(async=True)).float()
             all_seq = Variable(all_seq.cuda(non_blocking=True)).float()
 
-        outputs = model(inputs)
+        outputs = model(inputs.float())
         n = outputs.shape[0]
         outputs = outputs.view(n, -1)
         # targets = targets.view(n, -1)

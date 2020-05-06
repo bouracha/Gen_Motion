@@ -288,6 +288,9 @@ def define_actions(action):
       ValueError if the action is not included in H3.6M
     """
 
+    if isinstance(action, list):
+        return action
+
     actions = ["walking", "eating", "smoking", "discussion", "directions",
                "greeting", "phoning", "posing", "purchases", "sitting",
                "sittingdown", "takingphoto", "waiting", "walkingdog",
