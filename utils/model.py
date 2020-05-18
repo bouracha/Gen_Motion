@@ -109,6 +109,7 @@ class GCN(nn.Module):
         self.gc_z_mu = GraphConvolution(hidden_feature, 20, node_n=node_n)
         self.gc_z_sigma = GraphConvolution(hidden_feature, 20, node_n=node_n)
         self.gc_z = GraphConvolution(20, hidden_feature, node_n=node_n)
+        self.bnz = nn.BatchNorm1d(node_n * hidden_feature)
 
         self.gcbs = nn.ModuleList(self.gcbs)
 
@@ -130,16 +131,16 @@ class GCN(nn.Module):
         #b, n, f = y.shape
         #y = self.bn1(y.view(b, -1)).view(b, n, f)
         #y = self.act_f(y)
-        mu = self.gc_z_mu(y)
-        gamma = self.gc_z_sigma(y)
-        noise = torch.normal(mean=0, std=1.0, size=gamma.shape).to(torch.device("cuda"))
-        z = mu + torch.mul(torch.exp(gamma), noise)
+        #mu = self.gc_z_mu(y)
+        #gamma = self.gc_z_sigma(y)
+        #noise = torch.normal(mean=0, std=1.0, size=gamma.shape).to(torch.device("cuda"))
+        #z = mu + torch.mul(torch.exp(gamma), noise)
 
         self.KL = 0.5*torch.sum(torch.exp(gamma) + torch.square(mu) - 1 - gamma, axis=-1)
 
-        y = self.gc_z(z)
+        y = self.gc_z(y)
         b, n, f = y.shape
-        y = self.bn1(y.view(b, -1)).view(b, n, f)
+        y = self.bnz(y.view(b, -1)).view(b, n, f)
         y = self.act_f(y)
         y = self.do(y)
 
