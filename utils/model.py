@@ -132,7 +132,7 @@ class GCN(nn.Module):
         #y = self.act_f(y)
         mu = self.gc_z_mu(y)
         gamma = self.gc_z_sigma(y)
-        noise = torch.empty(20).normal_(mean=0, std=1.0)
+        noise = torch.normal(mean=0, std=1.0, size=gamma.size()).to(torch.device("cuda"))
         z = mu + torch.mul(torch.exp(gamma), noise)
 
         self.KL = 0.5*torch.sum(torch.exp(gamma) + torch.square(mu) - 1 - gamma, axis=-1)
