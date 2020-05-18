@@ -133,7 +133,7 @@ class GCN(nn.Module):
         mu = self.gc_z_mu(y)
         gamma = self.gc_z_sigma(y)
         noise = torch.empty(20).normal_(mean=0, std=1.0)
-        z = mu + torch.exp(gamma)*noise
+        z = mu + torch.mul(torch.exp(gamma), noise)
 
         self.KL = 0.5*torch.sum(torch.exp(gamma) + torch.square(mu) - 1 - gamma, axis=-1)
 
