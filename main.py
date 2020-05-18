@@ -196,11 +196,12 @@ def train(train_loader, model, optimizer, input_n=20, dct_n=20, lr_now=None, max
             all_seq = Variable(all_seq.cuda(non_blocking=True)).float()
 
         outputs = model(inputs.float())
+        KL = model.KL
         n = outputs.shape[0]
         outputs = outputs.view(n, -1)
         # targets = targets.view(n, -1)
 
-        loss = loss_funcs.sen_loss(outputs, all_seq, dim_used, dct_n)
+        loss = loss_funcs.sen_loss(outputs, all_seq, dim_used, dct_n, KL)
 
         # calculate loss and backward
         optimizer.zero_grad()

@@ -4,7 +4,7 @@ from torch.autograd import Variable
 from utils import data_utils
 
 
-def sen_loss(outputs, all_seq, dim_used, dct_n):
+def sen_loss(outputs, all_seq, dim_used, dct_n, KL=None):
     """
 
     :param outputs: N * (seq_len*dim_used_len)
@@ -24,7 +24,9 @@ def sen_loss(outputs, all_seq, dim_used, dct_n):
                                                                                                seq_len).transpose(1, 2)
     targ_expmap = all_seq.clone()[:, :, dim_used]
 
-    loss = torch.mean(torch.sum(torch.abs(pred_expmap - targ_expmap), dim=2).view(-1))
+    latent_loss = torch.mean(KL)
+
+    loss = torch.mean(torch.sum(torch.abs(pred_expmap - targ_expmap), dim=2).view(-1)) + latent_loss
     return loss
 
 

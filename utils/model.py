@@ -106,6 +106,10 @@ class GCN(nn.Module):
         for i in range(num_stage):
             self.gcbs.append(GC_Block(hidden_feature, p_dropout=p_dropout, node_n=node_n))
 
+        self.gc_z_mu = GraphConvolution(hidden_feature, 20, node_n=node_n)
+        self.gc_z_sigma = GraphConvolution(hidden_feature, 20, node_n=node_n)
+        self.gc_z = GraphConvolution(20, hidden_feature, node_n=node_n)
+
         self.gcbs = nn.ModuleList(self.gcbs)
 
         self.gc7 = GraphConvolution(hidden_feature, input_feature, node_n=node_n)
@@ -120,7 +124,26 @@ class GCN(nn.Module):
         y = self.act_f(y)
         y = self.do(y)
 
-        for i in range(self.num_stage):
+        for i in range(self.num_stage//2):
+            y = self.gcbs[i](y)
+
+        #b, n, f = y.shape
+        #y = self.bn1(y.view(b, -1)).view(b, n, f)
+        #y = self.act_f(y)
+        mu = self.gc_z_mu(y)
+        gamma = self.gc_z_sigma(y)
+        noise = torch.empty(20).normal_(mean=0, std=1.0)
+        z = mu + torch.exp(gamma)*noise
+
+        self.KL = 0.5*torch.sum(torch.exp(gamma) + torch.square(mu) - 1 - gamma, axis=-1)
+
+        y = self.gc_z(z)
+        b, n, f = y.shape
+        y = self.bn1(y.view(b, -1)).view(b, n, f)
+        y = self.act_f(y)
+        y = self.do(y)
+
+        for i in range(self.num_stage//2, self.num_stage):
             y = self.gcbs[i](y)
 
         y = self.gc7(y)
