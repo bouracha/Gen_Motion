@@ -128,21 +128,13 @@ class GCN(nn.Module):
         for i in range(self.num_stage//2):
             y = self.gcbs[i](y)
 
-        #b, n, f = y.shape
-        #y = self.bn1(y.view(b, -1)).view(b, n, f)
-        #y = self.act_f(y)
-        #mu = self.gc_z_mu(y)
-        #gamma = self.gc_z_sigma(y)
-        #noise = torch.normal(mean=0, std=1.0, size=gamma.shape).to(torch.device("cuda"))
-        #z = mu + torch.mul(torch.exp(gamma), noise)
+        mu = self.gc_z_mu(y)
+        gamma = self.gc_z_sigma(y)
+        noise = torch.normal(mean=0, std=1.0, size=gamma.shape).to(torch.device("cuda"))
+        z = mu + torch.mul(torch.exp(gamma), noise)
+        y = z
 
         self.KL = 0.5*torch.sum(torch.exp(gamma) + torch.square(mu) - 1 - gamma, axis=-1)
-
-        y = self.gc_z(y)
-        b, n, f = y.shape
-        y = self.bnz(y.view(b, -1)).view(b, n, f)
-        y = self.act_f(y)
-        y = self.do(y)
 
         for i in range(self.num_stage//2, self.num_stage):
             y = self.gcbs[i](y)
