@@ -106,9 +106,9 @@ class GCN(nn.Module):
         for i in range(num_stage):
             self.gcbs.append(GC_Block(hidden_feature, p_dropout=p_dropout, node_n=node_n))
 
-        self.gc_z_mu = GraphConvolution(hidden_feature, 20, node_n=node_n)
-        self.gc_z_sigma = GraphConvolution(hidden_feature, 20, node_n=node_n)
-        self.gc_z = GraphConvolution(20, hidden_feature, node_n=node_n)
+        self.gc_z_mu = GraphConvolution(hidden_feature, hidden_feature, node_n=node_n)
+        self.gc_z_sigma = GraphConvolution(hidden_feature, hidden_feature, node_n=node_n)
+        self.gc_z = GraphConvolution(hidden_feature, hidden_feature, node_n=node_n)
         self.bnz = nn.BatchNorm1d(node_n * hidden_feature)
 
         self.gcbs = nn.ModuleList(self.gcbs)
