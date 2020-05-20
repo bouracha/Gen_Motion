@@ -51,6 +51,7 @@ class Options:
         self.parser.add_argument('--is_norm', dest='is_norm', action='store_true', help='whether to normalize the angles/3d coordinates')
 
         self.parser.add_argument('--out_of_distribution', type=str, default=None, help='input the out of distribution action')
+        self.parser.add_argument('--variational', type=bool, default=False, help='true if want to include a latent variable')
 
         self.parser.set_defaults(max_norm=True)
         self.parser.set_defaults(is_load=False)

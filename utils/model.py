@@ -87,7 +87,7 @@ class GC_Block(nn.Module):
 
 
 class GCN(nn.Module):
-    def __init__(self, input_feature, hidden_feature, p_dropout, num_stage=1, node_n=48):
+    def __init__(self, input_feature, hidden_feature, p_dropout, num_stage=1, node_n=48, variational=False):
         """
 
         :param input_feature: num of input feature
@@ -106,12 +106,14 @@ class GCN(nn.Module):
         for i in range(num_stage):
             self.gcbs.append(GC_Block(hidden_feature, p_dropout=p_dropout, node_n=node_n))
 
-        self.gc_z_mu = GraphConvolution(hidden_feature, hidden_feature, node_n=node_n)
-        self.gc_z_sigma = GraphConvolution(hidden_feature, hidden_feature, node_n=node_n)
-        self.gc_z = GraphConvolution(hidden_feature, hidden_feature, node_n=node_n)
-        self.bnz = nn.BatchNorm1d(node_n * hidden_feature)
-
         self.gcbs = nn.ModuleList(self.gcbs)
+
+        self.variational = variational
+        if variational:
+            self.gc_z_mu = GraphConvolution(hidden_feature, hidden_feature, node_n=node_n)
+            self.gc_z_sigma = GraphConvolution(hidden_feature, hidden_feature, node_n=node_n)
+            #self.gc_z = GraphConvolution(hidden_feature, hidden_feature, node_n=node_n)
+            #self.bnz = nn.BatchNorm1d(node_n * hidden_feature)
 
         self.gc7 = GraphConvolution(hidden_feature, input_feature, node_n=node_n)
 
@@ -128,13 +130,15 @@ class GCN(nn.Module):
         for i in range(self.num_stage//2):
             y = self.gcbs[i](y)
 
-        mu = self.gc_z_mu(y)
-        gamma = self.gc_z_sigma(y)
-        noise = torch.normal(mean=0, std=1.0, size=gamma.shape).to(torch.device("cuda"))
-        z = mu + torch.mul(torch.exp(gamma), noise)
-        y = z
+        self.KL = 0
+        if self.variational:
+            mu = self.gc_z_mu(y)
+            gamma = self.gc_z_sigma(y)
+            noise = torch.normal(mean=0, std=1.0, size=gamma.shape).to(torch.device("cuda"))
+            z = mu + torch.mul(torch.exp(gamma), noise)
+            y = z
 
-        self.KL = 0.5*torch.sum(torch.exp(gamma) + torch.square(mu) - 1 - gamma, axis=-1)
+            self.KL = 0.5*torch.sum(torch.exp(gamma) + torch.square(mu) - 1 - gamma, axis=-1)
 
         for i in range(self.num_stage//2, self.num_stage):
             y = self.gcbs[i](y)

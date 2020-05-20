@@ -52,7 +52,7 @@ def main(opt):
 
     # 48 nodes for angle prediction
     model = nnmodel.GCN(input_feature=dct_n, hidden_feature=opt.linear_size, p_dropout=opt.dropout,
-                        num_stage=opt.num_stage, node_n=48)
+                        num_stage=opt.num_stage, node_n=48, variational=opt.variational)
 
     if is_cuda:
         model.cuda()
@@ -122,11 +122,11 @@ def main(opt):
         ret_log = np.array([epoch + 1])
         head = np.array(['epoch'])
         # per epoch
-        lr_now, t_l, t_e, t_3d = train(train_loader, model, optimizer, input_n=input_n,
+        lr_now, t_l, t_l_joint, t_l_latent, t_e, t_3d = train(train_loader, model, optimizer, input_n=input_n,
                                        lr_now=lr_now, max_norm=opt.max_norm, is_cuda=is_cuda,
                                        dim_used=train_dataset.dim_used, dct_n=dct_n)
-        ret_log = np.append(ret_log, [lr_now, t_l, t_e, t_3d])
-        head = np.append(head, ['lr', 't_l', 't_e', 't_3d'])
+        ret_log = np.append(ret_log, [lr_now, t_l, t_l_joint, t_l_latent, t_e, t_3d])
+        head = np.append(head, ['lr', 't_l', 't_l_joint', 't_l_latent', 't_e', 't_3d'])
 
         v_e, v_3d = val(val_loader, model, input_n=input_n, is_cuda=is_cuda, dim_used=train_dataset.dim_used,
                         dct_n=dct_n)
@@ -176,6 +176,8 @@ def main(opt):
 
 def train(train_loader, model, optimizer, input_n=20, dct_n=20, lr_now=None, max_norm=True, is_cuda=False, dim_used=[]):
     t_l = utils.AccumLoss()
+    t_l_joint = utils.AccumLoss()
+    t_l_latent = utils.AccumLoss()
     t_e = utils.AccumLoss()
     t_3d = utils.AccumLoss()
 
@@ -219,6 +221,8 @@ def train(train_loader, model, optimizer, input_n=20, dct_n=20, lr_now=None, max
 
         # update the training loss
         t_l.update(loss.cpu().data.numpy() * n, n)
+        t_l_joint.update(joint_loss.cpu().data.numpy() * n, n)
+        t_l_latent.update(latent_loss.cpu().data.numpy() * n, n)
         t_e.update(e_err.cpu().data.numpy() * n, n)
         t_3d.update(m_err.cpu().data.numpy() * n, n)
 
@@ -226,11 +230,11 @@ def train(train_loader, model, optimizer, input_n=20, dct_n=20, lr_now=None, max
                                                                          time.time() - st)
         bar.next()
     bar.finish()
-    print("\nJoint loss: ", joint_loss)
-    print("Latent loss: ", latent_loss)
-    print("Scaled Latent loss: ", 0.001*latent_loss)
-    print("loss: ", loss)
-    return lr_now, t_l.avg, t_e.avg, t_3d.avg
+    print("\nJoint loss: ", t_l_joint.avg)
+    print("Latent loss: ", t_l_latent.avg)
+    #print("Scaled Latent loss: ", 0.001*latent_loss)
+    print("loss: ", t_l.avg)
+    return lr_now, t_l.avg, t_l_joint.avg, t_l_latent.avg, t_e.avg, t_3d.avg
 
 
 def test(train_loader, model, input_n=20, output_n=50, dct_n=20, is_cuda=False, dim_used=[]):

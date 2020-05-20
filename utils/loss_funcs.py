@@ -28,9 +28,7 @@ def sen_loss(outputs, all_seq, dim_used, dct_n, KL=None):
     latent_loss = torch.mean(KL)
 
     loss = joint_loss + 0.001*latent_loss
-    #print("\nJoint loss: ", joint_loss)
-    #print("Latent loss: ", latent_loss)
-    #print("loss: ", loss)
+
     return loss, joint_loss, latent_loss
 
 
