@@ -27,8 +27,11 @@ def sen_loss(outputs, all_seq, dim_used, dct_n, KL=None):
     joint_loss = torch.mean(torch.sum(torch.abs(pred_expmap - targ_expmap), dim=2).view(-1))
     latent_loss = torch.mean(KL)
 
-    loss = joint_loss + 0.03*latent_loss
-    return loss
+    loss = joint_loss + 0.001*latent_loss
+    #print("\nJoint loss: ", joint_loss)
+    #print("Latent loss: ", latent_loss)
+    #print("loss: ", loss)
+    return loss, joint_loss, latent_loss
 
 
 def euler_error(outputs, all_seq, input_n, dim_used, dct_n):
