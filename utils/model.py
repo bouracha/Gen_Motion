@@ -114,8 +114,9 @@ class GCN(nn.Module):
             self.gc_z_sigma = GraphConvolution(hidden_feature, hidden_feature, node_n=node_n)
             #self.gc_z = GraphConvolution(hidden_feature, hidden_feature, node_n=node_n)
             #self.bnz = nn.BatchNorm1d(node_n * hidden_feature)
-
-        self.gc7 = GraphConvolution(hidden_feature, input_feature, node_n=node_n)
+            self.gc7 = GraphConvolution(hidden_feature, 2*input_feature, node_n=node_n)
+        else:
+          self.gc7 = GraphConvolution(hidden_feature, input_feature, node_n=node_n)
 
         self.do = nn.Dropout(p_dropout)
         self.act_f = nn.Tanh()
@@ -144,6 +145,12 @@ class GCN(nn.Module):
             y = self.gcbs[i](y)
 
         y = self.gc7(y)
-        outputs = y + x
+        if self.variational:
+          reconstructions = y[:,:,20:]
+          residuals = y[:,:,:20]
+          outputs = reconstructions + residuals
+        else:
+          reconstructions = x
+          outputs = y + x
 
-        return outputs
+        return outputs, reconstructions

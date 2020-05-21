@@ -39,7 +39,8 @@ def main(opt):
     # define log csv file
     script_name = os.path.basename(__file__).split('.')[0]
     if out_of_distribution:
-        script_name = script_name + "_in{:d}_out{:d}_dctn{:d}_OOD_{}".format(opt.input_n, opt.output_n, opt.dct_n, str(opt.out_of_distribution))
+        script_name = script_name + "_in{:d}_out{:d}_dctn{:d}_OOD_{}".format(opt.input_n, opt.output_n, opt.dct_n,
+                                                                             str(opt.out_of_distribution))
     else:
         script_name = script_name + "_in{:d}_out{:d}_dctn{:d}".format(opt.input_n, opt.output_n, opt.dct_n)
 
@@ -123,8 +124,8 @@ def main(opt):
         head = np.array(['epoch'])
         # per epoch
         lr_now, t_l, t_l_joint, t_l_latent, t_e, t_3d = train(train_loader, model, optimizer, input_n=input_n,
-                                       lr_now=lr_now, max_norm=opt.max_norm, is_cuda=is_cuda,
-                                       dim_used=train_dataset.dim_used, dct_n=dct_n)
+                                                              lr_now=lr_now, max_norm=opt.max_norm, is_cuda=is_cuda,
+                                                              dim_used=train_dataset.dim_used, dct_n=dct_n)
         ret_log = np.append(ret_log, [lr_now, t_l, t_l_joint, t_l_latent, t_e, t_3d])
         head = np.append(head, ['lr', 't_l', 't_l_joint', 't_l_latent', 't_e', 't_3d'])
 
@@ -197,13 +198,18 @@ def train(train_loader, model, optimizer, input_n=20, dct_n=20, lr_now=None, max
             # targets = Variable(targets.cuda(async=True)).float()
             all_seq = Variable(all_seq.cuda(non_blocking=True)).float()
 
-        outputs = model(inputs.float())
+        maximum = torch.max((inputs))
+        minimum = torch.min((inputs))
+        # reconstructions = (reconstructions - minimum)/(maximum - minimum)
+        inputs = (inputs - minimum) / (maximum - minimum)
+        outputs, reconstructions = model(inputs.float())
         KL = model.KL
         n = outputs.shape[0]
         outputs = outputs.view(n, -1)
         # targets = targets.view(n, -1)
 
-        loss, joint_loss, latent_loss = loss_funcs.sen_loss(outputs, all_seq, dim_used, dct_n, KL)
+        loss, joint_loss, latent_loss = loss_funcs.sen_loss(outputs, all_seq, dim_used, dct_n, KL, reconstructions,
+                                                            inputs)
 
         # calculate loss and backward
         optimizer.zero_grad()
@@ -232,7 +238,7 @@ def train(train_loader, model, optimizer, input_n=20, dct_n=20, lr_now=None, max
     bar.finish()
     print("\nJoint loss: ", t_l_joint.avg)
     print("Latent loss: ", t_l_latent.avg)
-    #print("Scaled Latent loss: ", 0.001*latent_loss)
+    # print("Scaled Latent loss: ", 0.001*latent_loss)
     print("loss: ", t_l.avg)
     return lr_now, t_l.avg, t_l_joint.avg, t_l_latent.avg, t_e.avg, t_3d.avg
 

@@ -3,8 +3,11 @@ import torch
 from torch.autograd import Variable
 from utils import data_utils
 
+import torch.nn as nn
+import torch.nn.functional as F
 
-def sen_loss(outputs, all_seq, dim_used, dct_n, KL=None):
+
+def sen_loss(outputs, all_seq, dim_used, dct_n, KL=None, reconstructions=None, inputs=None):
     """
 
     :param outputs: N * (seq_len*dim_used_len)
@@ -26,11 +29,20 @@ def sen_loss(outputs, all_seq, dim_used, dct_n, KL=None):
 
     joint_loss = torch.mean(torch.sum(torch.abs(pred_expmap - targ_expmap), dim=2).view(-1))
     if KL == None:
-        latent_loss = torch.FloatTensor(0)
+        latent_loss = torch.zeros(1)
         loss = joint_loss
     else:
+        XEntropy = torch.max(reconstructions, torch.zeros(16, 48, 20).to(torch.device("cuda"))) - torch.mul(reconstructions, inputs) + torch.log(torch.ones(16, 48, 20).to(torch.device("cuda")) + torch.exp(-torch.abs(reconstructions)))
+        XEntropy_per_example = torch.sum(XEntropy, axis=(1,2))
+        XEntropy_per_batch = torch.mean(XEntropy)
+
         latent_loss = torch.mean(KL)
-        loss = joint_loss + 0.001*latent_loss
+        loss = joint_loss + (XEntropy_per_batch + latent_loss)
+
+        print("loss: ", loss)
+        print("Xentropy: ", XEntropy_per_batch)
+        print("latent loss: ", latent_loss)
+        print("joint_loss: ", joint_loss)
 
     return loss, joint_loss, latent_loss
 
