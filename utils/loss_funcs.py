@@ -25,9 +25,12 @@ def sen_loss(outputs, all_seq, dim_used, dct_n, KL=None):
     targ_expmap = all_seq.clone()[:, :, dim_used]
 
     joint_loss = torch.mean(torch.sum(torch.abs(pred_expmap - targ_expmap), dim=2).view(-1))
-    latent_loss = torch.mean(KL)
-
-    loss = joint_loss + 0.001*latent_loss
+    if KL == None:
+        latent_loss = torch.FloatTensor(0)
+        loss = joint_loss
+    else:
+        latent_loss = torch.mean(KL)
+        loss = joint_loss + 0.001*latent_loss
 
     return loss, joint_loss, latent_loss
 

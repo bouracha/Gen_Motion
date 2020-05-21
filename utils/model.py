@@ -130,7 +130,7 @@ class GCN(nn.Module):
         for i in range(self.num_stage//2):
             y = self.gcbs[i](y)
 
-        self.KL = 0
+        self.KL = None
         if self.variational:
             mu = self.gc_z_mu(y)
             gamma = self.gc_z_sigma(y)
@@ -144,6 +144,6 @@ class GCN(nn.Module):
             y = self.gcbs[i](y)
 
         y = self.gc7(y)
-        y = y + x
+        outputs = y + x
 
-        return y
+        return outputs
