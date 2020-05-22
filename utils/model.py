@@ -144,7 +144,7 @@ class GCN(nn.Module):
             z = mu + torch.mul(torch.exp(gamma), noise)
             y = z
 
-            self.KL = 0.5*torch.sum(torch.exp(gamma) + torch.square(mu) - 1 - gamma, axis=-1)
+            self.KL = 0.5*torch.sum(torch.exp(gamma) + torch.square(mu) - 1 - gamma, axis=(1,2))
 
         for i in range(self.num_stage//2, self.num_stage):
             y = self.gcbs[i](y)
