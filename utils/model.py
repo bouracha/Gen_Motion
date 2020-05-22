@@ -151,7 +151,7 @@ class GCN(nn.Module):
           outputs = reconstructions + residuals
         else:
           reconstructions = x
-          residuals = y[:,:,:20]
+          residuals = y
           outputs = reconstructions + residuals
 
         return outputs, reconstructions

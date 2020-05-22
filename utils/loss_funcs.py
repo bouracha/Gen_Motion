@@ -40,10 +40,10 @@ def sen_loss(outputs, all_seq, dim_used, dct_n, KL=None, reconstructions=None, i
         latent_loss = torch.mean(KL)
         loss = joint_loss + (XEntropy_per_batch + latent_loss)
 
-    print("loss: ", loss)
-    print("Xentropy: ", XEntropy_per_batch)
-    print("latent loss: ", latent_loss)
-    print("joint_loss: ", joint_loss)
+    #print("loss: ", loss)
+    #print("Xentropy: ", XEntropy_per_batch)
+    #print("latent loss: ", latent_loss)
+    #print("joint_loss: ", joint_loss)
 
     return loss, joint_loss, XEntropy_per_batch, latent_loss
 
