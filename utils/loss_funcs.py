@@ -29,6 +29,7 @@ def sen_loss(outputs, all_seq, dim_used, dct_n, KL=None, reconstructions=None, i
 
     joint_loss = torch.mean(torch.sum(torch.abs(pred_expmap - targ_expmap), dim=2).view(-1))
     if KL == None:
+        XEntropy_per_batch = torch.zeros(1)
         latent_loss = torch.zeros(1)
         loss = joint_loss
     else:
@@ -39,12 +40,12 @@ def sen_loss(outputs, all_seq, dim_used, dct_n, KL=None, reconstructions=None, i
         latent_loss = torch.mean(KL)
         loss = joint_loss + (XEntropy_per_batch + latent_loss)
 
-        print("loss: ", loss)
-        print("Xentropy: ", XEntropy_per_batch)
-        print("latent loss: ", latent_loss)
-        print("joint_loss: ", joint_loss)
+    print("loss: ", loss)
+    print("Xentropy: ", XEntropy_per_batch)
+    print("latent loss: ", latent_loss)
+    print("joint_loss: ", joint_loss)
 
-    return loss, joint_loss, latent_loss
+    return loss, joint_loss, XEntropy_per_batch, latent_loss
 
 
 def euler_error(outputs, all_seq, input_n, dim_used, dct_n):
