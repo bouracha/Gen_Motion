@@ -44,16 +44,32 @@ def main(opt):
     else:
         script_name = script_name + "_in{:d}_out{:d}_dctn{:d}".format(opt.input_n, opt.output_n, opt.dct_n)
 
-    # create model
-    print(">>> creating model")
+    # data loading
+    print(">>> loading data")
     input_n = opt.input_n
     output_n = opt.output_n
     dct_n = opt.dct_n
     sample_rate = opt.sample_rate
 
+    train_dataset = H36motion(path_to_data=opt.data_dir, actions=acts_train, input_n=input_n, output_n=output_n,
+                              split=0, sample_rate=sample_rate, dct_n=dct_n)
+    data_std = train_dataset.data_std
+    data_mean = train_dataset.data_mean
+
+    max_data = train_dataset.max
+    min_data = train_dataset.min
+
+    val_dataset = H36motion(path_to_data=opt.data_dir, actions=acts_train, input_n=input_n, output_n=output_n,
+                            split=2, sample_rate=sample_rate, data_mean=data_mean, data_std=data_std, dct_n=dct_n)
+
+    # create model
+    print(">>> creating model")
+
     # 48 nodes for angle prediction
     model = nnmodel.GCN(input_feature=dct_n, hidden_feature=opt.linear_size, p_dropout=opt.dropout,
                         num_stage=opt.num_stage, node_n=48, variational=opt.variational)
+    # Declare max and min values in the dataset so can rescale between 0 and 1 for use of XEntropy for reconstrcution
+    model.set_normalising_varaiables(max_data, min_data)
 
     if is_cuda:
         model.cuda()
@@ -76,15 +92,6 @@ def main(opt):
         optimizer.load_state_dict(ckpt['optimizer'])
         print(">>> ckpt len loaded (epoch: {} | err: {})".format(start_epoch, err_best))
 
-    # data loading
-    print(">>> loading data")
-    train_dataset = H36motion(path_to_data=opt.data_dir, actions=acts_train, input_n=input_n, output_n=output_n,
-                              split=0, sample_rate=sample_rate, dct_n=dct_n)
-    data_std = train_dataset.data_std
-    data_mean = train_dataset.data_mean
-
-    val_dataset = H36motion(path_to_data=opt.data_dir, actions=acts_train, input_n=input_n, output_n=output_n,
-                            split=2, sample_rate=sample_rate, data_mean=data_mean, data_std=data_std, dct_n=dct_n)
 
     # load dadasets for training
     train_loader = DataLoader(
@@ -199,18 +206,14 @@ def train(train_loader, model, optimizer, input_n=20, dct_n=20, lr_now=None, max
             # targets = Variable(targets.cuda(async=True)).float()
             all_seq = Variable(all_seq.cuda(non_blocking=True)).float()
 
-        maximum = torch.max((inputs))
-        minimum = torch.min((inputs))
-        # reconstructions = (reconstructions - minimum)/(maximum - minimum)
-        inputs = (inputs - minimum) / (maximum - minimum)
-        outputs, reconstructions = model(inputs.float())
+        outputs, reconstructions, x_normalised = model(inputs.float())
         KL = model.KL
         n = outputs.shape[0]
         outputs = outputs.view(n, -1)
         # targets = targets.view(n, -1)
 
         loss, joint_loss, xentropy, latent_loss = loss_funcs.sen_loss(outputs, all_seq, dim_used, dct_n, KL, reconstructions,
-                                                            inputs)
+                                                            x_normalised)
 
         # Print losses for epoch
         ret_log = np.array([i, loss.cpu().data.numpy(), joint_loss.cpu().data.numpy(), xentropy.cpu().data.numpy(), latent_loss.cpu().data.numpy()])
@@ -276,7 +279,7 @@ def test(train_loader, model, input_n=20, output_n=50, dct_n=20, is_cuda=False, 
             # targets = Variable(targets.cuda(async=True)).float()
             all_seq = Variable(all_seq.cuda(non_blocking=True)).float()
 
-        outputs, reconstructions = model(inputs.float())
+        outputs, reconstructions, x_normalised = model(inputs.float())
         n = outputs.shape[0]
         # outputs = outputs.view(n, -1)
         # targets = targets.view(n, -1)
@@ -348,7 +351,7 @@ def val(train_loader, model, input_n=20, dct_n=20, is_cuda=False, dim_used=[]):
             # targets = Variable(targets.cuda(async=True)).float()
             all_seq = Variable(all_seq.cuda(non_blocking=True)).float()
 
-        outputs, reconstructions = model(inputs.float())
+        outputs, reconstructions, x_normalised = model(inputs.float())
         n = outputs.shape[0]
         outputs = outputs.view(n, -1)
         # targets = targets.view(n, -1)

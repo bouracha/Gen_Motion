@@ -40,6 +40,9 @@ class H36motion(Dataset):
         self.data_mean = data_mean
         self.data_std = data_std
 
+        self.max = np.max(all_seqs)
+        self.min = np.min(all_seqs)
+
         # first 6 elements are global translation and global rotation
         dim_used = dim_use[6:]
         self.all_seqs = all_seqs

@@ -121,8 +121,13 @@ class GCN(nn.Module):
         self.do = nn.Dropout(p_dropout)
         self.act_f = nn.Tanh()
 
+    def set_normalising_varaiables(self, maximum, minimum):
+        self.data_max = maximum
+        self.data_min = minimum
+
     def forward(self, x):
-        y = self.gc1(x)
+        x_normalised = (x - self.data_min)/(self.data_max - self.data_min)
+        y = self.gc1(x_normalised)
         b, n, f = y.shape
         y = self.bn1(y.view(b, -1)).view(b, n, f)
         y = self.act_f(y)
@@ -148,10 +153,12 @@ class GCN(nn.Module):
         if self.variational:
           reconstructions = y[:,:,20:]
           residuals = y[:,:,:20]
-          outputs = reconstructions + residuals
+          unnormalised_reconstructions = torch.mul(reconstructions, (self.data_max - self.data_min)) + self.data_min
+          #outputs = unnormalised_reconstructions + residuals
+          outputs = x + residuals
         else:
           reconstructions = x
           residuals = y
-          outputs = reconstructions + residuals
+          outputs = x + residuals
 
-        return outputs, reconstructions
+        return outputs, reconstructions, x_normalised

@@ -33,9 +33,9 @@ def sen_loss(outputs, all_seq, dim_used, dct_n, KL=None, reconstructions=None, i
         latent_loss = torch.zeros(1)
         loss = joint_loss
     else:
-        XEntropy = torch.max(reconstructions, torch.zeros(16, 48, 20).to(torch.device("cuda"))) - torch.mul(reconstructions, inputs) + torch.log(torch.ones(16, 48, 20).to(torch.device("cuda")) + torch.exp(-torch.abs(reconstructions)))
+        XEntropy = torch.max(reconstructions, torch.zeros(reconstructions.shape).to(torch.device("cuda"))) - torch.mul(reconstructions, inputs) + torch.log(torch.ones(reconstructions.shape).to(torch.device("cuda")) + torch.exp(-torch.abs(reconstructions)))
         XEntropy_per_example = torch.sum(XEntropy, axis=(1,2))
-        XEntropy_per_batch = torch.mean(XEntropy)
+        XEntropy_per_batch = torch.mean(XEntropy_per_example)
 
         latent_loss = torch.mean(KL)
         loss = joint_loss + (XEntropy_per_batch + latent_loss)
