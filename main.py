@@ -38,11 +38,11 @@ def main(opt):
 
     # define log csv file
     script_name = os.path.basename(__file__).split('.')[0]
+    script_name = script_name + "_in{:d}_out{:d}_dctn{:d}".format(opt.input_n, opt.output_n, opt.dct_n)
     if out_of_distribution:
-        script_name = script_name + "_in{:d}_out{:d}_dctn{:d}_OOD_{}".format(opt.input_n, opt.output_n, opt.dct_n,
-                                                                             str(opt.out_of_distribution))
-    else:
-        script_name = script_name + "_in{:d}_out{:d}_dctn{:d}".format(opt.input_n, opt.output_n, opt.dct_n)
+        script_name = script_name + "_OOD_{}".format(str(opt.out_of_distribution))
+    if opt.variational:
+        script_name = script_name + "_var_"
 
     # data loading
     print(">>> loading data")
