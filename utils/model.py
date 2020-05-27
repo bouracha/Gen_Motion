@@ -7,6 +7,7 @@ import torch.nn as nn
 import torch
 from torch.nn.parameter import Parameter
 import math
+import numpy as np
 
 
 class GraphConvolution(nn.Module):
@@ -120,13 +121,23 @@ class GCN(nn.Module):
 
         self.do = nn.Dropout(p_dropout)
         self.act_f = nn.Tanh()
+        self.normalised_act_f = nn.Sigmoid()
 
     def set_normalising_varaiables(self, maximum, minimum):
         self.data_max = maximum
         self.data_min = minimum
 
     def forward(self, x):
-        x_normalised = (x - self.data_min)/(self.data_max - self.data_min)
+        #x_normalised = (x - self.data_min)/(self.data_max - self.data_min)
+        #print(x[:,:,0].shape) ---shows correct size 16,48
+        #print(x[:,:,1:].shape) ---shows correct size 16,48,19
+        max_first = 2*np.sqrt(20)*np.pi
+        min_first = -max_first
+        max_l = 4*np.sqrt(20)*np.pi
+        min_l = -max_l
+        x_normalised = x
+        x_normalised[:,:,0] = (x_normalised[:,:,0] - min_first)/(max_first - min_first)
+        x_normalised[:,:,1:] = (x_normalised[:,:,1:] - min_l)/(max_l - min_l)
         y = self.gc1(x_normalised)
         b, n, f = y.shape
         y = self.bn1(y.view(b, -1)).view(b, n, f)
@@ -158,7 +169,10 @@ class GCN(nn.Module):
           outputs = x + residuals
         else:
           reconstructions = x
-          residuals = y
-          outputs = x + residuals
+          residuals = self.normalised_act_f(y)
+          #outputs = x + residuals
+          outputs = x_normalised + residuals
+          outputs[:,:,0] = outputs[:,:,0]*(max_first - min_first) + min_first
+          outputs[:,:,1:] = outputs[:,:,1:]*(max_l - min_l) + min_l
 
         return outputs, reconstructions, x_normalised
