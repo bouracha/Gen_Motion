@@ -136,9 +136,9 @@ class GCN(nn.Module):
         max_l = 4*np.sqrt(20)*np.pi
         min_l = -max_l
         x_normalised = x
-        x_normalised[:,:,0] = (x_normalised[:,:,0] - min_first)/(max_first - min_first)
-        x_normalised[:,:,1:] = (x_normalised[:,:,1:] - min_l)/(max_l - min_l)
-        y = self.gc1(x_normalised)
+        #x_normalised[:,:,0] = (x_normalised[:,:,0] - min_first)/(max_first - min_first)
+        #x_normalised[:,:,1:] = (x_normalised[:,:,1:] - min_l)/(max_l - min_l)
+        y = self.gc1(x)
         b, n, f = y.shape
         y = self.bn1(y.view(b, -1)).view(b, n, f)
         y = self.act_f(y)
@@ -169,10 +169,11 @@ class GCN(nn.Module):
           outputs = x + residuals
         else:
           reconstructions = x
-          residuals = self.normalised_act_f(y)
+          #residuals = self.normalised_act_f(y)
+          residuals = y
           #outputs = x + residuals
           outputs = x_normalised + residuals
-          outputs[:,:,0] = outputs[:,:,0]*(max_first - min_first) + min_first
-          outputs[:,:,1:] = outputs[:,:,1:]*(max_l - min_l) + min_l
+          #outputs[:,:,0] = outputs[:,:,0]*(max_first - min_first) + min_first
+          #outputs[:,:,1:] = outputs[:,:,1:]*(max_l - min_l) + min_l
 
         return outputs, reconstructions, x_normalised
