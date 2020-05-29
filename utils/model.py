@@ -139,7 +139,7 @@ class GCN(nn.Module):
         x_normalised[:, :, 0] = (x_normalised[:, :, 0] - min_first) / (max_first - min_first)
         x_normalised[:, :, 1:] = (x_normalised[:, :, 1:] - min_l) / (max_l - min_l)
 
-        y = self.gc1(x)
+        y = self.gc1(x_normalised)
         b, n, f = y.shape
         y = self.bn1(y.view(b, -1)).view(b, n, f)
         y = self.act_f(y)
