@@ -8,6 +8,7 @@ import torch
 from torch.nn.parameter import Parameter
 import math
 import numpy as np
+from torch.autograd import Variable
 
 
 class GraphConvolution(nn.Module):
@@ -132,12 +133,16 @@ class GCN(nn.Module):
         min_first = -max_first
         max_l = 4 * np.sqrt(20) * np.pi
         min_l = -max_l
+        max_first_torch = Variable(torch.from_numpy(np.array(max_first))).float().cuda()
+        min_first_torch = Variable(torch.from_numpy(np.array(min_first))).float().cuda()
+        max_l_torch = Variable(torch.from_numpy(np.array(max_l))).float().cuda()
+        min_l_torch = Variable(torch.from_numpy(np.array(min_l))).float().cuda()
         x_normalised = x
         x_normalised = torch.ones(x.shape).cuda()
         x_normalised = torch.mul(x_normalised, x)
 
-        x_normalised[:, :, 0] = (x_normalised[:, :, 0] - min_first) / (max_first - min_first)
-        x_normalised[:, :, 1:] = (x_normalised[:, :, 1:] - min_l) / (max_l - min_l)
+        x_normalised[:, :, 0] = torch.div((x_normalised[:, :, 0] - min_first_torch), (max_first_torch - min_first_torch))
+        x_normalised[:, :, 1:] = torch.div((x_normalised[:, :, 1:] - min_l_torch), (max_l_torch - min_l_torch))
 
         y = self.gc1(x_normalised)
         b, n, f = y.shape
@@ -174,7 +179,12 @@ class GCN(nn.Module):
           #residuals = y
           #outputs = x + residuals
           outputs = x_normalised + residuals
-          outputs[:,:,0] = outputs[:,:,0]*(max_first - min_first) + min_first
-          outputs[:,:,1:] = outputs[:,:,1:]*(max_l - min_l) + min_l
+
+          outputs[:, :, 0] = torch.mul(outputs[:, :, 0], (max_first_torch - min_first_torch)) + min_first_torch
+          outputs[:,:,1:] = torch.mul(outputs[:,:,1:], (max_l_torch - min_l_torch )) + min_l_torch
+
+          #outputs[:,:,0] = outputs[:,:,0]*(max_first - min_first) + min_first
+          #outputs[:,:,1:] = outputs[:,:,1:]*(max_l - min_l) + min_l
+
 
         return outputs, reconstructions, x_normalised
