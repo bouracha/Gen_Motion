@@ -19,7 +19,8 @@ def plot_psnr(path_to_file, label):
   #plt.plot(iteration[:500], xentropy[:500], label='entropy')
   #plt.plot(iteration[:500], xentropy[:500], label=label)
   #plt.plot(iteration[1500:], joint_loss[1500:], label=label)
-  plt.plot(iteration[0:1000], joint_loss[0:1000], label=label)
+  #plt.plot(iteration[0:500], joint_loss[0:500], label=label)
+  plt.plot(iteration[500:2000], joint_loss[500:2000], label=label)
 
 print("Number of datasets: ", len(sys.argv)-1)
 for i in range(1, len(sys.argv)):
