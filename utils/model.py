@@ -128,30 +128,17 @@ class GCN(nn.Module):
         self.data_min = minimum
 
     def forward(self, x):
-        # x_normalised = (x - self.data_min)/(self.data_max - self.data_min)
-        # print(x[:,:,0].shape) ---shows correct size 16,48
-        # print(x[:,:,1:].shape) ---shows correct size 16,48,19
         max_first = 2 * np.sqrt(20) * np.pi
         min_first = -max_first
         max_l = 4 * np.sqrt(20) * np.pi
         min_l = -max_l
         x_normalised = x
-        #print("\n x shape: ", x.shape)
-        #print("\n x: ", x[0, 0, 0:3])
-        # print("\n x: ", x.values[0,0,0:3])
-        # x_normalised = torch.FloatTensor(x.shape)
         x_normalised = torch.ones(x.shape).cuda()
-        #print("\n x norm shape: ", x_normalised.shape)
-        #print("\n x_normalised: ", x_normalised[0, 0, 0:3])
         x_normalised = torch.mul(x_normalised, x)
-        # x_normalised = torch.matmul(x_normalised, torch.FloatTensor(2.0).cuda())
-        #print("\n x_normalised: ", x_normalised[0, 0, 0:3])
-        #print("\n x: ", x[0, 0, 0:3])
-        # torch.ones(reconstructions.shape).to(torch.device("cuda"))
+
         x_normalised[:, :, 0] = (x_normalised[:, :, 0] - min_first) / (max_first - min_first)
         x_normalised[:, :, 1:] = (x_normalised[:, :, 1:] - min_l) / (max_l - min_l)
-        #print("\n x_normalised after normalisation: ", x_normalised[0, 0, 0:3])
-        #print("\n x after normalisation: ", x[0, 0, 0:3])
+
         y = self.gc1(x)
         b, n, f = y.shape
         y = self.bn1(y.view(b, -1)).view(b, n, f)
@@ -176,11 +163,11 @@ class GCN(nn.Module):
 
         y = self.gc7(y)
         if self.variational:
-          reconstructions = y[:,:,20:]
-          residuals = y[:,:,:20]
-          unnormalised_reconstructions = torch.mul(reconstructions, (self.data_max - self.data_min)) + self.data_min
-          #outputs = unnormalised_reconstructions + residuals
-          outputs = x + residuals
+          reconstructions = self.normalised_act_f(y[:,:,20:])
+          residuals = self.normalised_act_f(y[:,:,:20])
+          outputs = x_normalised + residuals
+          outputs[:,:,0] = outputs[:,:,0]*(max_first - min_first) + min_first
+          outputs[:,:,1:] = outputs[:,:,1:]*(max_l - min_l) + min_l
         else:
           reconstructions = x
           residuals = self.normalised_act_f(y)
