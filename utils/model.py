@@ -119,10 +119,12 @@ class GCN(nn.Module):
             self.gc7 = GraphConvolution(hidden_feature, 2*input_feature, node_n=node_n)
         else:
           self.gc7 = GraphConvolution(hidden_feature, input_feature, node_n=node_n)
+        self.bnf = nn.BatchNorm1d(node_n * input_feature)
 
         self.do = nn.Dropout(p_dropout)
         self.act_f = nn.Tanh()
         self.normalised_act_f = nn.Sigmoid()
+
 
     def set_normalising_varaiables(self, maximum, minimum):
         self.data_max = maximum
@@ -133,16 +135,12 @@ class GCN(nn.Module):
         min_first = -max_first
         max_l = 4 * np.sqrt(20) * np.pi
         min_l = -max_l
-        max_first_torch = Variable(torch.from_numpy(np.array(max_first))).float().cuda()
-        min_first_torch = Variable(torch.from_numpy(np.array(min_first))).float().cuda()
-        max_l_torch = Variable(torch.from_numpy(np.array(max_l))).float().cuda()
-        min_l_torch = Variable(torch.from_numpy(np.array(min_l))).float().cuda()
-        x_normalised = x
-        x_normalised = torch.ones(x.shape).cuda()
-        x_normalised = torch.mul(x_normalised, x)
+        x_normalised = x.detach()
+        #x_normalised = torch.ones(x.shape).cuda()
+        #x_normalised = torch.mul(x_normalised, x)
 
-        x_normalised[:, :, 0] = torch.div((x_normalised[:, :, 0] - min_first_torch), (max_first_torch - min_first_torch))
-        x_normalised[:, :, 1:] = torch.div((x_normalised[:, :, 1:] - min_l_torch), (max_l_torch - min_l_torch))
+        x_normalised[:, :, 0] = (x_normalised[:, :, 0] - min_first)/(max_first - min_first)
+        x_normalised[:, :, 1] = (x_normalised[:, :, 1] - min_l)/(max_l - min_l)
 
         y = self.gc1(x_normalised)
         b, n, f = y.shape
@@ -167,6 +165,8 @@ class GCN(nn.Module):
             y = self.gcbs[i](y)
 
         y = self.gc7(y)
+        b, n, f = y.shape
+        y = self.bnf(y.view(b, -1)).view(b, n, f)
         if self.variational:
           reconstructions = self.normalised_act_f(y[:,:,20:])
           residuals = self.normalised_act_f(y[:,:,:20])
@@ -175,16 +175,16 @@ class GCN(nn.Module):
           outputs[:,:,1:] = outputs[:,:,1:]*(max_l - min_l) + min_l
         else:
           reconstructions = x
-          residuals = self.normalised_act_f(y)
+          residuals_scaled = self.normalised_act_f(y)
           #residuals = y
-          #outputs = x + residuals
-          outputs = x_normalised + residuals
 
-          outputs[:, :, 0] = torch.mul(outputs[:, :, 0], (max_first_torch - min_first_torch)) + min_first_torch
-          outputs[:,:,1:] = torch.mul(outputs[:,:,1:], (max_l_torch - min_l_torch )) + min_l_torch
+          residuals = residuals_scaled.clone()
+          residuals[:, :, 0] = residuals[:, :, 0] * (max_first - min_first) + min_first
+          residuals[:, :, 1] = residuals[:, :, 1] * (max_l - min_l) + min_l
+
+          outputs = x + residuals
 
           #outputs[:,:,0] = outputs[:,:,0]*(max_first - min_first) + min_first
           #outputs[:,:,1:] = outputs[:,:,1:]*(max_l - min_l) + min_l
-
 
         return outputs, reconstructions, x_normalised
