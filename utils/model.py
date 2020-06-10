@@ -135,11 +135,9 @@ class GCN(nn.Module):
         max_l = 4 * np.sqrt(20) * np.pi
         min_l = -max_l
         x_normalised = x.detach()
-        #x_normalised = torch.ones(x.shape).cuda()
-        #x_normalised = torch.mul(x_normalised, x)
 
         x_normalised[:, :, 0] = (x_normalised[:, :, 0] - min_first)/(max_first - min_first)
-        x_normalised[:, :, 1] = (x_normalised[:, :, 1] - min_l)/(max_l - min_l)
+        x_normalised[:, :, 1:] = (x_normalised[:, :, 1:] - min_l)/(max_l - min_l)
 
         y = self.gc1(x_normalised)
         b, n, f = y.shape
@@ -165,10 +163,11 @@ class GCN(nn.Module):
 
         y = self.gc7(y)
         if self.variational:
-          reconstructions = self.normalised_act_f(y[:,:,20:])
+          logits = y[:,:,20:]
+          reconstructions = self.normalised_act_f(logits)
           residuals = self.normalised_act_f(y[:,:,:20])
-          outputs = x_normalised + residuals
-          outputs[:,:,0] = outputs[:,:,0]*(max_first - min_first) + min_first
+          outputs = reconstructions + residuals
+          outputs[:,:,0]  = outputs[:,:,0]*(max_first - min_first) + min_first
           outputs[:,:,1:] = outputs[:,:,1:]*(max_l - min_l) + min_l
         else:
           reconstructions = x
@@ -177,11 +176,8 @@ class GCN(nn.Module):
 
           residuals = residuals_scaled.clone()
           residuals[:, :, 0] = residuals[:, :, 0] * (max_first - min_first) + min_first
-          residuals[:, :, 1] = residuals[:, :, 1] * (max_l - min_l) + min_l
+          residuals[:, :, 1:] = residuals[:, :, 1:] * (max_l - min_l) + min_l
 
-          outputs = x + residuals
+          outputs = reconstructions + residuals
 
-          #outputs[:,:,0] = outputs[:,:,0]*(max_first - min_first) + min_first
-          #outputs[:,:,1:] = outputs[:,:,1:]*(max_l - min_l) + min_l
-
-        return outputs, reconstructions, x_normalised
+        return outputs, logits, x_normalised
