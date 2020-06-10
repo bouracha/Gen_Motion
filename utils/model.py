@@ -167,9 +167,10 @@ class GCN(nn.Module):
           reconstructions = self.normalised_act_f(logits)
           residuals = self.normalised_act_f(y[:,:,:20])
           outputs = reconstructions + residuals
-          outputs[:,:,0]  = outputs[:,:,0]*(max_first - min_first) + min_first
-          outputs[:,:,1:] = outputs[:,:,1:]*(max_l - min_l) + min_l
+          outputs[:, :, 0]  = outputs[:, :, 0] * (max_first - min_first) + min_first
+          outputs[:, :, 1:] = outputs[:, :, 1:] * (max_l - min_l) + min_l
         else:
+          logits = None
           reconstructions = x
           residuals_scaled = self.normalised_act_f(y)
           #residuals = y
