@@ -203,7 +203,7 @@ def train(train_loader, model, optimizer, input_n=20, dct_n=20, lr_now=None, max
         bt = time.time()
         if is_cuda:
             inputs = Variable(inputs.cuda()).float()
-            # targets = Variable(targets.cuda(async=True)).float()
+            targets = Variable(targets.cuda(non_blocking=True)).float()
             all_seq = Variable(all_seq.cuda(non_blocking=True)).float()
 
         outputs, reconstructions, x_normalised = model(inputs.float())
@@ -212,7 +212,7 @@ def train(train_loader, model, optimizer, input_n=20, dct_n=20, lr_now=None, max
         outputs = outputs.view(n, -1)
         # targets = targets.view(n, -1)
 
-        loss, joint_loss, xentropy, latent_loss = loss_funcs.sen_loss(outputs, all_seq, dim_used, dct_n, KL, reconstructions,
+        loss, joint_loss, xentropy, latent_loss = loss_funcs.sen_loss(outputs, all_seq, dim_used, dct_n, targets, KL, reconstructions,
                                                             x_normalised)
 
         # Print losses for epoch

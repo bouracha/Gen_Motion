@@ -134,12 +134,16 @@ class GCN(nn.Module):
         min_first = -max_first
         max_l = 4 * np.sqrt(20) * np.pi
         min_l = -max_l
+        #max_first = Variable(max_first.cuda()).float()
+        #min_first = Variable(min_first.cuda()).float()
+        #max_l = Variable(max_l.cuda()).float()
+        #min_l = Variable(min_l.cuda()).float()
         x_normalised = x.detach()
 
         x_normalised[:, :, 0] = (x_normalised[:, :, 0] - min_first)/(max_first - min_first)
         x_normalised[:, :, 1:] = (x_normalised[:, :, 1:] - min_l)/(max_l - min_l)
 
-        y = self.gc1(x_normalised)
+        y = self.gc1(x)
         b, n, f = y.shape
         y = self.bn1(y.view(b, -1)).view(b, n, f)
         y = self.act_f(y)
@@ -170,15 +174,17 @@ class GCN(nn.Module):
           outputs[:, :, 0]  = outputs[:, :, 0] * (max_first - min_first) + min_first
           outputs[:, :, 1:] = outputs[:, :, 1:] * (max_l - min_l) + min_l
         else:
-          logits = None
+          logits = y
           reconstructions = x
-          residuals_scaled = self.normalised_act_f(y)
+          residuals = self.normalised_act_f(logits)
           #residuals = y
 
-          residuals = residuals_scaled.clone()
+          #residuals = logits.clone()
+          #print("\n", residuals[0,0,:3])
           residuals[:, :, 0] = residuals[:, :, 0] * (max_first - min_first) + min_first
           residuals[:, :, 1:] = residuals[:, :, 1:] * (max_l - min_l) + min_l
+          #print(residuals[0,0,:3])
 
-          outputs = reconstructions + residuals
+          outputs = residuals
 
         return outputs, logits, x_normalised

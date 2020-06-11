@@ -7,7 +7,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-def sen_loss(outputs, all_seq, dim_used, dct_n, KL=None, reconstructions=None, inputs=None):
+def sen_loss(outputs, all_seq, dim_used, dct_n, targets, KL=None, reconstructions=None, inputs=None):
     """
 
     :param outputs: N * (seq_len*dim_used_len)
@@ -27,11 +27,26 @@ def sen_loss(outputs, all_seq, dim_used, dct_n, KL=None, reconstructions=None, i
                                                                                                seq_len).transpose(1, 2)
     targ_expmap = all_seq.clone()[:, :, dim_used]
 
+    #Get DCT of targets
+    max_first = 2 * np.sqrt(20) * np.pi
+    min_first = -max_first
+    max_l = 4 * np.sqrt(20) * np.pi
+    min_l = -max_l
+    targets[:, :, 0] = (targets[:, :, 0] - min_first)/(max_first - min_first)
+    targets[:, :, 1:] = (targets[:, :, 1:] - min_l)/(max_l - min_l)
+    #print("\n", targets.shape)
+    #print(targets[0,0,:3])
+    #print(torch.max(targets))
+    #print(torch.min(targets))
+
     joint_loss = torch.mean(torch.sum(torch.abs(pred_expmap - targ_expmap), dim=2).view(-1))
     if KL == None:
-        XEntropy_per_batch = torch.zeros(1)
+        XEntropy = torch.max(reconstructions, torch.zeros(reconstructions.shape).to(torch.device("cuda"))) - torch.mul(reconstructions, targets) + torch.log(torch.ones(reconstructions.shape).to(torch.device("cuda")) + torch.exp(-torch.abs(reconstructions)))
+        XEntropy_per_example = torch.sum(XEntropy, axis=(1,2))
+        XEntropy_per_batch = torch.mean(XEntropy_per_example)
+        #XEntropy_per_batch = torch.zeros(1)
         latent_loss = torch.zeros(1)
-        loss = joint_loss
+        loss = XEntropy_per_batch
     else:
         XEntropy = torch.max(reconstructions, torch.zeros(reconstructions.shape).to(torch.device("cuda"))) - torch.mul(reconstructions, inputs) + torch.log(torch.ones(reconstructions.shape).to(torch.device("cuda")) + torch.exp(-torch.abs(reconstructions)))
         XEntropy_per_example = torch.sum(XEntropy, axis=(1,2))
