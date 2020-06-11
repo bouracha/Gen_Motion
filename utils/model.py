@@ -179,7 +179,7 @@ class GCN(nn.Module):
           outputs_scaled = self.normalised_act_f(logits)
           #residuals = y
 
-          outputs = outputs_scaled
+          outputs = outputs_scaled.clone()
           #print("\n", residuals[0,0,:3])
           outputs[:, :, 0] = outputs[:, :, 0] * (max_first - min_first) + min_first
           outputs[:, :, 1:] = outputs[:, :, 1:] * (max_l - min_l) + min_l
