@@ -17,6 +17,7 @@ def plot_psnr(path_to_file, label):
   #plt.errorbar(epochs, psnr, yerr=std, fmt='-o', label=label)
   #plt.plot(iteration, latent_loss, label='latent')
   #plt.plot(iteration[0:500], xentropy[0:500], label='entropy')
+  #plt.plot(iteration[500:11000], xentropy[500:11000], label='entropy')
   #plt.plot(iteration, joint_loss, label='joint_loss')
   #plt.plot(iteration[500:2000], latent_loss[500:2000], label='latent')
   #plt.plot(iteration[500:2000], xentropy[500:2000], label='entropy')

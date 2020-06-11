@@ -176,15 +176,15 @@ class GCN(nn.Module):
         else:
           logits = y
           reconstructions = x
-          residuals = self.normalised_act_f(logits)
+          outputs_scaled = self.normalised_act_f(logits)
           #residuals = y
 
-          #residuals = logits.clone()
+          outputs = outputs_scaled
           #print("\n", residuals[0,0,:3])
-          residuals[:, :, 0] = residuals[:, :, 0] * (max_first - min_first) + min_first
-          residuals[:, :, 1:] = residuals[:, :, 1:] * (max_l - min_l) + min_l
+          outputs[:, :, 0] = outputs[:, :, 0] * (max_first - min_first) + min_first
+          outputs[:, :, 1:] = outputs[:, :, 1:] * (max_l - min_l) + min_l
           #print(residuals[0,0,:3])
 
-          outputs = residuals
+          #outputs = residuals
 
         return outputs, logits, x_normalised
