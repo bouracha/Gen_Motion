@@ -122,6 +122,7 @@ class GCN(nn.Module):
 
         self.do = nn.Dropout(p_dropout)
         self.act_f = nn.Tanh()
+        #self.act_f = nn.LeakyReLU(0.1)   #TODO: Use LeakyReLU at end (doesn't seem to make big difference)
         self.normalised_act_f = nn.Sigmoid()
 
 
