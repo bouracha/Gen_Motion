@@ -2,12 +2,13 @@ import numpy as np
 import torch
 from torch.autograd import Variable
 from utils import data_utils
+import numpy as np
 
 import torch.nn as nn
 import torch.nn.functional as F
 
 
-def sen_loss(outputs, all_seq, dim_used, dct_n, targets, KL=None, reconstructions=None, inputs=None):
+def sen_loss(outputs, all_seq, dim_used, dct_n, targets, KL=None, reconstructions=None, log_var=None):
     """
 
     :param outputs: N * (seq_len*dim_used_len)
@@ -40,13 +41,18 @@ def sen_loss(outputs, all_seq, dim_used, dct_n, targets, KL=None, reconstruction
     #print(torch.min(targets))
 
     joint_loss = torch.mean(torch.sum(torch.abs(pred_expmap - targ_expmap), dim=2).view(-1))
+    mse = torch.mean(torch.sum(torch.square(pred_expmap - targ_expmap), dim=2).view(-1))
+    gauss_log_lik = -0.5*(log_var + np.log(2*np.pi) + 1/((1e-8 + torch.exp(log_var))*mse))
+    neg_gauss_log_lik = - gauss_log_lik
     if KL == None:
         XEntropy = torch.max(reconstructions, torch.zeros(reconstructions.shape).to(torch.device("cuda"))) - torch.mul(reconstructions, targets) + torch.log(torch.ones(reconstructions.shape).to(torch.device("cuda")) + torch.exp(-torch.abs(reconstructions)))
         XEntropy_per_example = torch.sum(XEntropy, axis=(1,2))
         XEntropy_per_batch = torch.mean(XEntropy_per_example)
         #XEntropy_per_batch = torch.zeros(1)
         latent_loss = torch.zeros(1)
-        loss = XEntropy_per_batch
+        #loss = XEntropy_per_batch
+        #loss = joint_loss
+        loss = neg_gauss_log_lik
     else:
         XEntropy = torch.max(reconstructions, torch.zeros(reconstructions.shape).to(torch.device("cuda"))) - torch.mul(reconstructions, inputs) + torch.log(torch.ones(reconstructions.shape).to(torch.device("cuda")) + torch.exp(-torch.abs(reconstructions)))
         XEntropy_per_example = torch.sum(XEntropy, axis=(1,2))

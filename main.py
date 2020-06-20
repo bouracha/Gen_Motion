@@ -206,14 +206,13 @@ def train(train_loader, model, optimizer, input_n=20, dct_n=20, lr_now=None, max
             targets = Variable(targets.cuda(non_blocking=True)).float()
             all_seq = Variable(all_seq.cuda(non_blocking=True)).float()
 
-        outputs, reconstructions, x_normalised = model(inputs.float())
+        outputs, reconstructions, log_var = model(inputs.float())
         KL = model.KL
         n = outputs.shape[0]
         outputs = outputs.view(n, -1)
         # targets = targets.view(n, -1)
 
-        loss, joint_loss, xentropy, latent_loss = loss_funcs.sen_loss(outputs, all_seq, dim_used, dct_n, targets, KL, reconstructions,
-                                                            x_normalised)
+        loss, joint_loss, xentropy, latent_loss = loss_funcs.sen_loss(outputs, all_seq, dim_used, dct_n, targets, KL, reconstructions, log_var)
 
         # Print losses for epoch
         ret_log = np.array([i, loss.cpu().data.numpy(), joint_loss.cpu().data.numpy(), xentropy.cpu().data.numpy(), latent_loss.cpu().data.numpy()])
@@ -279,7 +278,7 @@ def test(train_loader, model, input_n=20, output_n=50, dct_n=20, is_cuda=False, 
             # targets = Variable(targets.cuda(async=True)).float()
             all_seq = Variable(all_seq.cuda(non_blocking=True)).float()
 
-        outputs, reconstructions, x_normalised = model(inputs.float())
+        outputs, reconstructions, log_var = model(inputs.float())
         n = outputs.shape[0]
         # outputs = outputs.view(n, -1)
         # targets = targets.view(n, -1)
@@ -351,7 +350,7 @@ def val(train_loader, model, input_n=20, dct_n=20, is_cuda=False, dim_used=[]):
             # targets = Variable(targets.cuda(async=True)).float()
             all_seq = Variable(all_seq.cuda(non_blocking=True)).float()
 
-        outputs, reconstructions, x_normalised = model(inputs.float())
+        outputs, reconstructions, log_var = model(inputs.float())
         n = outputs.shape[0]
         outputs = outputs.view(n, -1)
         # targets = targets.view(n, -1)

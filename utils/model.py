@@ -114,17 +114,15 @@ class GCN(nn.Module):
         if variational:
             self.gc_z_mu = GraphConvolution(hidden_feature, hidden_feature, node_n=node_n)
             self.gc_z_sigma = GraphConvolution(hidden_feature, hidden_feature, node_n=node_n)
-            #self.gc_z = GraphConvolution(hidden_feature, hidden_feature, node_n=node_n)
-            #self.bnz = nn.BatchNorm1d(node_n * hidden_feature)
-            self.gc7 = GraphConvolution(hidden_feature, 2*input_feature, node_n=node_n)
-        else:
-          self.gc7 = GraphConvolution(hidden_feature, input_feature, node_n=node_n)
+            # self.gc_z = GraphConvolution(hidden_feature, hidden_feature, node_n=node_n)
+            # self.bnz = nn.BatchNorm1d(node_n * hidden_feature)
+
+        self.gc7 = GraphConvolution(hidden_feature, 2*input_feature, node_n=node_n)
 
         self.do = nn.Dropout(p_dropout)
         self.act_f = nn.Tanh()
-        #self.act_f = nn.LeakyReLU(0.1)   #TODO: Use LeakyReLU at end (doesn't seem to make big difference)
+        # self.act_f = nn.LeakyReLU(0.1)   #TODO: Use LeakyReLU at end (doesn't seem to make big difference)
         self.normalised_act_f = nn.Sigmoid()
-
 
     def set_normalising_varaiables(self, maximum, minimum):
         self.data_max = maximum
@@ -135,14 +133,6 @@ class GCN(nn.Module):
         min_first = -max_first
         max_l = 4 * np.sqrt(20) * np.pi
         min_l = -max_l
-        #max_first = Variable(max_first.cuda()).float()
-        #min_first = Variable(min_first.cuda()).float()
-        #max_l = Variable(max_l.cuda()).float()
-        #min_l = Variable(min_l.cuda()).float()
-        x_normalised = x.detach()
-
-        x_normalised[:, :, 0] = (x_normalised[:, :, 0] - min_first)/(max_first - min_first)
-        x_normalised[:, :, 1:] = (x_normalised[:, :, 1:] - min_l)/(max_l - min_l)
 
         y = self.gc1(x)
         b, n, f = y.shape
@@ -150,7 +140,7 @@ class GCN(nn.Module):
         y = self.act_f(y)
         y = self.do(y)
 
-        for i in range(self.num_stage//2):
+        for i in range(self.num_stage // 2):
             y = self.gcbs[i](y)
 
         self.KL = None
@@ -161,31 +151,20 @@ class GCN(nn.Module):
             z = mu + torch.mul(torch.exp(gamma), noise)
             y = z
 
-            self.KL = 0.5*torch.sum(torch.exp(gamma) + torch.pow(mu, 2) - 1 - gamma, axis=(1,2))
+            self.KL = 0.5 * torch.sum(torch.exp(gamma) + torch.pow(mu, 2) - 1 - gamma, axis=(1, 2))
 
-        for i in range(self.num_stage//2, self.num_stage):
+        for i in range(self.num_stage // 2, self.num_stage):
             y = self.gcbs[i](y)
 
         y = self.gc7(y)
-        if self.variational:
-          logits = y[:,:,20:]
-          reconstructions = self.normalised_act_f(logits)
-          residuals = self.normalised_act_f(y[:,:,:20])
-          outputs = reconstructions + residuals
-          outputs[:, :, 0]  = outputs[:, :, 0] * (max_first - min_first) + min_first
-          outputs[:, :, 1:] = outputs[:, :, 1:] * (max_l - min_l) + min_l
-        else:
-          logits = y
-          reconstructions = x
-          outputs_scaled = self.normalised_act_f(logits)
-          #residuals = y
+        logits = y[:,:,:20]
+        log_var = y[:,:,20:]
+        #outputs_scaled = self.normalised_act_f(logits)
 
-          outputs = outputs_scaled.clone()
-          #print("\n", residuals[0,0,:3])
-          outputs[:, :, 0] = outputs[:, :, 0] * (max_first - min_first) + min_first
-          outputs[:, :, 1:] = outputs[:, :, 1:] * (max_l - min_l) + min_l
-          #print(residuals[0,0,:3])
+        #outputs = outputs_scaled.clone()
+        #outputs[:, :, 0] = outputs[:, :, 0] * (max_first - min_first) + min_first
+        #outputs[:, :, 1:] = outputs[:, :, 1:] * (max_l - min_l) + min_l
 
-          #outputs = residuals
+        outputs = logits
 
-        return outputs, logits, x_normalised
+        return outputs, logits, log_var
