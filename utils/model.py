@@ -120,8 +120,8 @@ class GCN(nn.Module):
         self.gc7 = GraphConvolution(hidden_feature, 2*input_feature, node_n=node_n)
 
         self.do = nn.Dropout(p_dropout)
-        self.act_f = nn.Tanh()
-        # self.act_f = nn.LeakyReLU(0.1)   #TODO: Use LeakyReLU at end (doesn't seem to make big difference)
+        #self.act_f = nn.Tanh()
+        self.act_f = nn.LeakyReLU(0.1)
         self.normalised_act_f = nn.Sigmoid()
 
     def set_normalising_varaiables(self, maximum, minimum):
@@ -157,14 +157,14 @@ class GCN(nn.Module):
             y = self.gcbs[i](y)
 
         y = self.gc7(y)
-        logits = y[:,:,:20]
-        log_var = y[:,:,20:]
+        logits = y[:,:,:20].clone()
+        log_var = torch.abs(y[:,:,20:]) #torch.log(torch.square(y[:,:,20:]))
         #outputs_scaled = self.normalised_act_f(logits)
 
         #outputs = outputs_scaled.clone()
         #outputs[:, :, 0] = outputs[:, :, 0] * (max_first - min_first) + min_first
         #outputs[:, :, 1:] = outputs[:, :, 1:] * (max_l - min_l) + min_l
 
-        outputs = logits
+        outputs = logits + x
 
         return outputs, logits, log_var
