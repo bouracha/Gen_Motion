@@ -65,7 +65,8 @@ def sen_loss(outputs, all_seq, dim_used, dct_n, targets, KL=None, reconstruction
         XEntropy_per_batch = torch.mean(XEntropy_per_example)
 
         latent_loss = torch.mean(KL)
-        loss = joint_loss + (XEntropy_per_batch + latent_loss)
+        #loss = joint_loss + (XEntropy_per_batch + latent_loss)
+        loss = neg_gauss_log_lik
 
     #print("loss: ", loss)
     #print("Xentropy: ", XEntropy_per_batch)
