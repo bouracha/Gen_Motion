@@ -60,7 +60,7 @@ def sen_loss(outputs, all_seq, dim_used, dct_n, targets, KL=None, reconstruction
         #loss = joint_loss
         loss = neg_gauss_log_lik
     else:
-        XEntropy = torch.max(reconstructions, torch.zeros(reconstructions.shape).to(torch.device("cuda"))) - torch.mul(reconstructions, inputs) + torch.log(torch.ones(reconstructions.shape).to(torch.device("cuda")) + torch.exp(-torch.abs(reconstructions)))
+        XEntropy = torch.max(reconstructions, torch.zeros(reconstructions.shape).to(torch.device("cuda"))) - torch.mul(reconstructions, targets) + torch.log(torch.ones(reconstructions.shape).to(torch.device("cuda")) + torch.exp(-torch.abs(reconstructions)))
         XEntropy_per_example = torch.sum(XEntropy, axis=(1,2))
         XEntropy_per_batch = torch.mean(XEntropy_per_example)
 
