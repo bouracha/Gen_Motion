@@ -158,7 +158,7 @@ class GCN(nn.Module):
 
         y = self.gc7(y)
         logits = y[:,:,:20].clone()
-        log_var = torch.abs(y[:,:,20:]) #torch.log(torch.square(y[:,:,20:]))
+        log_var = torch.clamp(y[:,:,20:], min=-10.0, max=10.0) #torch.log(torch.square(y[:,:,20:]))
         #outputs_scaled = self.normalised_act_f(logits)
 
         #outputs = outputs_scaled.clone()
