@@ -43,7 +43,7 @@ def sen_loss(outputs, all_seq, dim_used, dct_n, targets, KL=None, reconstruction
     temp_joint = torch.sum(torch.abs(pred_expmap - targ_expmap), dim=2).view(-1)
     #print(temp_joint.shape)
     joint_loss = torch.mean(temp_joint)
-    mse = torch.square(pred_expmap - targ_expmap)
+    mse = torch.mul((pred_expmap - targ_expmap), (pred_expmap - targ_expmap))
     log_var_t = log_var.transpose(1, 2)
     #torch.ones(pred_expmap.shape).to(torch.device("cuda"))
     gauss_log_lik = -0.5*(log_var_t + np.log(2*np.pi) + (mse/(1e-8 + torch.exp(log_var_t))))
