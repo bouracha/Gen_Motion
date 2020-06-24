@@ -10,6 +10,36 @@ import math
 import numpy as np
 from torch.autograd import Variable
 
+class FullyConnected(nn.Module):
+
+    def __init__(self, in_features, out_features, bias=True):
+        super(FullyConnected, self).__init__()
+        self.in_features = in_features
+        self.out_features = out_features
+        self.weight = Parameter(torch.FloatTensor(in_features, out_features))
+        if bias:
+            self.bias = Parameter(torch.FloatTensor(out_features))
+        else:
+            self.register_parameter('bias', None)
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        stdv = 1. / math.sqrt(self.weight.size(1))
+        self.weight.data.uniform_(-stdv, stdv)
+        if self.bias is not None:
+            self.bias.data.uniform_(-stdv, stdv)
+
+    def forward(self, input):
+        output = torch.matmul(input, self.weight)
+        if self.bias is not None:
+            return output + self.bias
+        else:
+            return output
+
+    def __repr__(self):
+        return self.__class__.__name__ + ' (' \
+               + str(self.in_features) + ' -> ' \
+               + str(self.out_features) + ')'
 
 class GraphConvolution(nn.Module):
     """
@@ -112,10 +142,11 @@ class GCN(nn.Module):
 
         self.variational = variational
         if variational:
-            self.gc_z_mu = GraphConvolution(hidden_feature, hidden_feature, node_n=node_n)
-            self.gc_z_sigma = GraphConvolution(hidden_feature, hidden_feature, node_n=node_n)
-            # self.gc_z = GraphConvolution(hidden_feature, hidden_feature, node_n=node_n)
-            # self.bnz = nn.BatchNorm1d(node_n * hidden_feature)
+            self.gc_z_mu = GraphConvolution(hidden_feature, 4, node_n=node_n)
+            self.gc_z_sigma = GraphConvolution(hidden_feature, 4, node_n=node_n)
+            self.fc1_decoder = FullyConnected(4*48, 8*48)
+            self.fc2_decoder = FullyConnected(8 * 48, 16 * 48)
+            self.fc3_decoder = FullyConnected(16 * 48, 40 * 48)
 
         self.gc7 = GraphConvolution(hidden_feature, 2*input_feature, node_n=node_n)
 
@@ -123,10 +154,6 @@ class GCN(nn.Module):
         #self.act_f = nn.Tanh()
         self.act_f = nn.LeakyReLU(0.1)
         self.normalised_act_f = nn.Sigmoid()
-
-    def set_normalising_varaiables(self, maximum, minimum):
-        self.data_max = maximum
-        self.data_min = minimum
 
     def forward(self, x):
         max_first = 2 * np.sqrt(20) * np.pi
@@ -149,7 +176,17 @@ class GCN(nn.Module):
             gamma = self.gc_z_sigma(y)
             noise = torch.normal(mean=0, std=1.0, size=gamma.shape).to(torch.device("cuda"))
             z = mu + torch.mul(torch.exp(gamma), noise)
-            y = z
+            b, n, f = z.shape
+            z = z.view(b, 4*48)
+            z = self.fc1_decoder(z)
+            z = self.act_f(z)
+            z = self.fc2_decoder(z)
+            z = self.act_f(z)
+            z = self.fc3_decoder(z)
+            b, _ = z.shape
+            z = z.view(b, 48, 40)
+            reconstructions_mu = z[:,:,:20].clone()
+            reconstructions_log_var = torch.clamp(z[:, :, 20:], min=-20.0, max=3.0)
 
             self.KL = 0.5 * torch.sum(torch.exp(gamma) + torch.pow(mu, 2) - 1 - gamma, axis=(1, 2))
 
@@ -157,14 +194,8 @@ class GCN(nn.Module):
             y = self.gcbs[i](y)
 
         y = self.gc7(y)
-        logits = y[:,:,:20].clone()
-        log_var = torch.clamp(y[:,:,20:], min=-20.0, max=3.0) #torch.log(torch.square(y[:,:,20:]))
-        #outputs_scaled = self.normalised_act_f(logits)
+        residuals = y
 
-        #outputs = outputs_scaled.clone()
-        #outputs[:, :, 0] = outputs[:, :, 0] * (max_first - min_first) + min_first
-        #outputs[:, :, 1:] = outputs[:, :, 1:] * (max_l - min_l) + min_l
+        outputs = residuals + x
 
-        outputs = logits + x
-
-        return outputs, logits, log_var
+        return outputs, reconstructions_mu, reconstructions_log_var

@@ -8,7 +8,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-def sen_loss(outputs, all_seq, dim_used, dct_n, targets, KL=None, reconstructions=None, log_var=None):
+def sen_loss(outputs, all_seq, dim_used, dct_n, targets, inputs, KL=None, reconstructions=None, log_var=None):
     """
 
     :param outputs: N * (seq_len*dim_used_len)
@@ -35,45 +35,29 @@ def sen_loss(outputs, all_seq, dim_used, dct_n, targets, KL=None, reconstruction
     min_l = -max_l
     targets[:, :, 0] = (targets[:, :, 0] - min_first)/(max_first - min_first)
     targets[:, :, 1:] = (targets[:, :, 1:] - min_l)/(max_l - min_l)
-    #print("\n", targets.shape)
-    #print(targets[0,0,:3])
-    #print(torch.max(targets))
-    #print(torch.min(targets))
 
-    temp_joint = torch.sum(torch.abs(pred_expmap - targ_expmap), dim=2).view(-1)
-    #print(temp_joint.shape)
-    joint_loss = torch.mean(temp_joint)
-    mse = torch.mul((pred_expmap - targ_expmap), (pred_expmap - targ_expmap))
+    joint_loss = torch.mean(torch.sum(torch.abs(pred_expmap - targ_expmap), dim=2).view(-1))
+    mse = torch.pow((reconstructions - inputs), 2)
     log_var_t = log_var.transpose(1, 2)
-    #torch.ones(pred_expmap.shape).to(torch.device("cuda"))
     gauss_log_lik = -0.5*(log_var_t + np.log(2*np.pi) + (mse/(1e-8 + torch.exp(log_var_t))))
-    neg_gauss_log_lik = -torch.mean((gauss_log_lik))
-    #print(torch.sum((gauss_log_lik), dim=2).view(-1).shape)
-    #neg_gauss_log_lik = -torch.mean(torch.sum((gauss_log_lik), dim=2).view(-1))
+    #neg_gauss_log_lik = -torch.mean((gauss_log_lik))
+    neg_gauss_log_lik = -torch.mean(torch.sum(gauss_log_lik, axis=(1, 2)))
     if KL == None:
-        XEntropy = torch.max(reconstructions, torch.zeros(reconstructions.shape).to(torch.device("cuda"))) - torch.mul(reconstructions, targets) + torch.log(torch.ones(reconstructions.shape).to(torch.device("cuda")) + torch.exp(-torch.abs(reconstructions)))
-        XEntropy_per_example = torch.sum(XEntropy, axis=(1,2))
-        XEntropy_per_batch = torch.mean(XEntropy_per_example)
-        #XEntropy_per_batch = torch.zeros(1)
+        neg_gauss_log_lik = torch.zeros(1)
         latent_loss = torch.zeros(1)
-        #loss = XEntropy_per_batch
-        #loss = joint_loss
-        loss = neg_gauss_log_lik
+        loss = joint_loss
     else:
-        XEntropy = torch.max(reconstructions, torch.zeros(reconstructions.shape).to(torch.device("cuda"))) - torch.mul(reconstructions, targets) + torch.log(torch.ones(reconstructions.shape).to(torch.device("cuda")) + torch.exp(-torch.abs(reconstructions)))
-        XEntropy_per_example = torch.sum(XEntropy, axis=(1,2))
-        XEntropy_per_batch = torch.mean(XEntropy_per_example)
-
         latent_loss = torch.mean(KL)
-        #loss = joint_loss + (XEntropy_per_batch + latent_loss)
-        loss = neg_gauss_log_lik
+        lambda_ = 1.0
+        loss = joint_loss + lambda_*(neg_gauss_log_lik + latent_loss)
 
+    print("neg_gauss_log_lik: ", neg_gauss_log_lik)
     #print("loss: ", loss)
     #print("Xentropy: ", XEntropy_per_batch)
     #print("latent loss: ", latent_loss)
     #print("joint_loss: ", joint_loss)
 
-    return loss, joint_loss, XEntropy_per_batch, latent_loss
+    return loss, joint_loss, neg_gauss_log_lik, latent_loss
 
 
 def euler_error(outputs, all_seq, input_n, dim_used, dct_n):

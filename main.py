@@ -68,8 +68,6 @@ def main(opt):
     # 48 nodes for angle prediction
     model = nnmodel.GCN(input_feature=dct_n, hidden_feature=opt.linear_size, p_dropout=opt.dropout,
                         num_stage=opt.num_stage, node_n=48, variational=opt.variational)
-    # Declare max and min values in the dataset so can rescale between 0 and 1 for use of XEntropy for reconstrcution
-    model.set_normalising_varaiables(max_data, min_data)
 
     if is_cuda:
         model.cuda()
@@ -212,7 +210,7 @@ def train(train_loader, model, optimizer, input_n=20, dct_n=20, lr_now=None, max
         outputs = outputs.view(n, -1)
         # targets = targets.view(n, -1)
 
-        loss, joint_loss, xentropy, latent_loss = loss_funcs.sen_loss(outputs, all_seq, dim_used, dct_n, targets, KL, reconstructions, log_var)
+        loss, joint_loss, xentropy, latent_loss = loss_funcs.sen_loss(outputs, all_seq, dim_used, dct_n, targets, inputs, KL, reconstructions, log_var)
 
         # Print losses for epoch
         ret_log = np.array([i, loss.cpu().data.numpy(), joint_loss.cpu().data.numpy(), xentropy.cpu().data.numpy(), latent_loss.cpu().data.numpy()])
