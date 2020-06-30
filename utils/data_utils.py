@@ -294,10 +294,19 @@ def define_actions(action, out_of_distribution=False):
                "walkingtogether"]
 
     if out_of_distribution:
-        assert (action in actions)
-        actions = [x for i, x in enumerate(actions) if x != action]
-        print("Training leaving '{}' out of distribution ".format(action))
-        return actions
+        if action == 'set_1':
+            actions = ["walking", "eating", "smoking", "discussion",
+                       "directions", "greeting", "phoning", "posing"]
+            return actions
+        elif action == 'set_2':
+            actions = ["purchases", "sitting", "sittingdown", "takingphoto",
+                       "waiting", "walkingdog", "walkingtogether"]
+            return actions
+        else:
+            assert (action in actions)
+            actions = [x for i, x in enumerate(actions) if x != action]
+            print("Training leaving '{}' out of distribution ".format(action))
+            return actions
 
     if isinstance(action, list):
         actions = action

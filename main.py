@@ -30,7 +30,12 @@ def main(opt):
     if opt.out_of_distribution != None:
         out_of_distribution = True
         acts_train = data_utils.define_actions(opt.out_of_distribution, out_of_distribution=True)
-        acts_test = data_utils.define_actions(opt.out_of_distribution, out_of_distribution=False)
+        if opt.out_of_distribution == 'set_1':
+            acts_test = data_utils.define_actions('set_2', out_of_distribution=True)
+        elif opt.out_of_distribution == 'set_2':
+            acts_test = data_utils.define_actions('set_1', out_of_distribution=True)
+        else:
+            acts_test = data_utils.define_actions(opt.out_of_distribution, out_of_distribution=False)
     else:
         out_of_distribution = False
         acts_train = data_utils.define_actions('all', out_of_distribution=False)
