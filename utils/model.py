@@ -208,6 +208,9 @@ class GCN(nn.Module):
             reconstructions_log_var = torch.clamp(z[:, :, 20:], min=-20.0, max=3.0)
 
             self.KL = 0.5 * torch.sum(torch.exp(gamma) + torch.pow(mu, 2) - 1 - gamma, axis=(1))
+        else:
+            reconstructions_mu = 1
+            reconstructions_log_var = 1
 
         for i in range(self.num_stage // 2, self.num_stage):
             y = self.gcbs[i](y)
