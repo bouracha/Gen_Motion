@@ -37,20 +37,18 @@ def sen_loss(outputs, all_seq, dim_used, dct_n, targets, inputs, KL=None, recons
     targets[:, :, 1:] = (targets[:, :, 1:] - min_l)/(max_l - min_l)
 
     joint_loss = torch.mean(torch.sum(torch.abs(pred_expmap - targ_expmap), dim=2).view(-1))
-    mse = torch.pow((reconstructions - inputs), 2)
-    #log_var_t = log_var.transpose(1, 2)
-    gauss_log_lik = -0.5*(log_var + np.log(2*np.pi) + (mse/(1e-8 + torch.exp(log_var))))
-    #neg_gauss_log_lik = -torch.mean((gauss_log_lik))
-    neg_gauss_log_lik = -torch.mean(torch.sum(gauss_log_lik, axis=(1, 2)))
     if KL == None:
         neg_gauss_log_lik = torch.zeros(1)
         latent_loss = torch.zeros(1)
         loss = joint_loss
     else:
         latent_loss = torch.mean(KL)
+        mse = torch.pow((reconstructions - inputs), 2)
+        gauss_log_lik = -0.5*(log_var + np.log(2*np.pi) + (mse/(1e-8 + torch.exp(log_var))))
+        neg_gauss_log_lik = -torch.mean(torch.sum(gauss_log_lik, axis=(1, 2)))
+
         lambda_ = 1.0
         loss = joint_loss + lambda_*(neg_gauss_log_lik + latent_loss)
-        #loss = neg_gauss_log_lik + latent_loss
 
     #print("\n neg_gauss_log_lik: ", neg_gauss_log_lik)
     #print("loss: ", loss)
