@@ -47,7 +47,7 @@ def sen_loss(outputs, all_seq, dim_used, dct_n, targets, inputs, KL=None, recons
         gauss_log_lik = -0.5*(log_var + np.log(2*np.pi) + (mse/(1e-8 + torch.exp(log_var))))
         neg_gauss_log_lik = -torch.mean(torch.sum(gauss_log_lik, axis=(1, 2)))
 
-        lambda_ = 1.0
+        lambda_ = 0.1
         loss = joint_loss + lambda_*(neg_gauss_log_lik + latent_loss)
 
     #print("\n neg_gauss_log_lik: ", neg_gauss_log_lik)

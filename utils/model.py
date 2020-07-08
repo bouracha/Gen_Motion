@@ -152,7 +152,7 @@ class GCN(nn.Module):
             self.fc_z_sigma = FullyConnected(48 * 32, n_z)
 
             self.fc1_decoder = FullyConnected(n_z, 20 * 48)
-            self.fc2_decoder = FullyConnected(20 * 48, 40 * 48)
+            self.fc2_decoder = FullyConnected(20 * 48, 2*input_feature * 48)
             self.fcbn1 = nn.BatchNorm1d(48 * 128)
             self.fcbn2 = nn.BatchNorm1d(48 * 32)
             self.fcbn3 = nn.BatchNorm1d(20 * 48)
