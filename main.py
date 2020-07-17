@@ -35,7 +35,7 @@ def main(opt):
         elif opt.out_of_distribution == 'set_2':
             acts_test = data_utils.define_actions('set_1', out_of_distribution=True)
         else:
-            acts_test = data_utils.define_actions(opt.out_of_distribution, out_of_distribution=True)
+            acts_test = data_utils.define_actions('all', out_of_distribution=False)
     else:
         out_of_distribution = False
         acts_train = data_utils.define_actions('all', out_of_distribution=False)
@@ -45,7 +45,7 @@ def main(opt):
     script_name = os.path.basename(__file__).split('.')[0]
     script_name = script_name + "_in{:d}_out{:d}_dctn{:d}".format(opt.input_n, opt.output_n, opt.dct_n)
     if out_of_distribution:
-        script_name = script_name + "_OOD_{}".format(str(opt.out_of_distribution))
+        script_name = script_name + "_OoD_{}".format(str(opt.out_of_distribution))
     if opt.variational:
         script_name = script_name + "_var_"
 

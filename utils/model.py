@@ -132,6 +132,8 @@ class GCN(nn.Module):
         """
         super(GCN, self).__init__()
         self.num_stage = num_stage
+        self.input_feature = input_feature
+        self.node_n = node_n
 
         self.gc1 = GraphConvolution(input_feature, hidden_feature, node_n=node_n)
         self.bn1 = nn.BatchNorm1d(node_n * hidden_feature)
@@ -143,21 +145,28 @@ class GCN(nn.Module):
         self.gcbs = nn.ModuleList(self.gcbs)
 
         self.variational = variational
-        n_z = 512
+        n_z = 16
         if variational:
-            self.fc_pre_latent1 = FullyConnected(48 * 256, 48 * 128)
-            self.fc_pre_latent2 = FullyConnected(48 * 128, 48 * 32)
+            self.gc_mu = GraphConvolution(hidden_feature, n_z, node_n=node_n)
+            self.gc_sigma = GraphConvolution(hidden_feature, n_z, node_n=node_n)
 
-            self.fc_z_mu = FullyConnected(48 * 32, n_z)
-            self.fc_z_sigma = FullyConnected(48 * 32, n_z)
+            self.gc_decoder_mu = GraphConvolution(n_z, input_feature, node_n=node_n)
+            self.gc_decoder_sigma = GraphConvolution(n_z, input_feature, node_n=node_n)
 
-            self.fc1_decoder = FullyConnected(n_z, 20 * 48)
-            self.fc2_decoder = FullyConnected(20 * 48, 2*input_feature * 48)
-            self.fcbn1 = nn.BatchNorm1d(48 * 128)
-            self.fcbn2 = nn.BatchNorm1d(48 * 32)
-            self.fcbn3 = nn.BatchNorm1d(20 * 48)
+            #self.fc_pre_latent1 = FullyConnected(self.node_n * 256, self.node_n * 128)
+            #self.fc_pre_latent2 = FullyConnected(self.node_n * 128, self.node_n * 32)
 
-        self.gc7 = GraphConvolution(hidden_feature, input_feature, node_n=node_n)
+            #self.fc_z_mu = FullyConnected(self.node_n * 32, n_z)
+            #self.fc_z_sigma = FullyConnected(self.node_n * 32, n_z)
+
+            #self.fc1_decoder = FullyConnected(n_z, 20 * self.node_n)
+            #self.fc2_decoder_mu = FullyConnected(20 * self.node_n, self.input_feature * self.node_n)
+            #self.fc2_decoder_log_var = FullyConnected(20 * self.node_n, self.input_feature * self.node_n)
+            #self.fcbn1 = nn.BatchNorm1d(self.node_n * 128)
+            #self.fcbn2 = nn.BatchNorm1d(self.node_n * 32)
+            #self.fcbn3 = nn.BatchNorm1d(self.node_n * 20)
+
+        self.gc7 = GraphConvolution(hidden_feature, input_feature, node_n=self.node_n)
 
         self.do = nn.Dropout(p_dropout)
         # self.act_f = nn.Tanh()
@@ -165,11 +174,6 @@ class GCN(nn.Module):
         self.normalised_act_f = nn.Sigmoid()
 
     def forward(self, x):
-        max_first = 2 * np.sqrt(20) * np.pi
-        min_first = -max_first
-        max_l = 4 * np.sqrt(20) * np.pi
-        min_l = -max_l
-
         y = self.gc1(x)
         b, n, f = y.shape
         y = self.bn1(y.view(b, -1)).view(b, n, f)
@@ -181,33 +185,45 @@ class GCN(nn.Module):
 
         self.KL = None
         if self.variational:
-            b, n, f = y.shape
-            z = y.view(b, 48 * 256)
-            z = self.fc_pre_latent1(z)
-            b, n_neurons = z.shape
-            z = self.fcbn1(z.view(b, -1)).view(b, n_neurons)
-            z = self.act_f(z)
-            z = self.fc_pre_latent2(z)
-            b, n_neurons = z.shape
-            z = self.fcbn2(z.view(b, -1)).view(b, n_neurons)
-            z = self.act_f(z)
-
-            mu = self.fc_z_mu(z)
-            gamma = self.fc_z_sigma(z)
+            mu = self.gc_mu(y)
+            gamma = self.gc_sigma(y)
             noise = torch.normal(mean=0, std=1.0, size=gamma.shape).to(torch.device("cuda"))
             z = mu + torch.mul(torch.exp(gamma), noise)
 
-            z = self.fc1_decoder(z)
-            b, n_neurons = z.shape
-            z = self.fcbn3(z.view(b, -1)).view(b, n_neurons)
-            z = self.act_f(z)
-            z = self.fc2_decoder(z)
-            b, _ = z.shape
-            z = z.view(b, 48, 40)
-            reconstructions_mu = z[:, :, :20].clone()
-            reconstructions_log_var = torch.clamp(z[:, :, 20:], min=-20.0, max=3.0)
+            recon_mu = self.gc_decoder_mu(z)
+            recon_sigma = self.gc_decoder_sigma(z)
+            reconstructions_mu = recon_mu
+            reconstructions_log_var = torch.clamp(recon_sigma, min=-20.0, max=10.0)
 
-            self.KL = 0.5 * torch.sum(torch.exp(gamma) + torch.pow(mu, 2) - 1 - gamma, axis=(1))
+            #b, n, f = y.shape
+            #z = y.view(b, self.node_n * 256)
+            #z = self.fc_pre_latent1(z)
+            #b, n_neurons = z.shape
+            #z = self.fcbn1(z.view(b, -1)).view(b, n_neurons)
+            #z = self.act_f(z)
+            #z = self.fc_pre_latent2(z)
+            #b, n_neurons = z.shape
+            #z = self.fcbn2(z.view(b, -1)).view(b, n_neurons)
+            #z = self.act_f(z)
+
+            #mu = self.fc_z_mu(z)
+            #gamma = self.fc_z_sigma(z)
+            #noise = torch.normal(mean=0, std=1.0, size=gamma.shape).to(torch.device("cuda"))
+            #z = mu + torch.mul(torch.exp(gamma), noise)
+
+            #z = self.fc1_decoder(z)
+            #b, n_neurons = z.shape
+            #z = self.fcbn3(z.view(b, -1)).view(b, n_neurons)
+            #z = self.act_f(z)
+            #z_mu = self.fc2_decoder_mu(z)
+            #z_log_var = self.fc2_decoder_log_var(z)
+            #b, _ = z_mu.shape
+            #z_mu = z_mu.view(b, self.node_n, self.input_feature)
+            #z_log_var = z_log_var.view(b, self.node_n, self.input_feature)
+            #reconstructions_mu = z_mu
+            #reconstructions_log_var = torch.clamp(z_log_var, min=-20.0, max=10.0)
+
+            self.KL = 0.5 * torch.sum(torch.exp(gamma) + torch.pow(mu, 2) - 1 - gamma, axis=(1,2))
         else:
             reconstructions_mu = 1
             reconstructions_log_var = 1
