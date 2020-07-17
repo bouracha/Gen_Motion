@@ -28,15 +28,8 @@ def sen_loss(outputs, all_seq, dim_used, dct_n, targets, inputs, KL=None, recons
                                                                                                seq_len).transpose(1, 2)
     targ_expmap = all_seq.clone()[:, :, dim_used]
 
-    #Get DCT of targets
-    max_first = 2 * np.sqrt(20) * np.pi
-    min_first = -max_first
-    max_l = 4 * np.sqrt(20) * np.pi
-    min_l = -max_l
-    targets[:, :, 0] = (targets[:, :, 0] - min_first)/(max_first - min_first)
-    targets[:, :, 1:] = (targets[:, :, 1:] - min_l)/(max_l - min_l)
-
-    joint_loss = torch.mean(torch.sum(torch.abs(pred_expmap - targ_expmap), dim=2).view(-1))
+    #joint_loss = torch.mean(torch.sum(torch.abs(pred_expmap - targ_expmap), dim=2).view(-1))
+    joint_loss = torch.mean(torch.abs(pred_expmap - targ_expmap))
     if KL == None:
         neg_gauss_log_lik = torch.zeros(1)
         latent_loss = torch.zeros(1)
@@ -47,7 +40,7 @@ def sen_loss(outputs, all_seq, dim_used, dct_n, targets, inputs, KL=None, recons
         gauss_log_lik = -0.5*(log_var + np.log(2*np.pi) + (mse/(1e-8 + torch.exp(log_var))))
         neg_gauss_log_lik = -torch.mean(torch.sum(gauss_log_lik, axis=(1, 2)))
 
-        lambda_ = 0.1
+        lambda_ = 0.01
         loss = joint_loss + lambda_*(neg_gauss_log_lik + latent_loss)
 
     #print("\n neg_gauss_log_lik: ", neg_gauss_log_lik)

@@ -139,7 +139,7 @@ class GCN(nn.Module):
         self.bn1 = nn.BatchNorm1d(node_n * hidden_feature)
 
         self.gcbs = []
-        for i in range(num_stage + 6):
+        for i in range(num_stage):
             self.gcbs.append(GC_Block(hidden_feature, p_dropout=p_dropout, node_n=node_n))
 
         self.gcbs = nn.ModuleList(self.gcbs)
@@ -150,8 +150,15 @@ class GCN(nn.Module):
             self.gc_mu = GraphConvolution(hidden_feature, n_z, node_n=node_n)
             self.gc_sigma = GraphConvolution(hidden_feature, n_z, node_n=node_n)
 
-            self.gc_decoder_mu = GraphConvolution(n_z, input_feature, node_n=node_n)
-            self.gc_decoder_sigma = GraphConvolution(n_z, input_feature, node_n=node_n)
+            self.decoder_gc1 = GraphConvolution(n_z, hidden_feature, node_n=node_n)
+            self.decoder_bn1 = nn.BatchNorm1d(node_n * hidden_feature)
+            self.decoder_gc2 = GraphConvolution(hidden_feature, hidden_feature, node_n=node_n)
+            self.decoder_bn2 = nn.BatchNorm1d(node_n * hidden_feature)
+            self.decoder_gc3 = GraphConvolution(hidden_feature, hidden_feature, node_n=node_n)
+            self.decoder_bn3 = nn.BatchNorm1d(node_n * hidden_feature)
+
+            self.gc_decoder_mu = GraphConvolution(hidden_feature, input_feature, node_n=node_n)
+            self.gc_decoder_sigma = GraphConvolution(hidden_feature, input_feature, node_n=node_n)
 
             #self.fc_pre_latent1 = FullyConnected(self.node_n * 256, self.node_n * 128)
             #self.fc_pre_latent2 = FullyConnected(self.node_n * 128, self.node_n * 32)
@@ -190,10 +197,28 @@ class GCN(nn.Module):
             noise = torch.normal(mean=0, std=1.0, size=gamma.shape).to(torch.device("cuda"))
             z = mu + torch.mul(torch.exp(gamma), noise)
 
+            z = self.decoder_gc1(z)
+            b, n, f = z.shape
+            z = self.decoder_bn1(z.view(b, -1)).view(b, n, f)
+            z = self.act_f(z)
+            z = self.do(z)
+
+            z = self.decoder_gc2(z)
+            b, n, f = z.shape
+            z = self.decoder_bn2(z.view(b, -1)).view(b, n, f)
+            z = self.act_f(z)
+            z = self.do(z)
+
+            z = self.decoder_gc3(z)
+            b, n, f = z.shape
+            z = self.decoder_bn3(z.view(b, -1)).view(b, n, f)
+            z = self.act_f(z)
+            z = self.do(z)
+
             recon_mu = self.gc_decoder_mu(z)
             recon_sigma = self.gc_decoder_sigma(z)
             reconstructions_mu = recon_mu
-            reconstructions_log_var = torch.clamp(recon_sigma, min=-20.0, max=10.0)
+            reconstructions_log_var = torch.clamp(recon_sigma, min=-20.0, max=3.0)
 
             #b, n, f = y.shape
             #z = y.view(b, self.node_n * 256)
