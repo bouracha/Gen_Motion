@@ -154,8 +154,9 @@ class GCN(nn.Module):
             self.decoder_bn1 = nn.BatchNorm1d(node_n * hidden_feature)
 
             self.decoder_gcbs = []
-            for i in range(num_stage):
+            for i in range(num_decoder_stage):
                 self.decoder_gcbs.append(GC_Block(hidden_feature, p_dropout=p_dropout, node_n=node_n))
+            self.decoder_gcbs = nn.ModuleList(self.decoder_gcbs)
 
             #self.decoder_gc2 = GraphConvolution(hidden_feature, hidden_feature, node_n=node_n)
             #self.decoder_bn2 = nn.BatchNorm1d(node_n * hidden_feature)

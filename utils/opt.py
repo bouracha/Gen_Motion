@@ -53,8 +53,8 @@ class Options:
         self.parser.add_argument('--out_of_distribution', type=str, default=None, help='input the out of distribution action')
         self.parser.add_argument('--variational', type=bool, default=False, help='true if want to include a latent variable')
         self.parser.add_argument('--lambda_', type=float, default=0.01, help='weighting loss for VGAE')
-        self.parser.add_argument('--n_z', type=float, default=16, help='number of latent dimensions per joint')
-        self.parser.add_argument('--num_decoder_stage', type=float, default=1, help='number of graph convolutional blocks in decoder')
+        self.parser.add_argument('--n_z', type=int, default=16, help='number of latent dimensions per joint')
+        self.parser.add_argument('--num_decoder_stage', type=int, default=1, help='number of graph convolutional blocks in decoder')
 
         self.parser.set_defaults(max_norm=True)
         self.parser.set_defaults(is_load=False)

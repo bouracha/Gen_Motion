@@ -137,11 +137,11 @@ def main(opt):
         ret_log = np.array([epoch + 1])
         head = np.array(['epoch'])
         # per epoch
-        lr_now, t_l, t_l_joint, t_l_xe, t_l_latent, t_e, t_3d = train(train_loader, model, optimizer, input_n=input_n,
-                                                              lr_now=lr_now, max_norm=opt.max_norm, is_cuda=is_cuda,
+        lr_now, t_l, t_l_joint, t_l_vlb, t_l_latent, t_e, t_3d = train(train_loader, model, optimizer, input_n=input_n,
+                                                              lr_now=lr_now, lambda_=opt.lambda_,max_norm=opt.max_norm, is_cuda=is_cuda,
                                                               dim_used=train_dataset.dim_used, dct_n=dct_n)
-        ret_log = np.append(ret_log, [lr_now, t_l, t_l_joint, t_l_xe, t_l_latent, t_e, t_3d])
-        head = np.append(head, ['lr', 't_l', 't_l_joint', 't_l_xe', 't_l_latent', 't_e', 't_3d'])
+        ret_log = np.append(ret_log, [lr_now, t_l, t_l_joint, t_l_vlb, t_l_latent, t_e, t_3d])
+        head = np.append(head, ['lr', 't_l', 't_l_joint', 't_l_vlb', 't_l_latent', 't_e', 't_3d'])
 
         v_e, v_3d = val(val_loader, model, input_n=input_n, is_cuda=is_cuda, dim_used=train_dataset.dim_used,
                         dct_n=dct_n)
@@ -195,10 +195,10 @@ def main(opt):
                         file_name=file_name)
 
 
-def train(train_loader, model, optimizer, input_n=20, dct_n=20, lr_now=None, max_norm=True, is_cuda=False, dim_used=[]):
+def train(train_loader, model, optimizer, input_n=20, dct_n=20, lr_now=None, lambda_=0.01, max_norm=True, is_cuda=False, dim_used=[]):
     t_l = utils.AccumLoss()
     t_l_joint = utils.AccumLoss()
-    t_l_xe = utils.AccumLoss()
+    t_l_vlb = utils.AccumLoss()
     t_l_latent = utils.AccumLoss()
     t_e = utils.AccumLoss()
     t_3d = utils.AccumLoss()
@@ -224,13 +224,13 @@ def train(train_loader, model, optimizer, input_n=20, dct_n=20, lr_now=None, max
         n = outputs.shape[0]
         outputs = outputs.view(n, -1)
 
-        loss, joint_loss, xentropy, latent_loss = loss_funcs.sen_loss(outputs, all_seq, dim_used, dct_n, inputs, opt.lambda_, KL, reconstructions, log_var)
+        loss, joint_loss, vlb, latent_loss = loss_funcs.sen_loss(outputs, all_seq, dim_used, dct_n, inputs, lambda_, KL, reconstructions, log_var)
 
         # Print losses for epoch
-        ret_log = np.array([i, loss.cpu().data.numpy(), joint_loss.cpu().data.numpy(), xentropy.cpu().data.numpy(), latent_loss.cpu().data.numpy()])
+        ret_log = np.array([i, loss.cpu().data.numpy(), joint_loss.cpu().data.numpy(), vlb.cpu().data.numpy(), latent_loss.cpu().data.numpy()])
         df = pd.DataFrame(np.expand_dims(ret_log, axis=0))
         if i == 0:
-            head = ['iteration', 'loss', 'joint_loss', 'xentropy', 'latent_loss']
+            head = ['iteration', 'loss', 'joint_loss', 'vlb', 'latent_loss']
             df.to_csv('losses.csv', header=head, index=False)
         with open('losses.csv', 'a') as f:
             df.to_csv(f, header=False, index=False)
@@ -252,7 +252,7 @@ def train(train_loader, model, optimizer, input_n=20, dct_n=20, lr_now=None, max
         # update the training loss
         t_l.update(loss.cpu().data.numpy() * n, n)
         t_l_joint.update(joint_loss.cpu().data.numpy() * n, n)
-        t_l_xe.update(xentropy.cpu().data.numpy() * n, n)
+        t_l_vlb.update(vlb.cpu().data.numpy() * n, n)
         t_l_latent.update(latent_loss.cpu().data.numpy() * n, n)
         t_e.update(e_err.cpu().data.numpy() * n, n)
         t_3d.update(m_err.cpu().data.numpy() * n, n)
@@ -262,10 +262,10 @@ def train(train_loader, model, optimizer, input_n=20, dct_n=20, lr_now=None, max
         bar.next()
     bar.finish()
     print("\nJoint loss: ", t_l_joint.avg)
-    print("XEntropy: ", t_l_xe.avg)
+    print("vlb: ", t_l_vlb.avg)
     print("Latent loss: ", t_l_latent.avg)
     print("loss: ", t_l.avg)
-    return lr_now, t_l.avg, t_l_joint.avg, t_l_xe.avg, t_l_latent.avg, t_e.avg, t_3d.avg
+    return lr_now, t_l.avg, t_l_joint.avg, t_l_vlb.avg, t_l_latent.avg, t_e.avg, t_3d.avg
 
 
 def test(train_loader, model, input_n=20, output_n=50, dct_n=20, is_cuda=False, dim_used=[]):
