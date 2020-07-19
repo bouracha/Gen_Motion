@@ -30,12 +30,8 @@ def main(opt):
     if opt.out_of_distribution != None:
         out_of_distribution = True
         acts_train = data_utils.define_actions(opt.out_of_distribution, out_of_distribution=False)
-        if opt.out_of_distribution == 'set_1':
-            acts_test = data_utils.define_actions('set_2', out_of_distribution=True)
-        elif opt.out_of_distribution == 'set_2':
-            acts_test = data_utils.define_actions('set_1', out_of_distribution=True)
-        else:
-            acts_test = data_utils.define_actions('all', out_of_distribution=False)
+        acts_OoD = data_utils.define_actions(opt.out_of_distribution, out_of_distribution=True)
+        acts_test = data_utils.define_actions('all', out_of_distribution=False)
     else:
         out_of_distribution = False
         acts_train = data_utils.define_actions('all', out_of_distribution=False)
@@ -45,7 +41,7 @@ def main(opt):
     script_name = os.path.basename(__file__).split('.')[0]
     script_name = script_name + "_in{:d}_out{:d}_dctn{:d}".format(opt.input_n, opt.output_n, opt.dct_n)
     if out_of_distribution:
-        script_name = script_name + "_OoD_{}".format(str(opt.out_of_distribution))
+        script_name = script_name + "_OoD_{}_lambda_{}_nz_{}_lr_{}_n_layers_{}".format(str(opt.out_of_distribution), str(opt.lambda_), str(opt.n_z), str(opt.lr), str(opt.num_decoder_stage))
     if opt.variational:
         script_name = script_name + "_var_"
 
@@ -61,18 +57,19 @@ def main(opt):
     data_std = train_dataset.data_std
     data_mean = train_dataset.data_mean
 
-    max_data = train_dataset.max
-    min_data = train_dataset.min
-
     val_dataset = H36motion(path_to_data=opt.data_dir, actions=acts_train, input_n=input_n, output_n=output_n,
                             split=2, sample_rate=sample_rate, data_mean=data_mean, data_std=data_std, dct_n=dct_n)
 
-    # create model
+    if out_of_distribution:
+        OoD_val_dataset = H36motion(path_to_data=opt.data_dir, actions=acts_OoD, input_n=input_n, output_n=output_n,
+                                split=2, sample_rate=sample_rate, data_mean=data_mean, data_std=data_std, dct_n=dct_n)
+
+        # create model
     print(">>> creating model")
 
     # 48 nodes for angle prediction
     model = nnmodel.GCN(input_feature=dct_n, hidden_feature=opt.linear_size, p_dropout=opt.dropout,
-                        num_stage=opt.num_stage, node_n=48, variational=opt.variational)
+                        num_stage=opt.num_stage, node_n=48, variational=opt.variational, n_z=opt.n_z, num_decoder_stage=opt.num_decoder_stage)
 
     if is_cuda:
         model.cuda()
@@ -109,6 +106,13 @@ def main(opt):
         shuffle=False,
         num_workers=opt.job,
         pin_memory=True)
+    if out_of_distribution:
+        OoD_val_loader = DataLoader(
+            dataset=OoD_val_dataset,
+            batch_size=opt.test_batch,
+            shuffle=False,
+            num_workers=opt.job,
+            pin_memory=True)
 
     test_data = dict()
     for act in acts_test:
@@ -144,6 +148,12 @@ def main(opt):
 
         ret_log = np.append(ret_log, [v_e, v_3d])
         head = np.append(head, ['v_e', 'v_3d'])
+
+        if out_of_distribution:
+            OoD_v_e, OoD_v_3d = val(OoD_val_loader, model, input_n=input_n, is_cuda=is_cuda, dim_used=train_dataset.dim_used,
+                        dct_n=dct_n)
+            ret_log = np.append(ret_log, [OoD_v_e, OoD_v_3d])
+            head = np.append(head, ['OoD_v_e', 'OoD_v_3d'])
 
         test_3d_temp = np.array([])
         test_3d_head = np.array([])
@@ -213,9 +223,8 @@ def train(train_loader, model, optimizer, input_n=20, dct_n=20, lr_now=None, max
         KL = model.KL
         n = outputs.shape[0]
         outputs = outputs.view(n, -1)
-        # targets = targets.view(n, -1)
 
-        loss, joint_loss, xentropy, latent_loss = loss_funcs.sen_loss(outputs, all_seq, dim_used, dct_n, targets, inputs, KL, reconstructions, log_var)
+        loss, joint_loss, xentropy, latent_loss = loss_funcs.sen_loss(outputs, all_seq, dim_used, dct_n, inputs, opt.lambda_, KL, reconstructions, log_var)
 
         # Print losses for epoch
         ret_log = np.array([i, loss.cpu().data.numpy(), joint_loss.cpu().data.numpy(), xentropy.cpu().data.numpy(), latent_loss.cpu().data.numpy()])

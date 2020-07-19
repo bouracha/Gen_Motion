@@ -8,7 +8,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-def sen_loss(outputs, all_seq, dim_used, dct_n, targets, inputs, KL=None, reconstructions=None, log_var=None):
+def sen_loss(outputs, all_seq, dim_used, dct_n, inputs, lambda_ = 0.01, KL=None, reconstructions=None, log_var=None):
     """
 
     :param outputs: N * (seq_len*dim_used_len)
@@ -40,7 +40,6 @@ def sen_loss(outputs, all_seq, dim_used, dct_n, targets, inputs, KL=None, recons
         gauss_log_lik = -0.5*(log_var + np.log(2*np.pi) + (mse/(1e-8 + torch.exp(log_var))))
         neg_gauss_log_lik = -torch.mean(torch.sum(gauss_log_lik, axis=(1, 2)))
 
-        lambda_ = 0.01
         loss = joint_loss + lambda_*(neg_gauss_log_lik + latent_loss)
 
     #print("\n neg_gauss_log_lik: ", neg_gauss_log_lik)
