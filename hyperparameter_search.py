@@ -18,13 +18,13 @@ def random_hyperparameters():
     num_decoder_stage_values = [1, 2, 3, 4, 5, 6]
     alpha_log_range = (-5.298317366548036, -9.903487552536127)  # (0.005, 0.0005)
     lambda_log_range = (2.302585092994046, -13.815510557964274)  # (10, 0.00001)
-    dropout_range = (0.0, 0.9)
+    dropout_values = [0.0, 0.3, 0.5, 0.7]
 
     n_z = random.choice(n_z_values)
     num_decoder_stage = random.choice(num_decoder_stage_values)
     alpha = np.e ** (random.uniform(alpha_log_range[0], alpha_log_range[1]))
     lambda_ = np.e ** (random.uniform(lambda_log_range[0], lambda_log_range[1]))
-    dropout = random.uniform(dropout_range[0], dropout_range[1])
+    dropout = random.choice(dropout_values)
 
     return n_z, num_decoder_stage, alpha, lambda_, dropout
 
