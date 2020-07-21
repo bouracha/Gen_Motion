@@ -17,8 +17,8 @@ def random_hyperparameters():
     n_z_values = [8, 16, 32]
     num_decoder_stage_values = [1, 2, 3, 4, 5, 6]
     alpha_log_range = (-5.298317366548036, -9.903487552536127)  # (0.005, 0.0005)
-    lambda_log_range = (2.302585092994046, -11.512925464970229)  # (10, 0.00001)
-    dropout_range = (0.0, 1.0)
+    lambda_log_range = (2.302585092994046, -13.815510557964274)  # (10, 0.00001)
+    dropout_range = (0.0, 0.9)
 
     n_z = random.choice(n_z_values)
     num_decoder_stage = random.choice(num_decoder_stage_values)
