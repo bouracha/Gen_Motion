@@ -20,6 +20,7 @@ class Options:
         self.parser.add_argument('--data_dir_cmu', type=str, default='/home/wei/Downloads/cmu_mocap/', help='path to CMU dataset')
         self.parser.add_argument('--exp', type=str, default='test', help='ID of experiment')
         self.parser.add_argument('--ckpt', type=str, default='checkpoint/', help='path to save checkpoint')
+        self.parser.add_argument('--dataset', type=str, default='h3.6m', help='which dataset to use (h36.m or cmu_mocap')
 
         # ===============================================================
         #                     Model options

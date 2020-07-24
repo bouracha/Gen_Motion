@@ -189,7 +189,7 @@ def main(opt):
         test_3d_temp = np.array([])
         test_3d_head = np.array([])
         for act in acts_test:
-            test_e, test_3d = test(test_data[act], model, input_n=input_n, output_n=output_n, is_cuda=is_cuda,
+            test_e, test_3d = test(test_data[act], model, dataset=opt.dataset, input_n=input_n, output_n=output_n, is_cuda=is_cuda,
                                    dim_used=train_dataset.dim_used, dct_n=dct_n)
             ret_log = np.append(ret_log, test_e)
             test_3d_temp = np.append(test_3d_temp, test_3d)
@@ -297,7 +297,7 @@ def train(train_loader, model, optimizer, dataset='h3.6m', input_n=20, dct_n=20,
     return lr_now, t_l.avg, t_l_joint.avg, t_l_vlb.avg, t_l_latent.avg, t_e.avg, t_3d.avg
 
 
-def test(train_loader, model, input_n=20, output_n=50, dct_n=20, is_cuda=False, dim_used=[]):
+def test(train_loader, model, dataset='h3.6m', input_n=20, output_n=50, dct_n=20, is_cuda=False, dim_used=[]):
     N = 0
     # t_l = 0
     if output_n >= 25:
@@ -328,6 +328,7 @@ def test(train_loader, model, input_n=20, output_n=50, dct_n=20, is_cuda=False, 
 
         n, seq_len, dim_full_len = all_seq.data.shape
         dim_used_len = len(dim_used)
+        all_seq[:, :, 0:6] = 0
 
         # inverse dct transformation
         _, idct_m = data_utils.get_dct_matrix(seq_len)
@@ -354,9 +355,14 @@ def test(train_loader, model, input_n=20, output_n=50, dct_n=20, is_cuda=False, 
         targ_eul = data_utils.rotmat2euler_torch(data_utils.expmap2rotmat_torch(targ_expmap))
         targ_eul = targ_eul.view(-1, dim_full_len).view(-1, output_n, dim_full_len)
 
-        # get 3d coordinates
-        targ_p3d = data_utils.expmap2xyz_torch(targ_expmap.view(-1, dim_full_len)).view(n, output_n, -1, 3)
-        pred_p3d = data_utils.expmap2xyz_torch(pred_expmap.view(-1, dim_full_len)).view(n, output_n, -1, 3)
+        if dataset=='h3.6m':
+          # get 3d coordinates
+          targ_p3d = data_utils.expmap2xyz_torch(targ_expmap.view(-1, dim_full_len)).view(n, output_n, -1, 3)
+          pred_p3d = data_utils.expmap2xyz_torch(pred_expmap.view(-1, dim_full_len)).view(n, output_n, -1, 3)
+        elif dataset=='cmu_mocap':
+          # get 3d coordinates
+          targ_p3d = data_utils.expmap2xyz_torch_cmu(targ_expmap.view(-1, dim_full_len)).view(n, output_n, -1, 3)
+          pred_p3d = data_utils.expmap2xyz_torch_cmu(pred_expmap.view(-1, dim_full_len)).view(n, output_n, -1, 3)
 
         # update loss and testing errors
         for k in np.arange(0, len(eval_frame)):
