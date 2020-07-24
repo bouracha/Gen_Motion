@@ -40,7 +40,7 @@ def main(opt):
 
     # define log csv file
     script_name = os.path.basename(__file__).split('.')[0]
-    script_name = script_name + "_in{:d}_out{:d}_dctn{:d}".format(opt.input_n, opt.output_n, opt.dct_n)
+    script_name = script_name + "{}_in{:d}_out{:d}_dctn{:d}".format(opt.dataset, opt.input_n, opt.output_n, opt.dct_n)
     if out_of_distribution:
         script_name = script_name + "_OoD_{}_lambda_{}_nz_{}_lr_{}_n_layers_{}_dropout{}_".format(str(opt.out_of_distribution), str(opt.lambda_), str(opt.n_z), str(opt.lr), str(opt.num_decoder_stage), str(opt.dropout))
     if opt.variational:
