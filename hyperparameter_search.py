@@ -28,12 +28,12 @@ def random_hyperparameters():
 
     return n_z, num_decoder_stage, alpha, lambda_, dropout
 
-
 for i in range(opt.num_trials):
     (n_z, num_decoder_stage, lr, lambda_, dropout) = random_hyperparameters()
     command = 'python3 main.py --lr ' + str(lr) + ' --lambda ' + str(lambda_) + ' --n_z ' + str(
         n_z) + ' --num_decoder_stage ' + str(num_decoder_stage) + ' --lr_gamma 1.0 --epoch ' + str(
         opt.epoch) + ' --dropout ' + str(dropout) + ' --input_n 10 --output 10 --dct_n 20 --data_dir h3.6m/dataset/ --out_of_distribution walking'
     if opt.variational:
-        command = command+str(' --varitaionl')
+        command = command+str(' --varitaional')
+    print(command)
     os.system(command)

@@ -17,6 +17,7 @@ import pandas as pd
 from utils import loss_funcs, utils as utils
 from utils.opt import Options
 from utils.h36motion import H36motion
+from utils.cmu_motion import CMU_Motion
 import utils.model as nnmodel
 import utils.data_utils as data_utils
 
@@ -29,13 +30,13 @@ def main(opt):
 
     if opt.out_of_distribution != None:
         out_of_distribution = True
-        acts_train = data_utils.define_actions(opt.out_of_distribution, out_of_distribution=False)
-        acts_OoD = data_utils.define_actions(opt.out_of_distribution, out_of_distribution=True)
-        acts_test = data_utils.define_actions('all', out_of_distribution=False)
+        acts_train = data_utils.define_actions(opt.out_of_distribution, opt.dataset, out_of_distribution=False)
+        acts_OoD = data_utils.define_actions(opt.out_of_distribution, opt.dataset, out_of_distribution=True)
+        acts_test = data_utils.define_actions('all', opt.dataset, out_of_distribution=False)
     else:
         out_of_distribution = False
-        acts_train = data_utils.define_actions('all', out_of_distribution=False)
-        acts_test = data_utils.define_actions('all', out_of_distribution=False)
+        acts_train = data_utils.define_actions('all', opt.dataset, out_of_distribution=False)
+        acts_test = data_utils.define_actions('all', opt.dataset, out_of_distribution=False)
 
     # define log csv file
     script_name = os.path.basename(__file__).split('.')[0]
@@ -52,24 +53,34 @@ def main(opt):
     dct_n = opt.dct_n
     sample_rate = opt.sample_rate
 
-    train_dataset = H36motion(path_to_data=opt.data_dir, actions=acts_train, input_n=input_n, output_n=output_n,
-                              split=0, sample_rate=sample_rate, dct_n=dct_n)
-    data_std = train_dataset.data_std
-    data_mean = train_dataset.data_mean
-
-    val_dataset = H36motion(path_to_data=opt.data_dir, actions=acts_train, input_n=input_n, output_n=output_n,
-                            split=2, sample_rate=sample_rate, data_mean=data_mean, data_std=data_std, dct_n=dct_n)
-
-    if out_of_distribution:
+    if opt.dataset == 'h3.6m':
+      node_n=48
+      train_dataset = H36motion(path_to_data=opt.data_dir, actions=acts_train, input_n=input_n, output_n=output_n,
+                                split=0, sample_rate=sample_rate, dct_n=dct_n)
+      data_std = train_dataset.data_std
+      data_mean = train_dataset.data_mean
+      val_dataset = H36motion(path_to_data=opt.data_dir, actions=acts_train, input_n=input_n, output_n=output_n,
+                              split=2, sample_rate=sample_rate, data_mean=data_mean, data_std=data_std, dct_n=dct_n)
+      if out_of_distribution:
         OoD_val_dataset = H36motion(path_to_data=opt.data_dir, actions=acts_OoD, input_n=input_n, output_n=output_n,
                                 split=2, sample_rate=sample_rate, data_mean=data_mean, data_std=data_std, dct_n=dct_n)
+    elif opt.dataset == 'cmu_mocap':
+      node_n=64
+      train_dataset = CMU_Motion(path_to_data=opt.data_dir, actions=opt.actions, input_n=input_n, output_n=output_n,
+                               split=0, dct_n=dct_n)
+      data_std = train_dataset.data_std
+      data_mean = train_dataset.data_mean
+      dim_used = train_dataset.dim_used
+    else:
+      raise Exception("Dataset name ({}) is not valid!".format(opt.dataset))
+
 
         # create model
     print(">>> creating model")
 
     # 48 nodes for angle prediction
     model = nnmodel.GCN(input_feature=dct_n, hidden_feature=opt.linear_size, p_dropout=opt.dropout,
-                        num_stage=opt.num_stage, node_n=48, variational=opt.variational, n_z=opt.n_z, num_decoder_stage=opt.num_decoder_stage)
+                        num_stage=opt.num_stage, node_n=node_n, variational=opt.variational, n_z=opt.n_z, num_decoder_stage=opt.num_decoder_stage)
 
     if is_cuda:
         model.cuda()
@@ -100,24 +111,30 @@ def main(opt):
         shuffle=True,
         num_workers=opt.job,
         pin_memory=True)
-    val_loader = DataLoader(
-        dataset=val_dataset,
-        batch_size=opt.test_batch,
-        shuffle=False,
-        num_workers=opt.job,
-        pin_memory=True)
-    if out_of_distribution:
-        OoD_val_loader = DataLoader(
-            dataset=OoD_val_dataset,
-            batch_size=opt.test_batch,
-            shuffle=False,
-            num_workers=opt.job,
-            pin_memory=True)
+    #We only use validation for the h3.6M dataset
+    if opt.dataset == 'h3.6m':
+      val_loader = DataLoader(
+          dataset=val_dataset,
+          batch_size=opt.test_batch,
+          shuffle=False,
+          num_workers=opt.job,
+          pin_memory=True)
+      if out_of_distribution:
+          OoD_val_loader = DataLoader(
+              dataset=OoD_val_dataset,
+              batch_size=opt.test_batch,
+              shuffle=False,
+              num_workers=opt.job,
+              pin_memory=True)
 
     test_data = dict()
     for act in acts_test:
-        test_dataset = H36motion(path_to_data=opt.data_dir, actions=act, input_n=input_n, output_n=output_n, split=1,
-                                 sample_rate=sample_rate, data_mean=data_mean, data_std=data_std, dct_n=dct_n)
+        if opt.dataset == 'h3.6m':
+          test_dataset = H36motion(path_to_data=opt.data_dir, actions=act, input_n=input_n, output_n=output_n, split=1,
+                                  sample_rate=sample_rate, data_mean=data_mean, data_std=data_std, dct_n=dct_n)
+        elif opt.dataset == 'cmu_mocap':
+          test_dataset = CMU_Motion(path_to_data=opt.data_dir, actions=act, input_n=input_n, output_n=output_n,
+                                  split=1, data_mean=data_mean, data_std=data_std, dim_used=dim_used, dct_n=dct_n)
         test_data[act] = DataLoader(
             dataset=test_dataset,
             batch_size=opt.test_batch,
@@ -126,7 +143,8 @@ def main(opt):
             pin_memory=True)
     print(">>> data loaded !")
     print(">>> train data {}".format(train_dataset.__len__()))
-    print(">>> validation data {}".format(val_dataset.__len__()))
+    if opt.dataset=='h3.6m':
+      print(">>> validation data {}".format(val_dataset.__len__()))
 
     for epoch in range(start_epoch, opt.epochs):
 
@@ -137,23 +155,36 @@ def main(opt):
         ret_log = np.array([epoch + 1])
         head = np.array(['epoch'])
         # per epoch
-        lr_now, t_l, t_l_joint, t_l_vlb, t_l_latent, t_e, t_3d = train(train_loader, model, optimizer, input_n=input_n,
+        lr_now, t_l, t_l_joint, t_l_vlb, t_l_latent, t_e, t_3d = train(train_loader, model, optimizer, dataset=opt.dataset, input_n=input_n,
                                                               lr_now=lr_now, lambda_=opt.lambda_,max_norm=opt.max_norm, is_cuda=is_cuda,
                                                               dim_used=train_dataset.dim_used, dct_n=dct_n)
         ret_log = np.append(ret_log, [lr_now, t_l, t_l_joint, t_l_vlb, t_l_latent, t_e, t_3d])
         head = np.append(head, ['lr', 't_l', 't_l_joint', 't_l_vlb', 't_l_latent', 't_e', 't_3d'])
 
-        v_e, v_3d = val(val_loader, model, input_n=input_n, is_cuda=is_cuda, dim_used=train_dataset.dim_used,
-                        dct_n=dct_n)
+        if opt.dataset=='h3.6m':
+          v_e, v_3d = val(val_loader, model, input_n=input_n, is_cuda=is_cuda, dim_used=train_dataset.dim_used,
+                          dct_n=dct_n)
+          ret_log = np.append(ret_log, [v_e, v_3d])
+          head = np.append(head, ['v_e', 'v_3d'])
+          if not np.isnan(v_e):
+            is_best = v_e < err_best
+            err_best = min(v_e, err_best)
+          else:
+            is_best = False
 
-        ret_log = np.append(ret_log, [v_e, v_3d])
-        head = np.append(head, ['v_e', 'v_3d'])
+          if out_of_distribution:
+              OoD_v_e, OoD_v_3d = val(OoD_val_loader, model, input_n=input_n, is_cuda=is_cuda, dim_used=train_dataset.dim_used,
+                          dct_n=dct_n)
+              ret_log = np.append(ret_log, [OoD_v_e, OoD_v_3d])
+              head = np.append(head, ['OoD_v_e', 'OoD_v_3d'])
+        # If not h3.6 dataset, select best on train error
+        else:
+          if not np.isnan(t_e):
+            is_best = t_e < err_best
+            err_best = min(t_e, err_best)
+          else:
+            is_best = False
 
-        if out_of_distribution:
-            OoD_v_e, OoD_v_3d = val(OoD_val_loader, model, input_n=input_n, is_cuda=is_cuda, dim_used=train_dataset.dim_used,
-                        dct_n=dct_n)
-            ret_log = np.append(ret_log, [OoD_v_e, OoD_v_3d])
-            head = np.append(head, ['OoD_v_e', 'OoD_v_3d'])
 
         test_3d_temp = np.array([])
         test_3d_head = np.array([])
@@ -179,11 +210,6 @@ def main(opt):
         else:
             with open(opt.ckpt + '/' + script_name + '.csv', 'a') as f:
                 df.to_csv(f, header=False, index=False)
-        if not np.isnan(v_e):
-            is_best = v_e < err_best
-            err_best = min(v_e, err_best)
-        else:
-            is_best = False
         file_name = ['ckpt_' + script_name + '_best.pth.tar', 'ckpt_' + script_name + '_last.pth.tar']
         utils.save_ckpt({'epoch': epoch + 1,
                          'lr': lr_now,
@@ -195,7 +221,7 @@ def main(opt):
                         file_name=file_name)
 
 
-def train(train_loader, model, optimizer, input_n=20, dct_n=20, lr_now=None, lambda_=0.01, max_norm=True, is_cuda=False, dim_used=[]):
+def train(train_loader, model, optimizer, dataset='h3.6m', input_n=20, dct_n=20, lr_now=None, lambda_=0.01, max_norm=True, is_cuda=False, dim_used=[]):
     t_l = utils.AccumLoss()
     t_l_joint = utils.AccumLoss()
     t_l_vlb = utils.AccumLoss()
@@ -243,11 +269,14 @@ def train(train_loader, model, optimizer, input_n=20, dct_n=20, lr_now=None, lam
         optimizer.step()
         n, _, _ = all_seq.data.shape
 
-        # 3d error
-        m_err = loss_funcs.mpjpe_error(outputs, all_seq, input_n, dim_used, dct_n)
-
-        # angle space error
-        e_err = loss_funcs.euler_error(outputs, all_seq, input_n, dim_used, dct_n)
+        if dataset=='h3.6m':
+          # 3d error
+          m_err = loss_funcs.mpjpe_error(outputs, all_seq, input_n, dim_used, dct_n)
+          # angle space error
+          e_err = loss_funcs.euler_error(outputs, all_seq, input_n, dim_used, dct_n)
+        elif dataset=='cmu_mocap':
+          m_err = loss_funcs.mpjpe_error_cmu(outputs, all_seq, input_n, dim_used=dim_used, dct_n=dct_n)
+          e_err = loss_funcs.euler_error(outputs, all_seq, input_n, dim_used=dim_used, dct_n=dct_n)
 
         # update the training loss
         t_l.update(loss.cpu().data.numpy() * n, n)
