@@ -133,7 +133,7 @@ def main(opt):
           test_dataset = H36motion(path_to_data=opt.data_dir, actions=act, input_n=input_n, output_n=output_n, split=1,
                                   sample_rate=sample_rate, data_mean=data_mean, data_std=data_std, dct_n=dct_n)
         elif opt.dataset == 'cmu_mocap':
-          test_dataset = CMU_Motion(path_to_data=opt.data_dir, actions=act, input_n=input_n, output_n=output_n,
+          test_dataset = CMU_Motion(path_to_data=opt.data_dir, actions=[act], input_n=input_n, output_n=output_n,
                                   split=1, data_mean=data_mean, data_std=data_std, dim_used=dim_used, dct_n=dct_n)
         test_data[act] = DataLoader(
             dataset=test_dataset,
