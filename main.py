@@ -66,7 +66,7 @@ def main(opt):
                                 split=2, sample_rate=sample_rate, data_mean=data_mean, data_std=data_std, dct_n=dct_n)
     elif opt.dataset == 'cmu_mocap':
       node_n=64
-      train_dataset = CMU_Motion(path_to_data=opt.data_dir, actions=opt.actions, input_n=input_n, output_n=output_n,
+      train_dataset = CMU_Motion(path_to_data=opt.data_dir, actions=acts_train, input_n=input_n, output_n=output_n,
                                split=0, dct_n=dct_n)
       data_std = train_dataset.data_std
       data_mean = train_dataset.data_mean
