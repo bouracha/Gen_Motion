@@ -8,7 +8,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-def sen_loss(outputs, all_seq, dim_used, dct_n, inputs, lambda_ = 0.01, KL=None, reconstructions=None, log_var=None):
+def sen_loss(outputs, all_seq, dim_used, dct_n, inputs, cartesian=False, lambda_ = 0.01, KL=None, reconstructions=None, log_var=None):
     """
 
     :param outputs: N * (seq_len*dim_used_len)
@@ -24,12 +24,16 @@ def sen_loss(outputs, all_seq, dim_used, dct_n, inputs, lambda_ = 0.01, KL=None,
     _, idct_m = data_utils.get_dct_matrix(seq_len)
     idct_m = Variable(torch.from_numpy(idct_m)).float().cuda()
     outputs_t = outputs.view(-1, dct_n).transpose(0, 1)
-    pred_expmap = torch.matmul(idct_m[:, :dct_n], outputs_t).transpose(0, 1).contiguous().view(-1, dim_used_len,
-                                                                                               seq_len).transpose(1, 2)
-    targ_expmap = all_seq.clone()[:, :, dim_used]
 
-    #joint_loss = torch.mean(torch.sum(torch.abs(pred_expmap - targ_expmap), dim=2).view(-1))
-    joint_loss = torch.mean(torch.abs(pred_expmap - targ_expmap))
+    if cartesian:
+        pred_cart = torch.matmul(idct_m[:, :dct_n], outputs_t).transpose(0, 1).contiguous().view(-1, dim_used_len, seq_len).transpose(1, 2).view(-1, 3)
+        targ_cart= all_seq.clone()[:, :, dim_used].view(-1, 3)
+        joint_loss = torch.mean(torch.norm(targ_cart - pred_cart), 2, 1)
+    else:
+        pred_expmap = torch.matmul(idct_m[:, :dct_n], outputs_t).transpose(0, 1).contiguous().view(-1, dim_used_len, seq_len).transpose(1, 2)
+        targ_expmap = all_seq.clone()[:, :, dim_used]
+        joint_loss = torch.mean(torch.abs(pred_expmap - targ_expmap))
+
     if KL == None:
         neg_gauss_log_lik = torch.zeros(1)
         latent_loss = torch.zeros(1)

@@ -18,6 +18,7 @@ from utils import loss_funcs, utils as utils
 from utils.opt import Options
 from utils.h36motion import H36motion
 from utils.cmu_motion import CMU_Motion
+from utils.cmu_motion_3d import CMU_Motion3D
 import utils.model as nnmodel
 import utils.data_utils as data_utils
 
@@ -54,6 +55,7 @@ def main(opt):
     sample_rate = opt.sample_rate
 
     if opt.dataset == 'h3.6m':
+      cartesian = False
       node_n=48
       train_dataset = H36motion(path_to_data=opt.data_dir, actions=acts_train, input_n=input_n, output_n=output_n,
                                 split=0, sample_rate=sample_rate, dct_n=dct_n)
@@ -65,8 +67,17 @@ def main(opt):
         OoD_val_dataset = H36motion(path_to_data=opt.data_dir, actions=acts_OoD, input_n=input_n, output_n=output_n,
                                 split=2, sample_rate=sample_rate, data_mean=data_mean, data_std=data_std, dct_n=dct_n)
     elif opt.dataset == 'cmu_mocap':
+      cartesian = False
       node_n=64
       train_dataset = CMU_Motion(path_to_data=opt.data_dir, actions=acts_train, input_n=input_n, output_n=output_n,
+                               split=0, dct_n=dct_n)
+      data_std = train_dataset.data_std
+      data_mean = train_dataset.data_mean
+      dim_used = train_dataset.dim_used
+    elif opt.dataset == 'cmu_mocap_3d':
+      cartesian = True
+      node_n=75
+      train_dataset = CMU_Motion3D(path_to_data=opt.data_dir, actions=acts_train, input_n=input_n, output_n=output_n,
                                split=0, dct_n=dct_n)
       data_std = train_dataset.data_std
       data_mean = train_dataset.data_mean
@@ -135,6 +146,9 @@ def main(opt):
         elif opt.dataset == 'cmu_mocap':
           test_dataset = CMU_Motion(path_to_data=opt.data_dir, actions=[act], input_n=input_n, output_n=output_n,
                                   split=1, data_mean=data_mean, data_std=data_std, dim_used=dim_used, dct_n=dct_n)
+        elif opt.dataset == 'cmu_mocap_3d':
+          test_dataset = CMU_Motion3D(path_to_data=opt.data_dir, actions=[act], input_n=input_n, output_n=output_n,
+                                  split=1, data_mean=data_mean, data_std=data_std, dim_used=dim_used, dct_n=dct_n)
         test_data[act] = DataLoader(
             dataset=test_dataset,
             batch_size=opt.test_batch,
@@ -156,7 +170,7 @@ def main(opt):
         head = np.array(['epoch'])
         # per epoch
         lr_now, t_l, t_l_joint, t_l_vlb, t_l_latent, t_e, t_3d = train(train_loader, model, optimizer, dataset=opt.dataset, input_n=input_n,
-                                                              lr_now=lr_now, lambda_=opt.lambda_,max_norm=opt.max_norm, is_cuda=is_cuda,
+                                                              lr_now=lr_now, cartesian=cartesian, lambda_=opt.lambda_,max_norm=opt.max_norm, is_cuda=is_cuda,
                                                               dim_used=train_dataset.dim_used, dct_n=dct_n)
         ret_log = np.append(ret_log, [lr_now, t_l, t_l_joint, t_l_vlb, t_l_latent, t_e, t_3d])
         head = np.append(head, ['lr', 't_l', 't_l_joint', 't_l_vlb', 't_l_latent', 't_e', 't_3d'])
@@ -189,8 +203,7 @@ def main(opt):
         test_3d_temp = np.array([])
         test_3d_head = np.array([])
         for act in acts_test:
-            test_e, test_3d = test(test_data[act], model, dataset=opt.dataset, input_n=input_n, output_n=output_n, is_cuda=is_cuda,
-                                   dim_used=train_dataset.dim_used, dct_n=dct_n)
+            test_e, test_3d = test(test_data[act], model, dataset=opt.dataset, input_n=input_n, output_n=output_n, cartesian=cartesian, is_cuda=is_cuda, dim_used=train_dataset.dim_used, dct_n=dct_n)
             ret_log = np.append(ret_log, test_e)
             test_3d_temp = np.append(test_3d_temp, test_3d)
             test_3d_head = np.append(test_3d_head,
@@ -221,7 +234,7 @@ def main(opt):
                         file_name=file_name)
 
 
-def train(train_loader, model, optimizer, dataset='h3.6m', input_n=20, dct_n=20, lr_now=None, lambda_=0.01, max_norm=True, is_cuda=False, dim_used=[]):
+def train(train_loader, model, optimizer, dataset='h3.6m', input_n=20, dct_n=20, lr_now=None, cartesian=False, lambda_=0.01, max_norm=True, is_cuda=False, dim_used=[]):
     t_l = utils.AccumLoss()
     t_l_joint = utils.AccumLoss()
     t_l_vlb = utils.AccumLoss()
@@ -250,7 +263,7 @@ def train(train_loader, model, optimizer, dataset='h3.6m', input_n=20, dct_n=20,
         n = outputs.shape[0]
         outputs = outputs.view(n, -1)
 
-        loss, joint_loss, vlb, latent_loss = loss_funcs.sen_loss(outputs, all_seq, dim_used, dct_n, inputs, lambda_, KL, reconstructions, log_var)
+        loss, joint_loss, vlb, latent_loss = loss_funcs.sen_loss(outputs, all_seq, dim_used, dct_n, inputs, cartesian, lambda_, KL, reconstructions, log_var)
 
         # Print losses for epoch
         ret_log = np.array([i, loss.cpu().data.numpy(), joint_loss.cpu().data.numpy(), vlb.cpu().data.numpy(), latent_loss.cpu().data.numpy()])
@@ -277,6 +290,9 @@ def train(train_loader, model, optimizer, dataset='h3.6m', input_n=20, dct_n=20,
         elif dataset=='cmu_mocap':
           m_err = loss_funcs.mpjpe_error_cmu(outputs, all_seq, input_n, dim_used=dim_used, dct_n=dct_n)
           e_err = loss_funcs.euler_error(outputs, all_seq, input_n, dim_used=dim_used, dct_n=dct_n)
+        elif dataset=='cmu_mocap_3d':
+          m_err = loss
+          e_err = loss
 
         # update the training loss
         t_l.update(loss.cpu().data.numpy() * n, n)
@@ -297,7 +313,7 @@ def train(train_loader, model, optimizer, dataset='h3.6m', input_n=20, dct_n=20,
     return lr_now, t_l.avg, t_l_joint.avg, t_l_vlb.avg, t_l_latent.avg, t_e.avg, t_3d.avg
 
 
-def test(train_loader, model, dataset='h3.6m', input_n=20, output_n=50, dct_n=20, is_cuda=False, dim_used=[]):
+def test(train_loader, model, dataset='h3.6m', input_n=20, output_n=50, dct_n=20, cartesian=False, is_cuda=False, dim_used=[]):
     N = 0
     # t_l = 0
     if output_n >= 25:
@@ -334,26 +350,40 @@ def test(train_loader, model, dataset='h3.6m', input_n=20, output_n=50, dct_n=20
         _, idct_m = data_utils.get_dct_matrix(seq_len)
         idct_m = Variable(torch.from_numpy(idct_m)).float().cuda()
         outputs_t = outputs.view(-1, dct_n).transpose(0, 1)
-        outputs_exp = torch.matmul(idct_m[:, :dct_n], outputs_t).transpose(0, 1).contiguous().view(-1, dim_used_len,
-                                                                                                   seq_len).transpose(1,
-                                                                                                                      2)
 
-        pred_expmap = all_seq.clone()
-        dim_used = np.array(dim_used)
-        pred_expmap[:, :, dim_used] = outputs_exp
-        pred_expmap = pred_expmap[:, input_n:, :].contiguous().view(-1, dim_full_len)
-        targ_expmap = all_seq[:, input_n:, :].clone().contiguous().view(-1, dim_full_len)
+        if cartesian == False:
+            outputs_exp = torch.matmul(idct_m[:, :dct_n], outputs_t).transpose(0, 1).contiguous().view(-1, dim_used_len, seq_len).transpose(1,2)
+            pred_expmap = all_seq.clone()
+            dim_used = np.array(dim_used)
+            pred_expmap[:, :, dim_used] = outputs_exp
+            pred_expmap = pred_expmap[:, input_n:, :].contiguous().view(-1, dim_full_len)
+            targ_expmap = all_seq[:, input_n:, :].clone().contiguous().view(-1, dim_full_len)
 
-        pred_expmap[:, 0:6] = 0
-        targ_expmap[:, 0:6] = 0
-        pred_expmap = pred_expmap.view(-1, 3)
-        targ_expmap = targ_expmap.view(-1, 3)
+            pred_expmap[:, 0:6] = 0
+            targ_expmap[:, 0:6] = 0
+            pred_expmap = pred_expmap.view(-1, 3)
+            targ_expmap = targ_expmap.view(-1, 3)
 
-        # get euler angles from expmap
-        pred_eul = data_utils.rotmat2euler_torch(data_utils.expmap2rotmat_torch(pred_expmap))
-        pred_eul = pred_eul.view(-1, dim_full_len).view(-1, output_n, dim_full_len)
-        targ_eul = data_utils.rotmat2euler_torch(data_utils.expmap2rotmat_torch(targ_expmap))
-        targ_eul = targ_eul.view(-1, dim_full_len).view(-1, output_n, dim_full_len)
+            # get euler angles from expmap
+            pred_eul = data_utils.rotmat2euler_torch(data_utils.expmap2rotmat_torch(pred_expmap))
+            pred_eul = pred_eul.view(-1, dim_full_len).view(-1, output_n, dim_full_len)
+            targ_eul = data_utils.rotmat2euler_torch(data_utils.expmap2rotmat_torch(targ_expmap))
+            targ_eul = targ_eul.view(-1, dim_full_len).view(-1, output_n, dim_full_len)
+        elif cartesian:
+            outputs_3d = torch.matmul(idct_m[:, :dct_n], outputs_t).transpose(0, 1).contiguous().view(-1, dim_used_len, seq_len).transpose(1, 2)
+            pred_3d = all_seq.clone()
+            dim_used = np.array(dim_used)
+
+            # deal with joints at same position
+            joint_to_ignore = np.array([16, 20, 29, 24, 27, 33, 36])
+            index_to_ignore = np.concatenate((joint_to_ignore * 3, joint_to_ignore * 3 + 1, joint_to_ignore * 3 + 2))
+            joint_equal = np.array([15, 15, 15, 23, 23, 32, 32])
+            index_to_equal = np.concatenate((joint_equal * 3, joint_equal * 3 + 1, joint_equal * 3 + 2))
+
+            pred_3d[:, :, dim_used] = outputs_3d
+            pred_3d[:, :, index_to_ignore] = pred_3d[:, :, index_to_equal]
+            pred_p3d = pred_3d.contiguous().view(n, seq_len, -1, 3)[:, input_n:, :, :]
+            targ_p3d = all_seq.contiguous().view(n, seq_len, -1, 3)[:, input_n:, :, :]
 
         if dataset=='h3.6m':
           # get 3d coordinates
@@ -364,18 +394,14 @@ def test(train_loader, model, dataset='h3.6m', input_n=20, output_n=50, dct_n=20
           targ_p3d = data_utils.expmap2xyz_torch_cmu(targ_expmap.view(-1, dim_full_len)).view(n, output_n, -1, 3)
           pred_p3d = data_utils.expmap2xyz_torch_cmu(pred_expmap.view(-1, dim_full_len)).view(n, output_n, -1, 3)
 
-        # update loss and testing errors
         for k in np.arange(0, len(eval_frame)):
             j = eval_frame[k]
-            t_e[k] += torch.mean(torch.norm(pred_eul[:, j, :] - targ_eul[:, j, :], 2, 1)).cpu().data.numpy() * n
-            t_3d[k] += torch.mean(torch.norm(
-                targ_p3d[:, j, :, :].contiguous().view(-1, 3) - pred_p3d[:, j, :, :].contiguous().view(-1, 3), 2,
-                1)).cpu().data.numpy() * n
-        # t_l += loss.cpu().data.numpy()[0] * n
+            t_e[k] += torch.mean(torch.norm(targ_p3d[:, j, :, :].contiguous().view(-1, 3) - pred_p3d[:, j, :, :].contiguous().view(-1, 3), 2, 1)).cpu().data.numpy()[0] * n
+            t_3d[k] += torch.mean(torch.norm(targ_p3d[:, j, :, :].contiguous().view(-1, 3) - pred_p3d[:, j, :, :].contiguous().view(-1, 3), 2, 1)).cpu().data.numpy()[0] * n
+
         N += n
 
-        bar.suffix = '{}/{}|batch time {:.4f}s|total time{:.2f}s'.format(i + 1, len(train_loader), time.time() - bt,
-                                                                         time.time() - st)
+        bar.suffix = '{}/{}|batch time {:.4f}s|total time{:.2f}s'.format(i + 1, len(train_loader), time.time() - bt, time.time() - st)
         bar.next()
     bar.finish()
     return t_e / N, t_3d / N
