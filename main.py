@@ -258,7 +258,7 @@ def train(train_loader, model, optimizer, dataset='h3.6m', input_n=20, dct_n=20,
             targets = Variable(targets.cuda(non_blocking=True)).float()
             all_seq = Variable(all_seq.cuda(non_blocking=True)).float()
 
-        outputs, reconstructions, log_var = model(inputs.float())
+        outputs, reconstructions, log_var, z = model(inputs.float())
         KL = model.KL
         n = outputs.shape[0]
         outputs = outputs.view(n, -1)
@@ -335,7 +335,7 @@ def test(train_loader, model, dataset='h3.6m', input_n=20, output_n=50, dct_n=20
             # targets = Variable(targets.cuda(async=True)).float()
             all_seq = Variable(all_seq.cuda(non_blocking=True)).float()
 
-        outputs, reconstructions, log_var = model(inputs.float())
+        outputs, reconstructions, log_var, z = model(inputs.float())
         n = outputs.shape[0]
         # outputs = outputs.view(n, -1)
         # targets = targets.view(n, -1)
@@ -369,6 +369,19 @@ def test(train_loader, model, dataset='h3.6m', input_n=20, output_n=50, dct_n=20
             pred_eul = pred_eul.view(-1, dim_full_len).view(-1, output_n, dim_full_len)
             targ_eul = data_utils.rotmat2euler_torch(data_utils.expmap2rotmat_torch(targ_expmap))
             targ_eul = targ_eul.view(-1, dim_full_len).view(-1, output_n, dim_full_len)
+            if dataset=='h3.6m':
+              # get 3d coordinates
+              targ_p3d = data_utils.expmap2xyz_torch(targ_expmap.view(-1, dim_full_len)).view(n, output_n, -1, 3)
+              pred_p3d = data_utils.expmap2xyz_torch(pred_expmap.view(-1, dim_full_len)).view(n, output_n, -1, 3)
+            elif dataset=='cmu_mocap':
+              # get 3d coordinates
+              targ_p3d = data_utils.expmap2xyz_torch_cmu(targ_expmap.view(-1, dim_full_len)).view(n, output_n, -1, 3)
+              pred_p3d = data_utils.expmap2xyz_torch_cmu(pred_expmap.view(-1, dim_full_len)).view(n, output_n, -1, 3)
+            for k in np.arange(0, len(eval_frame)):
+                j = eval_frame[k]
+                t_e[k] += torch.mean(torch.norm(pred_eul[:, j, :] - targ_eul[:, j, :], 2, 1)).cpu().data.numpy() * n
+                t_3d[k] += torch.mean(torch.norm(targ_p3d[:, j, :, :].contiguous().view(-1, 3) - pred_p3d[:, j, :, :].contiguous().view(-1, 3), 2, 1)).cpu().data.numpy() * n
+
         elif cartesian:
             outputs_3d = torch.matmul(idct_m[:, :dct_n], outputs_t).transpose(0, 1).contiguous().view(-1, dim_used_len, seq_len).transpose(1, 2)
             pred_3d = all_seq.clone()
@@ -384,20 +397,10 @@ def test(train_loader, model, dataset='h3.6m', input_n=20, output_n=50, dct_n=20
             pred_3d[:, :, index_to_ignore] = pred_3d[:, :, index_to_equal]
             pred_p3d = pred_3d.contiguous().view(n, seq_len, -1, 3)[:, input_n:, :, :]
             targ_p3d = all_seq.contiguous().view(n, seq_len, -1, 3)[:, input_n:, :, :]
-
-        if dataset=='h3.6m':
-          # get 3d coordinates
-          targ_p3d = data_utils.expmap2xyz_torch(targ_expmap.view(-1, dim_full_len)).view(n, output_n, -1, 3)
-          pred_p3d = data_utils.expmap2xyz_torch(pred_expmap.view(-1, dim_full_len)).view(n, output_n, -1, 3)
-        elif dataset=='cmu_mocap':
-          # get 3d coordinates
-          targ_p3d = data_utils.expmap2xyz_torch_cmu(targ_expmap.view(-1, dim_full_len)).view(n, output_n, -1, 3)
-          pred_p3d = data_utils.expmap2xyz_torch_cmu(pred_expmap.view(-1, dim_full_len)).view(n, output_n, -1, 3)
-
-        for k in np.arange(0, len(eval_frame)):
-            j = eval_frame[k]
-            t_e[k] += torch.mean(torch.norm(targ_p3d[:, j, :, :].contiguous().view(-1, 3) - pred_p3d[:, j, :, :].contiguous().view(-1, 3), 2, 1)).cpu().data.numpy()[0] * n
-            t_3d[k] += torch.mean(torch.norm(targ_p3d[:, j, :, :].contiguous().view(-1, 3) - pred_p3d[:, j, :, :].contiguous().view(-1, 3), 2, 1)).cpu().data.numpy()[0] * n
+            for k in np.arange(0, len(eval_frame)):
+                j = eval_frame[k]
+                t_e[k] += torch.mean(torch.norm(targ_p3d[:, j, :, :].contiguous().view(-1, 3) - pred_p3d[:, j, :, :].contiguous().view(-1, 3), 2, 1)).cpu().data.numpy()[0] * n
+                t_3d[k] += torch.mean(torch.norm(targ_p3d[:, j, :, :].contiguous().view(-1, 3) - pred_p3d[:, j, :, :].contiguous().view(-1, 3), 2, 1)).cpu().data.numpy()[0] * n
 
         N += n
 
@@ -423,7 +426,7 @@ def val(train_loader, model, input_n=20, dct_n=20, is_cuda=False, dim_used=[]):
             # targets = Variable(targets.cuda(async=True)).float()
             all_seq = Variable(all_seq.cuda(non_blocking=True)).float()
 
-        outputs, reconstructions, log_var = model(inputs.float())
+        outputs, reconstructions, log_var, z = model(inputs.float())
         n = outputs.shape[0]
         outputs = outputs.view(n, -1)
         # targets = targets.view(n, -1)

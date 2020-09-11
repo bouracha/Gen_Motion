@@ -22,7 +22,7 @@ class CMU_Motion(Dataset):
         self.path_to_data = path_to_data
         self.split = split
         # actions = 'walking'
-        actions = data_utils.define_actions_cmu(actions)
+        #actions = data_utils.define_actions(actions)
 
         if split == 0:
             path_to_data = path_to_data + '/train/'

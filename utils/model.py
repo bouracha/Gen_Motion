@@ -188,9 +188,9 @@ class GCN(nn.Module):
             mu = self.gc_mu(y)
             gamma = self.gc_sigma(y)
             noise = torch.normal(mean=0, std=1.0, size=gamma.shape).to(torch.device("cuda"))
-            z = mu + torch.mul(torch.exp(gamma), noise)
+            z_latent = mu + torch.mul(torch.exp(gamma), noise)
 
-            z = self.decoder_gc1(z)
+            z = self.decoder_gc1(z_latent)
             b, n, f = z.shape
             z = self.decoder_bn1(z.view(b, -1)).view(b, n, f)
             z = self.act_f(z)
@@ -208,6 +208,7 @@ class GCN(nn.Module):
         else:
             reconstructions_mu = 1
             reconstructions_log_var = 1
+            z_latent = 1
 
         for i in range(self.num_stage // 2, self.num_stage):
             y = self.gcbs[i](y)
@@ -217,4 +218,4 @@ class GCN(nn.Module):
 
         outputs = residuals + x
 
-        return outputs, reconstructions_mu, reconstructions_log_var
+        return outputs, reconstructions_mu, reconstructions_log_var, z_latent

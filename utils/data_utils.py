@@ -293,15 +293,21 @@ def define_actions(action, dataset='h3.6m', out_of_distribution=False):
                   "greeting", "phoning", "posing", "purchases", "sitting",
                   "sittingdown", "takingphoto", "waiting", "walkingdog",
                   "walkingtogether"]
-    elif dataset=='cmu_mocap':
+    elif dataset=='cmu_mocap' or dataset=='cmu_mocap_3d':
         actions = ["basketball", "basketball_signal", "directing_traffic", "jumping", "running", "soccer", "walking",
                   "washwindow"]
 
     if out_of_distribution:
+        if isinstance(action, list):
+            OoD_actions = []
+            for act in actions:
+                if act not in action:
+                    OoD_actions.append(act)
+            return OoD_actions
         assert (action in actions)
-        actions = [x for i, x in enumerate(actions) if x != action]
+        OoD_actions = [x for i, x in enumerate(actions) if x != action]
         print("Keeping only '{}' in distribution ".format(action))
-        return actions
+        return OoD_actions
 
     if isinstance(action, list):
         actions = action

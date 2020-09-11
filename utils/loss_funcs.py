@@ -27,8 +27,8 @@ def sen_loss(outputs, all_seq, dim_used, dct_n, inputs, cartesian=False, lambda_
 
     if cartesian:
         pred_cart = torch.matmul(idct_m[:, :dct_n], outputs_t).transpose(0, 1).contiguous().view(-1, dim_used_len, seq_len).transpose(1, 2).view(-1, 3)
-        targ_cart= all_seq.clone()[:, :, dim_used].view(-1, 3)
-        joint_loss = torch.mean(torch.norm(targ_cart - pred_cart), 2, 1)
+        targ_cart= all_seq.clone()[:, :, dim_used].contiguous().view(-1, 3)
+        joint_loss = torch.mean(torch.norm(targ_cart - pred_cart, 2, 1))
     else:
         pred_expmap = torch.matmul(idct_m[:, :dct_n], outputs_t).transpose(0, 1).contiguous().view(-1, dim_used_len, seq_len).transpose(1, 2)
         targ_expmap = all_seq.clone()[:, :, dim_used]
