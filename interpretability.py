@@ -54,7 +54,7 @@ model = nnmodel.GCN(input_feature=dct_n, hidden_feature=256, p_dropout=0.3,
 if is_cuda:
     model.cuda()
 print(">>> total params: {:.2f}M".format(sum(p.numel() for p in model.parameters()) / 1000000.0))
-optimizer = torch.optim.Adam(model.parameters(), lr=opt.lr)
+#optimizer = torch.optim.Adam(model.parameters(), lr=opt.lr)
 
 
 model_path_len = 'checkpoint/test/ckpt_main_cmu_mocap_in10_out25_dctn35_dropout_0.3_var_lambda_0.003_nz_8_lr_0.0005_n_layers_6_best.pth.tar'
@@ -68,24 +68,24 @@ else:
 train_data = dict()
 test_data = dict()
 for act in actions:
-    train_data[act] = CMU_Motion(path_to_data=opt.data_dir, actions=[act], input_n=input_n, output_n=output_n,
+    train_dataset = CMU_Motion(path_to_data='cmu_mocap/', actions=[act], input_n=input_n, output_n=output_n,
                                split=0, dct_n=dct_n)
-    data_std = train_data[act].data_std
-    data_mean = train_data[act].data_mean
-    dim_used = train_data[act].dim_used
-    train_data = DataLoader(
+    data_std = train_dataset[act].data_std
+    data_mean = dataset[act].data_mean
+    dim_used = dataset[act].dim_used
+    train_data[act] = DataLoader(
         dataset=train_dataset,
-        batch_size=opt.train_batch,
+        batch_size=128,
         shuffle=False,
-        num_workers=opt.job,
+        num_workers=10,
         pin_memory=True)
-    test_data = CMU_Motion(path_to_data=opt.data_dir, actions=[act], input_n=input_n, output_n=output_n,
+    test_dataset = CMU_Motion(path_to_data='cmu_mocap/', actions=[act], input_n=input_n, output_n=output_n,
                               split=1, data_mean=data_mean, data_std=data_std, dim_used=dim_used, dct_n=dct_n)
     test_data[act] = DataLoader(
         dataset=test_dataset,
-        batch_size=opt.test_batch,
+        batch_size=128,
         shuffle=False,
-        num_workers=opt.job,
+        num_workers=10,
         pin_memory=True)
 
 
