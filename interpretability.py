@@ -37,7 +37,7 @@ is_cuda = torch.cuda.is_available()
 
 
 
-actions = data_utils.define_actions('all', 'cmu_mocap', out_of_distribution=False)
+actions = data_utils.define_actions('all', 'h3.6m', out_of_distribution=False)
 
 input_n = 10
 output_n = 25
@@ -45,7 +45,7 @@ dct_n = 35
 sample_rate = 2
 
 cartesian = False
-node_n = 64
+node_n = 48
 
 
 
@@ -57,33 +57,37 @@ print(">>> total params: {:.2f}M".format(sum(p.numel() for p in model.parameters
 #optimizer = torch.optim.Adam(model.parameters(), lr=opt.lr)
 
 
-model_path_len = 'checkpoint/test/ckpt_main_cmu_mocap_in10_out25_dctn35_dropout_0.3_var_lambda_0.003_nz_8_lr_0.0005_n_layers_6_best.pth.tar'
+model_path_len = 'checkpoint/test/ckpt_main_h3.6m_in10_out10_dctn20_dropout_0.0_var_lambda_0.003_nz_8_lr_0.0005_n_layers_6_last.pth.tar'
 print(">>> loading ckpt len from '{}'".format(model_path_len))
 if is_cuda:
     ckpt = torch.load(model_path_len)
 else:
     ckpt = torch.load(model_path_len, map_location='cpu')
 
-
+batch_size=128
 train_data = dict()
 test_data = dict()
 for act in actions:
-    train_dataset = CMU_Motion(path_to_data='cmu_mocap/', actions=[act], input_n=input_n, output_n=output_n,
+    print("Loading action {} for train set".format(act))
+    train_dataset = CMU_Motion(path_to_data='h3.6m/', actions=[act], input_n=input_n, output_n=output_n,
                                split=0, dct_n=dct_n)
-    data_std = train_dataset[act].data_std
-    data_mean = dataset[act].data_mean
-    dim_used = dataset[act].dim_used
+    #print(train_dataset.__len__())
+    data_std = train_dataset.data_std
+    data_mean = train_dataset.data_mean
+    dim_used = train_dataset.dim_used
     train_data[act] = DataLoader(
         dataset=train_dataset,
-        batch_size=128,
+        batch_size=batch_size,
         shuffle=False,
         num_workers=10,
         pin_memory=True)
-    test_dataset = CMU_Motion(path_to_data='cmu_mocap/', actions=[act], input_n=input_n, output_n=output_n,
+    print("Loading action {} for test set".format(act))
+    test_dataset = CMU_Motion(path_to_data='h3.6m/', actions=[act], input_n=input_n, output_n=output_n,
                               split=1, data_mean=data_mean, data_std=data_std, dim_used=dim_used, dct_n=dct_n)
+    #print(test_dataset.__len__())
     test_data[act] = DataLoader(
         dataset=test_dataset,
-        batch_size=128,
+        batch_size=batch_size,
         shuffle=False,
         num_workers=10,
         pin_memory=True)
@@ -97,6 +101,7 @@ elif output_n == 10:
 
 
 for act in actions:
+    new_action = True
     for i, (inputs, targets, all_seq) in enumerate(train_data[act]):
         if is_cuda:
             inputs = Variable(inputs.cuda()).float()
@@ -104,8 +109,19 @@ for act in actions:
 
         outputs, reconstructions, log_var, z = model(inputs.float())
 
-        print("For action {} the train z is: ".format(act, z))
+        print("For action {} the train z is: {}".format(act, z.shape))
+        for sample in z:
+          sample = sample.reshape(512).cpu().detach().numpy()
+          #print(sample.shape)
+          df = pd.DataFrame(np.expand_dims(sample, axis=0))
+          if new_action:
+            df.to_csv(str(act)+'_train_z.csv', header=False, index=False)
+            new_action = False
+          else:
+            with open(str(act)+'_train_z.csv', 'a') as f:
+                df.to_csv(f, header=False, index=False)
 
+    new_action = True
     for i, (inputs, targets, all_seq) in enumerate(test_data[act]):
         if is_cuda:
             inputs = Variable(inputs.cuda()).float()
@@ -113,4 +129,18 @@ for act in actions:
 
         outputs, reconstructions, log_var, z = model(inputs.float())
 
-        print("For action {} the test z is: ".format(act, z))
+        print("For action {} the test z is: {}".format(act, z.shape))
+        for sample in z:
+          sample = sample.reshape(512).cpu().detach().numpy()
+          #print(sample.shape)
+          df = pd.DataFrame(np.expand_dims(sample, axis=0))
+          if new_action:
+            df.to_csv(str(act)+'_test_z.csv', header=False, index=False)
+            new_action = False
+          else:
+            with open(str(act)+'_test_z.csv', 'a') as f:
+                df.to_csv(f, header=False, index=False)
+
+
+
+
