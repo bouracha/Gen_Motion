@@ -69,8 +69,8 @@ train_data = dict()
 test_data = dict()
 for act in actions:
     print("Loading action {} for train set".format(act))
-    train_dataset = CMU_Motion(path_to_data='h3.6m/', actions=[act], input_n=input_n, output_n=output_n,
-                               split=0, dct_n=dct_n)
+    train_dataset = H36motion(path_to_data='h3.6m/', actions=[act], input_n=input_n, output_n=output_n,
+                               sample_rate=sample_rate, split=0, dct_n=dct_n)
     #print(train_dataset.__len__())
     data_std = train_dataset.data_std
     data_mean = train_dataset.data_mean
@@ -82,8 +82,8 @@ for act in actions:
         num_workers=10,
         pin_memory=True)
     print("Loading action {} for test set".format(act))
-    test_dataset = CMU_Motion(path_to_data='h3.6m/', actions=[act], input_n=input_n, output_n=output_n,
-                              split=1, data_mean=data_mean, data_std=data_std, dim_used=dim_used, dct_n=dct_n)
+    test_dataset = H36motion(path_to_data='h3.6m/', actions=[act], input_n=input_n, output_n=output_n,
+                              sample_rate=sample_rate, split=1, data_mean=data_mean, data_std=data_std, dct_n=dct_n)
     #print(test_dataset.__len__())
     test_data[act] = DataLoader(
         dataset=test_dataset,
@@ -111,14 +111,14 @@ for act in actions:
 
         print("For action {} the train z is: {}".format(act, z.shape))
         for sample in z:
-          sample = sample.reshape(512).cpu().detach().numpy()
+          sample = sample.reshape(384).cpu().detach().numpy()
           #print(sample.shape)
           df = pd.DataFrame(np.expand_dims(sample, axis=0))
           if new_action:
-            df.to_csv(str(act)+'_train_z.csv', header=False, index=False)
+            df.to_csv('latents/'+str(act)+'_train_z.csv', header=False, index=False)
             new_action = False
           else:
-            with open(str(act)+'_train_z.csv', 'a') as f:
+            with open('latents/'+str(act)+'_train_z.csv', 'a') as f:
                 df.to_csv(f, header=False, index=False)
 
     new_action = True
@@ -131,14 +131,14 @@ for act in actions:
 
         print("For action {} the test z is: {}".format(act, z.shape))
         for sample in z:
-          sample = sample.reshape(512).cpu().detach().numpy()
+          sample = sample.reshape(384).cpu().detach().numpy()
           #print(sample.shape)
           df = pd.DataFrame(np.expand_dims(sample, axis=0))
           if new_action:
-            df.to_csv(str(act)+'_test_z.csv', header=False, index=False)
+            df.to_csv('latents/'+str(act)+'_test_z.csv', header=False, index=False)
             new_action = False
           else:
-            with open(str(act)+'_test_z.csv', 'a') as f:
+            with open('latents/'+str(act)+'_test_z.csv', 'a') as f:
                 df.to_csv(f, header=False, index=False)
 
 
