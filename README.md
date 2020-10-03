@@ -1,7 +1,6 @@
 ## Generative Model-Enhanced Human Motion Prediction
 This is the code for the paper
 
-Anthony Bourached, Ryan-Rhys Griffiths, Robert Gray, Ashwani Jha, Parashkev Nachev. 
 [_Generative Model-Enhanced Human Motion Prediction_]
 
 ### Dependencies
