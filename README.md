@@ -22,7 +22,7 @@ Anthony Bourached, Ryan-Rhys Griffiths, Robert Gray, Ashwani Jha, Parashkev Nach
 
 ### Citing
 
-If you use our code, please cite our work:
+If you use our code, and/or build on our work, please cite our paper:
 
 ```
 @misc{bourached2020generative,
@@ -37,7 +37,27 @@ If you use our code, please cite our work:
 
 ### Acknowledgments
 
-The codebase is built on that of https://github.com/wei-mao-2019/LearnTrajDep
+The codebase is built on that of https://github.com/wei-mao-2019/LearnTrajDep and depends heavily on their work in [_Learning Trajectory Dependencies for Human Motion Prediction_](https://arxiv.org/abs/1908.05436) (ICCV 2019), and [_History Repeats Itself: Human Motion Prediction via Motion Attention_](https://arxiv.org/abs/2007.11755) (ECCV 2020). Thus please also cite:
+
+```
+@inproceedings{wei2019motion,
+  title={Learning Trajectory Dependencies for Human Motion Prediction},
+  author={Wei, Mao and Miaomiao, Liu and Mathieu, Salzemann and Hongdong, Li},
+  booktitle={ICCV},
+  year={2019}
+}
+```
+
+and
+
+```
+@article{mao2020history,
+  title={History Repeats Itself: Human Motion Prediction via Motion Attention},
+  author={Mao, Wei and Liu, Miaomiao and Salzmann, Mathieu},
+  journal={arXiv preprint arXiv:2007.11755},
+  year={2020}
+}
+```
 
 ### Licence
 MIT
