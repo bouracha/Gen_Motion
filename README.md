@@ -19,6 +19,35 @@ Anthony Bourached, Ryan-Rhys Griffiths, Robert Gray, Ashwani Jha, Parashkev Nach
 
 [CMU mocap](http://mocap.cs.cmu.edu/) was obtained from the [repo](https://github.com/chaneyddtt/Convolutional-Sequence-to-Sequence-Model-for-Human-Dynamics) of ConvSeq2Seq paper.
 
+### Training commands
+All the running args are defined in [opt.py](utils/opt.py). We use following commands to train on different datasets and representations.
+To train on angle space, in-distribution, H3.6M:
+```bash
+python main.py --data_dir "[Path To Your H36M data]/h3.6m/dataset/" --variational True --lambda 0.003 --n_z 8 --dropout 0.3 --lr_gamma 1.0 --input_n 10 --output_n 10 --dct_n 20
+```
+in-distribution (CMU):
+```bash
+python main.py --dataset 'cmu_mocap' --data_dir "[Path To Your CMU data]/cmu_mocap/" --variational True --lambda 0.003 --n_z 8 --dropout 0.3 --lr_gamma 1.0 --input_n 10 --output_n 25 --dct_n 35
+```
+to train on 3D space for CMU, simply change the ```--dataset 'cmu_mocap'``` to ```--dataset 'cmu_mocap_3d```. This flag is 'h3.6m' by default.
+
+To train on 'walking' and test out-of-distribution (for h3.6M), include the extra flag:
+```bash
+--out_of_distribution 'walking' 
+```
+identically to train on 'basketball' and test out-of-distribution (for CMU), include the extra flag:
+```bash
+--out_of_distribution 'basketball' 
+```
+The same models may be trained (or used for inference independent of how they were trained) without the VGAE branch by changing the 
+```
+--variational True
+``` 
+flag to 
+```
+--variational False
+```
+(True by default).
 
 ### Citing
 

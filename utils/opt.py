@@ -52,7 +52,7 @@ class Options:
         self.parser.add_argument('--is_norm', dest='is_norm', action='store_true', help='whether to normalize the angles/3d coordinates')
 
         self.parser.add_argument('--out_of_distribution', nargs='+', type=str, default=None, help='input the out of distribution action')
-        self.parser.add_argument('--variational', type=bool, default=False, help='true if want to include a latent variable')
+        self.parser.add_argument('--variational', type=bool, default=True, help='true if want to include a latent variable')
         self.parser.add_argument('--lambda_', type=float, default=0.003, help='weighting loss for VGAE')
         self.parser.add_argument('--n_z', type=int, default=8, help='number of latent dimensions per joint')
         self.parser.add_argument('--num_decoder_stage', type=int, default=6, help='number of graph convolutional blocks in decoder')
