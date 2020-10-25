@@ -1,4 +1,4 @@
-## Generative Model-Enhanced Human Motion Prediction
+# Generative Model-Enhanced Human Motion Prediction
 This is the code for the paper
 
 
@@ -7,19 +7,19 @@ Anthony Bourached, Ryan-Rhys Griffiths, Robert Gray, Ashwani Jha, Parashkev Nach
 [_Generative Model-Enhanced Human Motion Prediction_](https://arxiv.org/abs/2010.11699). Under review at ICLR 2021.
 
 
-### Dependencies
+## Dependencies
 
 * cuda 9.0
 * Python 3.6
 * [Pytorch](https://github.com/pytorch/pytorch) 0.3.1.
 * [progress 1.5](https://pypi.org/project/progress/)
 
-### Get the data
+## Get the data
 [Human3.6m](http://vision.imar.ro/human3.6m/description.php) in exponential map can be downloaded from [here](http://www.cs.stanford.edu/people/ashesh/h3.6m.zip).
 
 [CMU mocap](http://mocap.cs.cmu.edu/) was obtained from the [repo](https://github.com/chaneyddtt/Convolutional-Sequence-to-Sequence-Model-for-Human-Dynamics) of ConvSeq2Seq paper.
 
-### Training commands
+## Training commands
 All the running args are defined in [opt.py](utils/opt.py). We use following commands to train on different datasets and representations.
 To train on angle space, in-distribution, H3.6M:
 ```bash
@@ -49,7 +49,17 @@ flag to
 ```
 (True by default).
 
-### Citing
+### Hyperparameter search can be conducted via:
+```
+python3 hyperparameter_search.py --num_trials 10 --epoch 100
+```
+
+### Inference on latent spaces for trained model, saves to latents.csv (also save DCT inputs, to inputs.csv)
+```python
+python3 interpretability.py --dataset 'cmu_mocap' --model_path "[Path To Your Trained Model].pth.tar"
+```
+
+## Citing
 
 If you use our code, and/or build on our work, please cite our paper:
 
@@ -64,7 +74,7 @@ If you use our code, and/or build on our work, please cite our paper:
 }
 ```
 
-### Acknowledgments
+## Acknowledgments
 
 The codebase is built on that of https://github.com/wei-mao-2019/LearnTrajDep and depends heavily on their work in [_Learning Trajectory Dependencies for Human Motion Prediction_](https://arxiv.org/abs/1908.05436) (ICCV 2019), and [_History Repeats Itself: Human Motion Prediction via Motion Attention_](https://arxiv.org/abs/2007.11755) (ECCV 2020). Thus please also cite:
 
@@ -88,5 +98,6 @@ and
 }
 ```
 
-### Licence
+## Licence
+
 MIT
