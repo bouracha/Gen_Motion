@@ -8,10 +8,11 @@ Anthony Bourached, Ryan-Rhys Griffiths, Robert Gray, Ashwani Jha, Parashkev Nach
 
 
 ## Dependencies
+Some older versions may work. But we used the following:
 
-* cuda 9.0
-* Python 3.6
-* [Pytorch](https://github.com/pytorch/pytorch) 0.3.1.
+* cuda 10.1
+* Python 3.6.9
+* [Pytorch](https://github.com/pytorch/pytorch) 1.6.0.
 * [progress 1.5](https://pypi.org/project/progress/)
 
 ## Get the data
