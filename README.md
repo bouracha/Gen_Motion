@@ -4,7 +4,7 @@ This is the code for the paper
 
 
 Anthony Bourached, Ryan-Rhys Griffiths, Robert Gray, Ashwani Jha, Parashkev Nachev.
-[_Generative Model-Enhanced Human Motion Prediction_](https://arxiv.org/abs/2010.11699). Under review at ICLR 2021.
+[_Generative Model-Enhanced Human Motion Prediction_](https://arxiv.org/abs/2010.11699). Under review at ICLR 2021. Accepted at NeurIPS workshop on Interpretable Inductive Biases and Physically Structured Learning.
 
 
 ## Dependencies
@@ -12,7 +12,7 @@ Some older versions may work. But we used the following:
 
 * cuda 10.1
 * Python 3.6.9
-* [Pytorch](https://github.com/pytorch/pytorch) 1.6.0.
+* [Pytorch](https://github.com/pytorch/pytorch) 1.6.0
 * [progress 1.5](https://pypi.org/project/progress/)
 
 ## Get the data
@@ -24,11 +24,11 @@ Some older versions may work. But we used the following:
 All the running args are defined in [opt.py](utils/opt.py). We use following commands to train on different datasets and representations.
 To train on angle space, in-distribution, H3.6M:
 ```bash
-python main.py --data_dir "[Path To Your H36M data]/h3.6m/dataset/" --variational True --lambda 0.003 --n_z 8 --dropout 0.3 --lr_gamma 1.0 --input_n 10 --output_n 10 --dct_n 20
+python3 main.py --data_dir "[Path To Your H36M data]/h3.6m/dataset/" --variational True --lambda 0.003 --n_z 8 --dropout 0.3 --lr_gamma 1.0 --input_n 10 --output_n 10 --dct_n 20
 ```
 in-distribution (CMU):
 ```bash
-python main.py --dataset 'cmu_mocap' --data_dir "[Path To Your CMU data]/cmu_mocap/" --variational True --lambda 0.003 --n_z 8 --dropout 0.3 --lr_gamma 1.0 --input_n 10 --output_n 25 --dct_n 35
+python3 main.py --dataset 'cmu_mocap' --data_dir "[Path To Your CMU data]/cmu_mocap/" --variational True --lambda 0.003 --n_z 8 --dropout 0.3 --lr_gamma 1.0 --input_n 10 --output_n 25 --dct_n 35
 ```
 to train on 3D space for CMU, simply change the ```--dataset 'cmu_mocap'``` to ```--dataset 'cmu_mocap_3d```. This flag is 'h3.6m' by default.
 
