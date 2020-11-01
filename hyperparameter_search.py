@@ -7,7 +7,8 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument('--num_trials', type=int, default='10',
                     help='number of trials of randomly selected hyperparameters')
-parser.add_argument('--variational', type=bool, default=False, help='true if want to include a latent variable')
+parser.add_argument('--variational', dest='variational', action='store_true', help='include flag to make generative enhanced')
+parser.set_defaults(variational=False)
 parser.add_argument('--epoch', type=int, default=50, help='number of epochs')
 
 opt = parser.parse_args()
@@ -34,6 +35,6 @@ for i in range(opt.num_trials):
         n_z) + ' --num_decoder_stage ' + str(num_decoder_stage) + ' --lr_gamma 1.0 --epoch ' + str(
         opt.epoch) + ' --dropout ' + str(dropout) + ' --input_n 10 --output 10 --dct_n 20 --data_dir h3.6m/dataset/ --out_of_distribution walking'
     if opt.variational:
-        command = command+str(' --varitaional')
+        command = command+str(' --variational')
     print(command)
     os.system(command)

@@ -24,11 +24,11 @@ Some older versions may work. But we used the following:
 All the running args are defined in [opt.py](utils/opt.py). We use following commands to train on different datasets and representations.
 To train on angle space, in-distribution, H3.6M:
 ```bash
-python3 main.py --data_dir "[Path To Your H36M data]/h3.6m/dataset/" --variational True --lambda 0.003 --n_z 8 --dropout 0.3 --lr_gamma 1.0 --input_n 10 --output_n 10 --dct_n 20
+python3 main.py --data_dir "[Path To Your H36M data]/h3.6m/dataset/" --variational --lambda 0.003 --n_z 8 --dropout 0.3 --lr_gamma 1.0 --input_n 10 --output_n 10 --dct_n 20
 ```
 in-distribution (CMU):
 ```bash
-python3 main.py --dataset 'cmu_mocap' --data_dir "[Path To Your CMU data]/cmu_mocap/" --variational True --lambda 0.003 --n_z 8 --dropout 0.3 --lr_gamma 1.0 --input_n 10 --output_n 25 --dct_n 35
+python3 main.py --dataset 'cmu_mocap' --data_dir "[Path To Your CMU data]/cmu_mocap/" --variational --lambda 0.003 --n_z 8 --dropout 0.3 --lr_gamma 1.0 --input_n 10 --output_n 25 --dct_n 35
 ```
 to train on 3D space for CMU, simply change the ```--dataset 'cmu_mocap'``` to ```--dataset 'cmu_mocap_3d```. This flag is 'h3.6m' by default.
 
@@ -40,15 +40,11 @@ identically to train on 'basketball' and test out-of-distribution (for CMU), inc
 ```bash
 --out_of_distribution 'basketball' 
 ```
-The same models may be trained (or used for inference independent of how they were trained) without the VGAE branch by changing the 
+The same models may be trained (or used for inference independent of how they were trained) without the VGAE branch by removing the 
 ```
---variational True
+--variational
 ``` 
-flag to 
-```
---variational False
-```
-(True by default).
+flag.
 
 ### Hyperparameter search can be conducted via:
 ```
