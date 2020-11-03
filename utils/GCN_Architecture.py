@@ -158,11 +158,6 @@ class GCN(nn.Module):
                 self.decoder_gcbs.append(GC_Block(hidden_feature, p_dropout=p_dropout, node_n=node_n))
             self.decoder_gcbs = nn.ModuleList(self.decoder_gcbs)
 
-            #self.decoder_gc2 = GraphConvolution(hidden_feature, hidden_feature, node_n=node_n)
-            #self.decoder_bn2 = nn.BatchNorm1d(node_n * hidden_feature)
-            #self.decoder_gc3 = GraphConvolution(hidden_feature, hidden_feature, node_n=node_n)
-            #self.decoder_bn3 = nn.BatchNorm1d(node_n * hidden_feature)
-
             self.gc_decoder_mu = GraphConvolution(hidden_feature, input_feature, node_n=node_n)
             self.gc_decoder_sigma = GraphConvolution(hidden_feature, input_feature, node_n=node_n)
 

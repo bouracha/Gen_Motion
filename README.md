@@ -48,7 +48,7 @@ flag.
 
 ### Hyperparameter search can be conducted via:
 ```
-python3 hyperparameter_search.py --num_trials 10 --epoch 100
+python3 hyperparameter_search.py --num_trials 10 --epoch 100 --variational
 ```
 
 ### Inference on latent spaces for trained model, saves to latents.csv (also save DCT inputs, to inputs.csv)

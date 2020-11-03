@@ -57,7 +57,6 @@ if opt.model_path == None:
     model_path_len = 'checkpoint/test/ckpt_main_cmu_mocap_in50_out25_dctn35_dropout_0.3_var_lambda_0.003_nz_8_lr_0.0005_n_layers_6_last.pth.tar'
 else:
     model_path_len = opt.model_path
-# model_path_len = 'checkpoint/test/ckpt_main_h3.6m_in10_out10_dctn20_dropout_0.0_var_lambda_0.003_nz_8_lr_0.0005_n_layers_6_last.pth.tar'
 print(">>> loading ckpt len from '{}'".format(model_path_len))
 if is_cuda:
     ckpt = torch.load(model_path_len)
@@ -108,11 +107,6 @@ for act in actions:
         shuffle=False,
         num_workers=10,
         pin_memory=True)
-
-if output_n >= 25:
-    eval_frame = [1, 3, 7, 9, 13, 24]
-elif output_n == 10:
-    eval_frame = [1, 3, 7, 9]
 
 first_instance_train = True
 first_instance_val = True
