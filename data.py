@@ -16,14 +16,14 @@ class DATA():
     def get_dct_and_sequences(self, input_n, output_n, sample_rate, dct_n, out_of_distribution_action):
         if out_of_distribution_action != None:
             self.out_of_distribution = True
-            acts_train = data_utils.define_actions(opt.out_of_distribution, opt.dataset, out_of_distribution=False)
-            acts_OoD = data_utils.define_actions(opt.out_of_distribution, opt.dataset, out_of_distribution=True)
-            acts_test = data_utils.define_actions('all', opt.dataset, out_of_distribution=False)
+            acts_train = data_utils.define_actions(out_of_distribution_action, self.dataset, out_of_distribution=False)
+            acts_OoD = data_utils.define_actions(out_of_distribution_action, self.dataset, out_of_distribution=True)
+            acts_test = data_utils.define_actions('all', self.dataset, out_of_distribution=False)
         else:
-            out_of_distribution = False
-            acts_train = data_utils.define_actions('all', opt.dataset, out_of_distribution=False)
+            self.out_of_distribution = False
+            acts_train = data_utils.define_actions('all', self.dataset, out_of_distribution=False)
             acts_OoD = None
-            acts_test = data_utils.define_actions('all', opt.dataset, out_of_distribution=False)
+            acts_test = data_utils.define_actions('all', self.dataset, out_of_distribution=False)
         self.acts_test = acts_test
 
         if self.dataset == 'h3.6m':
