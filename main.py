@@ -22,7 +22,7 @@ import utils.data_utils as data_utils
 
 from data import DATA
 
-from model import MODEL_METHODS
+from model_methods import MODEL_METHODS
 
 def main(opt):
     start_epoch = 0
@@ -30,16 +30,21 @@ def main(opt):
     lr_now = opt.lr
     is_cuda = torch.cuda.is_available()
 
-    if opt.out_of_distribution != None:
-        out_of_distribution = True
-        acts_train = data_utils.define_actions(opt.out_of_distribution, opt.dataset, out_of_distribution=False)
-        acts_OoD = data_utils.define_actions(opt.out_of_distribution, opt.dataset, out_of_distribution=True)
-        acts_test = data_utils.define_actions('all', opt.dataset, out_of_distribution=False)
-    else:
-        out_of_distribution = False
-        acts_train = data_utils.define_actions('all', opt.dataset, out_of_distribution=False)
-        acts_OoD = None
-        acts_test = data_utils.define_actions('all', opt.dataset, out_of_distribution=False)
+    print(">>> loading data")
+    input_n = opt.input_n
+    output_n = opt.output_n
+    dct_n = opt.dct_n
+    sample_rate = opt.sample_rate
+
+    data = DATA(opt.dataset, opt.data_dir)
+
+    out_of_distribution = data.get_dct_and_sequences(input_n, output_n, sample_rate, dct_n, opt.out_of_distribution)
+    train_loader, val_loader, OoD_val_loader, test_loaders = data.get_dataloaders(opt.train_batch, opt.test_batch, opt.job)
+    print(">>> data loaded !")
+    print(">>> train data {}".format(data.train_dataset.__len__()))
+    if opt.dataset=='h3.6m':
+      print(">>> validation data {}".format(data.val_dataset.__len__()))
+
 
     # define log csv file
     script_name = os.path.basename(__file__).split('.')[0]
@@ -49,45 +54,17 @@ def main(opt):
     if opt.variational:
         script_name = script_name + "_var_lambda_{}_nz_{}_lr_{}_n_layers_{}".format(str(opt.lambda_), str(opt.n_z), str(opt.lr), str(opt.num_decoder_stage))
 
-    # data loading
-    print(">>> loading data")
-    input_n = opt.input_n
-    output_n = opt.output_n
-    dct_n = opt.dct_n
-    sample_rate = opt.sample_rate
-
-    data = DATA(opt.dataset, opt.data_dir)
-    data.get_dct_and_sequences(acts_train, input_n, output_n, sample_rate, dct_n, out_of_distribution, acts_OoD, acts_test)
-    train_loader, val_loader, OoD_val_loader, test_loaders = data.get_dataloaders(opt.train_batch, opt.test_batch, acts_test, opt.job)
-    print(">>> data loaded !")
-    print(">>> train data {}".format(data.train_dataset.__len__()))
-    if opt.dataset=='h3.6m':
-      print(">>> validation data {}".format(data.val_dataset.__len__()))
-
 
     print(">>> creating model")
     model = nnmodel.GCN(input_feature=dct_n, hidden_feature=opt.linear_size, p_dropout=opt.dropout,
                         num_stage=opt.num_stage, node_n=data.node_n, variational=opt.variational, n_z=opt.n_z, num_decoder_stage=opt.num_decoder_stage)
-    methods = MODEL_METHODS(model)
-
-    if is_cuda:
-        model.cuda()
-    print(">>> total params: {:.2f}M".format(sum(p.numel() for p in model.parameters()) / 1000000.0))
-    optimizer = torch.optim.Adam(model.parameters(), lr=opt.lr)
-
+    methods = MODEL_METHODS(model, is_cuda)
     if opt.is_load:
-        model_path_len = 'checkpoint/test/ckpt_main_in10_out10_dctn20_var__last.pth.tar'
-        print(">>> loading ckpt len from '{}'".format(model_path_len))
-        if is_cuda:
-            ckpt = torch.load(model_path_len)
-        else:
-            ckpt = torch.load(model_path_len, map_location='cpu')
-        start_epoch = ckpt['epoch']
-        err_best = ckpt['err']
-        lr_now = ckpt['lr']
-        model.load_state_dict(ckpt['state_dict'])
-        optimizer.load_state_dict(ckpt['optimizer'])
-        print(">>> ckpt len loaded (epoch: {} | err: {})".format(start_epoch, err_best))
+      start_epoch, err_best, lr_now = methods.load_weights(opt.load_path)
+    print(">>> total params: {:.2f}M".format(sum(p.numel() for p in model.parameters()) / 1000000.0))
+    methods.optimizer = torch.optim.Adam(model.parameters(), lr=opt.lr)
+
+
 
 
 
@@ -98,7 +75,7 @@ def main(opt):
     for epoch in range(start_epoch, opt.epochs):
 
         if (epoch + 1) % opt.lr_decay == 0:
-            lr_now = utils.lr_decay(optimizer, lr_now, opt.lr_gamma)
+            lr_now = utils.lr_decay(methods.optimizer, lr_now, opt.lr_gamma)
         print('==========================')
         print('>>> epoch: {} | lr: {:.5f}'.format(epoch + 1, lr_now))
         ret_log = np.array([epoch + 1])
@@ -110,16 +87,13 @@ def main(opt):
         ret_log = np.append(ret_log, [lr_now, t_l, t_l_joint, t_l_vlb, t_l_latent, t_e, t_3d])
         head = np.append(head, ['lr', 't_l', 't_l_joint', 't_l_vlb', 't_l_latent', 't_e', 't_3d'])
 
-        if opt.dataset=='h3.6m':
+        if opt.dataset == 'h3.6m':
           v_e, v_3d = methods.val(val_loader, input_n=input_n, is_cuda=is_cuda, dim_used=train_dataset.dim_used,
                           dct_n=dct_n)
           ret_log = np.append(ret_log, [v_e, v_3d])
           head = np.append(head, ['v_e', 'v_3d'])
-          if not np.isnan(v_e):
-            is_best = v_e < err_best
-            err_best = min(v_e, err_best)
-          else:
-            is_best = False
+
+          is_best, err_best = utils.check_is_best(v_e, err_best)
 
           if out_of_distribution:
               OoD_v_e, OoD_v_3d = methods.val(OoD_val_loader, input_n=input_n, is_cuda=is_cuda, dim_used=train_dataset.dim_used,
@@ -128,11 +102,7 @@ def main(opt):
               head = np.append(head, ['OoD_v_e', 'OoD_v_3d'])
         # If not h3.6 dataset, select best on train error
         else:
-          if not np.isnan(t_e):
-            is_best = t_e < err_best
-            err_best = min(t_e, err_best)
-          else:
-            is_best = False
+          is_best, err_best = utils.check_is_best(t_e, err_best)
 
 
         test_3d_temp = np.array([])
@@ -163,7 +133,7 @@ def main(opt):
                          'lr': lr_now,
                          'err': test_e[0],
                          'state_dict': model.state_dict(),
-                         'optimizer': optimizer.state_dict()},
+                         'optimizer': methods.optimizer.state_dict()},
                         ckpt_path=opt.ckpt,
                         is_best=is_best,
                         file_name=file_name)

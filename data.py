@@ -13,8 +13,19 @@ class DATA():
         self.dataset = dataset
         self.data_dir = data_dir
 
-    def get_dct_and_sequences(self, acts_train, input_n, output_n, sample_rate, dct_n, out_of_distribution, acts_OoD, acts_test):
-        self.out_of_distribution = out_of_distribution
+    def get_dct_and_sequences(self, input_n, output_n, sample_rate, dct_n, out_of_distribution_action):
+        if out_of_distribution_action != None:
+            self.out_of_distribution = True
+            acts_train = data_utils.define_actions(opt.out_of_distribution, opt.dataset, out_of_distribution=False)
+            acts_OoD = data_utils.define_actions(opt.out_of_distribution, opt.dataset, out_of_distribution=True)
+            acts_test = data_utils.define_actions('all', opt.dataset, out_of_distribution=False)
+        else:
+            out_of_distribution = False
+            acts_train = data_utils.define_actions('all', opt.dataset, out_of_distribution=False)
+            acts_OoD = None
+            acts_test = data_utils.define_actions('all', opt.dataset, out_of_distribution=False)
+        self.acts_test = acts_test
+
         if self.dataset == 'h3.6m':
             self.cartesian = False
             self.node_n=48
@@ -64,10 +75,11 @@ class DATA():
                                             output_n=output_n, split=1, data_mean=self.data_mean, data_std=self.data_std, dim_used=self.dim_used, dct_n=dct_n)
         else:
             raise Exception("Dataset name ({}) is not valid!".format(dataset))
-        return True
+        return None
 
-    def get_dataloaders(self, train_batch, test_batch, acts_test, job):
+    def get_dataloaders(self, train_batch, test_batch, job):
         # load dadasets for training
+        acts_test = self.acts_test
         train_loader = DataLoader(
             dataset=self.train_dataset,
             batch_size=train_batch,

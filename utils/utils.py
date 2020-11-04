@@ -31,3 +31,11 @@ def save_ckpt(state, ckpt_path, is_best=True, file_name=['ckpt_best.pth.tar', 'c
     if is_best:
         file_path = os.path.join(ckpt_path, file_name[0])
         torch.save(state, file_path)
+
+def check_is_best(v_e, err_best):
+    if not np.isnan(v_e):
+        is_best = v_e < err_best
+        err_best = min(v_e, err_best)
+    else:
+        is_best = False
+    return is_best, err_best

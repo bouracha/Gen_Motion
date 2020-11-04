@@ -14,8 +14,28 @@ import pandas as pd
 
 
 class MODEL_METHODS():
-    def __init__(self, architecture):
+    def __init__(self, architecture, is_cuda):
         self.model = architecture
+        self.is_cuda = is_cuda
+        if is_cuda:
+            model.cuda()
+
+    def load_weights(self, model_path_len):
+        model_path_len = 'checkpoint/test/ckpt_main_in10_out10_dctn20_var__last.pth.tar'
+        print(">>> loading ckpt len from '{}'".format(model_path_len))
+        if self.is_cuda:
+            ckpt = torch.load(model_path_len)
+        else:
+            ckpt = torch.load(model_path_len, map_location='cpu')
+        start_epoch = ckpt['epoch']
+        err_best = ckpt['err']
+        lr_now = ckpt['lr']
+        self.model.load_state_dict(ckpt['state_dict'])
+        self.optimizer.load_state_dict(ckpt['optimizer'])
+        print(">>> ckpt len loaded (epoch: {} | err: {})".format(start_epoch, err_best))
+
+        return start_epoch, err_best, lr_now
+
 
     def train(self, train_loader, optimizer, dataset='h3.6m', input_n=20, dct_n=20, lr_now=None, cartesian=False,
               lambda_=0.01, max_norm=True, is_cuda=False, dim_used=[]):
