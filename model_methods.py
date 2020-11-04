@@ -18,7 +18,7 @@ class MODEL_METHODS():
         self.model = architecture
         self.is_cuda = is_cuda
         if is_cuda:
-            model.cuda()
+            self.model.cuda()
 
     def load_weights(self, model_path_len):
         model_path_len = 'checkpoint/test/ckpt_main_in10_out10_dctn20_var__last.pth.tar'
@@ -37,8 +37,8 @@ class MODEL_METHODS():
         return start_epoch, err_best, lr_now
 
 
-    def train(self, train_loader, optimizer, dataset='h3.6m', input_n=20, dct_n=20, lr_now=None, cartesian=False,
-              lambda_=0.01, max_norm=True, is_cuda=False, dim_used=[]):
+    def train(self, train_loader, dataset='h3.6m', input_n=20, dct_n=20, lr_now=None, cartesian=False,
+              lambda_=0.01, max_norm=True, dim_used=[]):
         t_l = utils.AccumLoss()
         t_l_joint = utils.AccumLoss()
         t_l_vlb = utils.AccumLoss()
@@ -57,7 +57,7 @@ class MODEL_METHODS():
                 continue
 
             bt = time.time()
-            if is_cuda:
+            if self.is_cuda:
                 inputs = Variable(inputs.cuda()).float()
                 targets = Variable(targets.cuda(non_blocking=True)).float()
                 all_seq = Variable(all_seq.cuda(non_blocking=True)).float()
@@ -81,11 +81,11 @@ class MODEL_METHODS():
                 df.to_csv(f, header=False, index=False)
 
             # calculate loss and backward
-            optimizer.zero_grad()
+            self.optimizer.zero_grad()
             loss.backward()
             if max_norm:
                 nn.utils.clip_grad_norm(self.model.parameters(), max_norm=1)
-            optimizer.step()
+            self.optimizer.step()
             n, _, _ = all_seq.data.shape
 
             if dataset == 'h3.6m':
@@ -118,7 +118,7 @@ class MODEL_METHODS():
         print("loss: ", t_l.avg)
         return lr_now, t_l.avg, t_l_joint.avg, t_l_vlb.avg, t_l_latent.avg, t_e.avg, t_3d.avg
 
-    def val(self, train_loader, input_n=20, dct_n=20, is_cuda=False, dim_used=[]):
+    def val(self, train_loader, input_n=20, dct_n=20, dim_used=[]):
         # t_l = utils.AccumLoss()
         t_e = utils.AccumLoss()
         t_3d = utils.AccumLoss()
@@ -129,7 +129,7 @@ class MODEL_METHODS():
         for i, (inputs, targets, all_seq) in enumerate(train_loader):
             bt = time.time()
 
-            if is_cuda:
+            if self.is_cuda:
                 inputs = Variable(inputs.cuda()).float()
                 # targets = Variable(targets.cuda(async=True)).float()
                 all_seq = Variable(all_seq.cuda(non_blocking=True)).float()
@@ -155,7 +155,7 @@ class MODEL_METHODS():
         bar.finish()
         return t_e.avg, t_3d.avg
 
-    def test(self, train_loader, dataset='h3.6m', input_n=20, output_n=50, dct_n=20, cartesian=False, is_cuda=False,
+    def test(self, train_loader, dataset='h3.6m', input_n=20, output_n=50, dct_n=20, cartesian=False,
              dim_used=[]):
         N = 0
         # t_l = 0
@@ -173,7 +173,7 @@ class MODEL_METHODS():
         for i, (inputs, targets, all_seq) in enumerate(train_loader):
             bt = time.time()
 
-            if is_cuda:
+            if self.is_cuda:
                 inputs = Variable(inputs.cuda()).float()
                 # targets = Variable(targets.cuda(async=True)).float()
                 all_seq = Variable(all_seq.cuda(non_blocking=True)).float()

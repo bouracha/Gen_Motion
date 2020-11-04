@@ -71,14 +71,14 @@ def main(opt):
         ret_log = np.array([epoch + 1])
         head = np.array(['epoch'])
         # per epoch
-        lr_now, t_l, t_l_joint, t_l_vlb, t_l_latent, t_e, t_3d = methods.train(train_loader, optimizer, dataset=opt.dataset, input_n=input_n,
-                                                              lr_now=lr_now, cartesian=data.cartesian, lambda_=opt.lambda_,max_norm=opt.max_norm, is_cuda=is_cuda,
+        lr_now, t_l, t_l_joint, t_l_vlb, t_l_latent, t_e, t_3d = methods.train(train_loader, dataset=opt.dataset, input_n=input_n,
+                                                              lr_now=lr_now, cartesian=data.cartesian, lambda_=opt.lambda_,max_norm=opt.max_norm,
                                                               dim_used=data.train_dataset.dim_used, dct_n=dct_n)
         ret_log = np.append(ret_log, [lr_now, t_l, t_l_joint, t_l_vlb, t_l_latent, t_e, t_3d])
         head = np.append(head, ['lr', 't_l', 't_l_joint', 't_l_vlb', 't_l_latent', 't_e', 't_3d'])
 
         if opt.dataset == 'h3.6m':
-          v_e, v_3d = methods.val(val_loader, input_n=input_n, is_cuda=is_cuda, dim_used=train_dataset.dim_used,
+          v_e, v_3d = methods.val(val_loader, input_n=input_n, dim_used=train_dataset.dim_used,
                           dct_n=dct_n)
           ret_log = np.append(ret_log, [v_e, v_3d])
           head = np.append(head, ['v_e', 'v_3d'])
@@ -86,7 +86,7 @@ def main(opt):
           is_best, err_best = utils.check_is_best(v_e, err_best)
 
           if out_of_distribution:
-              OoD_v_e, OoD_v_3d = methods.val(OoD_val_loader, input_n=input_n, is_cuda=is_cuda, dim_used=train_dataset.dim_used,
+              OoD_v_e, OoD_v_3d = methods.val(OoD_val_loader, input_n=input_n, dim_used=train_dataset.dim_used,
                           dct_n=dct_n)
               ret_log = np.append(ret_log, [OoD_v_e, OoD_v_3d])
               head = np.append(head, ['OoD_v_e', 'OoD_v_3d'])
@@ -98,7 +98,7 @@ def main(opt):
         test_3d_temp = np.array([])
         test_3d_head = np.array([])
         for act in acts_test:
-            test_e, test_3d = methods.test(test_loaders[act], dataset=opt.dataset, input_n=input_n, output_n=output_n, cartesian=cartesian, is_cuda=is_cuda, dim_used=train_dataset.dim_used, dct_n=dct_n)
+            test_e, test_3d = methods.test(test_loaders[act], dataset=opt.dataset, input_n=input_n, output_n=output_n, cartesian=cartesian, dim_used=train_dataset.dim_used, dct_n=dct_n)
             ret_log = np.append(ret_log, test_e)
             test_3d_temp = np.append(test_3d_temp, test_3d)
             test_3d_head = np.append(test_3d_head,
