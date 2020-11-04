@@ -20,8 +20,16 @@ class MODEL_METHODS():
         if is_cuda:
             self.model.cuda()
 
-    def load_weights(self, model_path_len):
-        model_path_len = 'checkpoint/test/ckpt_main_in10_out10_dctn20_var__last.pth.tar'
+    def load_weights(self, model_path_len = 'checkpoint/test/ckpt_main_in10_out10_dctn20_var__last.pth.tar'):
+        """ Loads weights from specified model path.
+
+        :param model_path_len: path to pretrained model, has a default
+        :return: tuple (start_epoch, err_best, lr_now)
+            WHERE
+            start_epoch is the next epoch after previous training ended
+            err_best is the best error that was reached
+            lr_now is the current learning rate when learning was terminated
+        """
         print(">>> loading ckpt len from '{}'".format(model_path_len))
         if self.is_cuda:
             ckpt = torch.load(model_path_len)

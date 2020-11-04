@@ -46,7 +46,6 @@ def main(opt):
     if opt.variational:
         script_name = script_name + "_var_lambda_{}_nz_{}_lr_{}_n_layers_{}".format(str(opt.lambda_), str(opt.n_z), str(opt.lr), str(opt.num_decoder_stage))
 
-
     #####################################################
     # Load data
     #####################################################
@@ -114,13 +113,11 @@ def main(opt):
             test_e, test_3d = methods.test(test_loaders[act], dataset=opt.dataset, input_n=input_n, output_n=output_n, cartesian=data.cartesian, dim_used=data.train_dataset.dim_used, dct_n=dct_n)
             ret_log = np.append(ret_log, test_e)
             test_3d_temp = np.append(test_3d_temp, test_3d)
-            test_3d_head = np.append(test_3d_head,
-                                     [act + '3d80', act + '3d160', act + '3d320', act + '3d400'])
+            test_3d_head = np.append(test_3d_head, [act + '3d80', act + '3d160', act + '3d320', act + '3d400'])
             head = np.append(head, [act + '80', act + '160', act + '320', act + '400'])
             if output_n > 10:
                 head = np.append(head, [act + '560', act + '1000'])
-                test_3d_head = np.append(test_3d_head,
-                                         [act + '3d560', act + '3d1000'])
+                test_3d_head = np.append(test_3d_head, [act + '3d560', act + '3d1000'])
         ret_log = np.append(ret_log, test_3d_temp)
         head = np.append(head, test_3d_head)
 

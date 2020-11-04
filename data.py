@@ -13,7 +13,7 @@ class DATA():
         self.dataset = dataset
         self.data_dir = data_dir
 
-    def get_dct_and_sequences(self, input_n, output_n, sample_rate, dct_n, out_of_distribution_action):
+    def get_dct_and_sequences(self, input_n, output_n, sample_rate, dct_n, out_of_distribution_action=None):
         if out_of_distribution_action != None:
             self.out_of_distribution = True
             acts_train = data_utils.define_actions(out_of_distribution_action, self.dataset, out_of_distribution=False)
