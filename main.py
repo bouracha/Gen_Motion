@@ -45,7 +45,6 @@ def main(opt):
     if opt.dataset=='h3.6m':
       print(">>> validation data {}".format(data.val_dataset.__len__()))
 
-
     # define log csv file
     script_name = os.path.basename(__file__).split('.')[0]
     script_name = script_name + "_{}_in{:d}_out{:d}_dctn{:d}_dropout_{}".format(str(opt.dataset), opt.input_n, opt.output_n, opt.dct_n, str(opt.dropout))
@@ -53,7 +52,6 @@ def main(opt):
         script_name = script_name + "_OoD_{}_".format(str(opt.out_of_distribution))
     if opt.variational:
         script_name = script_name + "_var_lambda_{}_nz_{}_lr_{}_n_layers_{}".format(str(opt.lambda_), str(opt.n_z), str(opt.lr), str(opt.num_decoder_stage))
-
 
     print(">>> creating model")
     model = nnmodel.GCN(input_feature=dct_n, hidden_feature=opt.linear_size, p_dropout=opt.dropout,
@@ -63,14 +61,6 @@ def main(opt):
       start_epoch, err_best, lr_now = methods.load_weights(opt.load_path)
     print(">>> total params: {:.2f}M".format(sum(p.numel() for p in model.parameters()) / 1000000.0))
     methods.optimizer = torch.optim.Adam(model.parameters(), lr=opt.lr)
-
-
-
-
-
-
-
-
 
     for epoch in range(start_epoch, opt.epochs):
 
