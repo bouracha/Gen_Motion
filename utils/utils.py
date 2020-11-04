@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 import torch
 import os
+import numpy as np
 
 
 class AccumLoss(object):
@@ -32,10 +33,10 @@ def save_ckpt(state, ckpt_path, is_best=True, file_name=['ckpt_best.pth.tar', 'c
         file_path = os.path.join(ckpt_path, file_name[0])
         torch.save(state, file_path)
 
-def check_is_best(v_e, err_best):
-    if not np.isnan(v_e):
-        is_best = v_e < err_best
-        err_best = min(v_e, err_best)
+def check_is_best(err, err_best):
+    if not np.isnan(err):
+        is_best = err < err_best
+        err_best = min(err, err_best)
     else:
         is_best = False
     return is_best, err_best
