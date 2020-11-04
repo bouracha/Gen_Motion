@@ -36,15 +36,6 @@ def main(opt):
     dct_n = opt.dct_n
     sample_rate = opt.sample_rate
 
-    #####################################################
-    # Define script name
-    #####################################################
-    script_name = os.path.basename(__file__).split('.')[0]
-    script_name = script_name + "_{}_in{:d}_out{:d}_dctn{:d}_dropout_{}".format(str(opt.dataset), opt.input_n, opt.output_n, opt.dct_n, str(opt.dropout))
-    if out_of_distribution:
-        script_name = script_name + "_OoD_{}_".format(str(opt.out_of_distribution))
-    if opt.variational:
-        script_name = script_name + "_var_lambda_{}_nz_{}_lr_{}_n_layers_{}".format(str(opt.lambda_), str(opt.n_z), str(opt.lr), str(opt.num_decoder_stage))
 
     #####################################################
     # Load data
@@ -56,6 +47,16 @@ def main(opt):
     print(">>> train data {}".format(data.train_dataset.__len__()))
     if opt.dataset=='h3.6m':
       print(">>> validation data {}".format(data.val_dataset.__len__()))
+
+    #####################################################
+    # Define script name
+    #####################################################
+    script_name = os.path.basename(__file__).split('.')[0]
+    script_name = script_name + "_{}_in{:d}_out{:d}_dctn{:d}_dropout_{}".format(str(opt.dataset), opt.input_n, opt.output_n, opt.dct_n, str(opt.dropout))
+    if out_of_distribution:
+        script_name = script_name + "_OoD_{}_".format(str(opt.out_of_distribution))
+    if opt.variational:
+        script_name = script_name + "_var_lambda_{}_nz_{}_lr_{}_n_layers_{}".format(str(opt.lambda_), str(opt.n_z), str(opt.lr), str(opt.num_decoder_stage))
 
     ##################################################################
     # Instantiate model, and methods used fro training and valdation
@@ -109,7 +110,7 @@ def main(opt):
         #####################################################
         test_3d_temp = np.array([])
         test_3d_head = np.array([])
-        for act in acts_test:
+        for act in data.acts_test:
             test_e, test_3d = methods.test(test_loaders[act], dataset=opt.dataset, input_n=input_n, output_n=output_n, cartesian=data.cartesian, dim_used=data.train_dataset.dim_used, dct_n=dct_n)
             ret_log = np.append(ret_log, test_e)
             test_3d_temp = np.append(test_3d_temp, test_3d)

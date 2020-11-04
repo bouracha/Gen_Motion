@@ -19,6 +19,8 @@ from utils.cmu_motion_3d import CMU_Motion3D
 import utils.model as nnmodel
 import utils.data_utils as data_utils
 
+from data import DATA
+
 import argparse
 
 parser = argparse.ArgumentParser()
@@ -30,40 +32,20 @@ opt = parser.parse_args()
 
 is_cuda = torch.cuda.is_available()
 
-#Define actions
-acts_train = data_utils.define_actions('all', opt.dataset, out_of_distribution=False)
-acts_test = data_utils.define_actions('all', opt.dataset, out_of_distribution=False)
+#####################################################
+# Load data
+#####################################################
 
-#Read data into input_dct output_dct, all_sequences
-train_dataset = H36motion(path_to_data=opt.data_dir, actions=acts_train, input_n=input_n, output_n=output_n,
-                                split=0, sample_rate=sample_rate, dct_n=dct_n)
-data_std = train_dataset.data_std
-data_mean = train_dataset.data_mean
-val_dataset = H36motion(path_to_data=opt.data_dir, actions=acts_train, input_n=input_n, output_n=output_n,
-                        split=2, sample_rate=sample_rate, data_mean=data_mean, data_std=data_std, dct_n=dct_n)
-train_loader = DataLoader(
-    dataset=train_dataset,
-    batch_size=opt.train_batch,
-    shuffle=True,
-    num_workers=opt.job,
-    pin_memory=True)
-val_loader = DataLoader(
-    dataset=val_dataset,
-    batch_size=opt.test_batch,
-    shuffle=False,
-    num_workers=opt.job,
-    pin_memory=True)
-test_data = dict()
-for act in acts_test:
-    test_dataset = H36motion(path_to_data=opt.data_dir, actions=act, input_n=input_n, output_n=output_n, split=1,
-                             sample_rate=sample_rate, data_mean=data_mean, data_std=data_std, dct_n=dct_n)
-    test_data[act] = DataLoader(
-        dataset=test_dataset,
-        batch_size=opt.test_batch,
-        shuffle=False,
-        num_workers=opt.job,
-        pin_memory=True)
+data = DATA(opt.dataset, opt.data_dir)
+out_of_distribution = data.get_dct_and_sequences(input_n=1, output_n=1, sample_rate=2, dct_n=2, out_of_distribution=None)
+train_loader, val_loader, OoD_val_loader, test_loaders = data.get_dataloaders(train_batch=16, test_batch=128, job=10)
+print(">>> data loaded !")
+print(">>> train data {}".format(data.train_dataset.__len__()))
+if opt.dataset == 'h3.6m':
+    print(">>> validation data {}".format(data.val_dataset.__len__()))
 
+in_dct, out_dct, all_seq = data.train_dataset
+print(all_seq.shape)
 
 
 

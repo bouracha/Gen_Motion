@@ -11,7 +11,7 @@ import numpy as np
 from progress.bar import Bar
 import pandas as pd
 
-
+import utils.data_utils as data_utils
 
 class MODEL_METHODS():
     def __init__(self, architecture, is_cuda):
@@ -183,15 +183,10 @@ class MODEL_METHODS():
 
             if self.is_cuda:
                 inputs = Variable(inputs.cuda()).float()
-                # targets = Variable(targets.cuda(async=True)).float()
                 all_seq = Variable(all_seq.cuda(non_blocking=True)).float()
 
             outputs, reconstructions, log_var, z = self.model(inputs.float())
             n = outputs.shape[0]
-            # outputs = outputs.view(n, -1)
-            # targets = targets.view(n, -1)
-
-            # loss = loss_funcs.sen_loss(outputs, all_seq, dim_used)
 
             n, seq_len, dim_full_len = all_seq.data.shape
             dim_used_len = len(dim_used)
