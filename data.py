@@ -33,7 +33,7 @@ class DATA():
                                           split=0, sample_rate=sample_rate, dct_n=dct_n)
             self.data_std = self.train_dataset.data_std
             self.data_mean = self.train_dataset.data_mean
-            self.dim_used = None
+            self.dim_used = self.train_dataset.dim_used
             self.val_dataset = H36motion(path_to_data=self.data_dir, actions=acts_train, input_n=input_n, output_n=output_n,
                                         split=2, sample_rate=sample_rate, data_mean=self.data_mean, data_std=self.data_std, dct_n=dct_n)
             if self.out_of_distribution:

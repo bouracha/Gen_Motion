@@ -47,12 +47,6 @@ def sen_loss(outputs, all_seq, dim_used, dct_n, inputs, cartesian=False, lambda_
 
         loss = joint_loss + lambda_*(neg_gauss_log_lik + latent_loss)
 
-    #print("\n neg_gauss_log_lik: ", neg_gauss_log_lik)
-    #print("loss: ", loss)
-    #print("Xentropy: ", XEntropy_per_batch)
-    #print("latent loss: ", latent_loss)
-    #print("joint_loss: ", joint_loss)
-
     return loss, joint_loss, neg_gauss_log_lik, latent_loss
 
 
