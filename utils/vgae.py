@@ -10,6 +10,20 @@ import math
 import numpy as np
 from torch.autograd import Variable
 
+class AccumLoss(object):
+    def __init__(self):
+        self.reset()
+
+    def update(self, val, n=1):
+        self.val = val
+        self.sum += val
+        self.count += n
+
+    def reset(self):
+        self.val = 0
+        self.avg = 0
+        self.sum = 0
+        self.count = 0
 
 class FullyConnected(nn.Module):
 
@@ -164,9 +178,15 @@ class VGAE_encoder(nn.Module):
         noise = torch.normal(mean=0, std=1.0, size=gamma.shape).to(torch.device("cuda"))
         z_latent = mu + torch.mul(torch.exp(gamma), noise)
 
-        KL = 0.5 * torch.sum(torch.exp(gamma) + torch.pow(mu, 2) - 1 - gamma, axis=(1, 2))
+        print("z_mu ", mu)
+        print("z_gamma ", gamma)
+        print("e^gamma ", torch.exp(gamma))
+        print("mu^2 ", torch.pow(mu, 2))
+        KL_per_sample = 0.5 * torch.sum(torch.exp(gamma) + torch.pow(mu, 2) - 1 - gamma, axis=(1, 2))
+        self.KL = torch.mean(KL_per_sample)
+        print("KL ", self.KL)
 
-        return z_latent, KL
+        return z_latent
 
 
 class VGAE_decoder(nn.Module):
@@ -240,11 +260,14 @@ class VGAE(nn.Module):
         self.gc1 = GraphConvolution(input_feature, hidden_feature, node_n=node_n)
         self.bn1 = nn.BatchNorm1d(node_n * hidden_feature)
 
+        # Book keeping values
+        self.accum_loss = dict()
+
     def forward(self, x):
-        self.z, self.KL = self.encoder(x)
+        self.z = self.encoder(x)
         self.mu, self.log_var = self.decoder(x)
 
-        return self.mu, self.log_var, self.z, self.KL
+        return self.mu, self.log_var, self.z
 
     def generate(self, z):
         """
@@ -269,12 +292,23 @@ class VGAE(nn.Module):
         assert (t == self.input_feature)
         assert (n == self.node_n)
 
-        self.latent_loss = torch.mean(self.KL)
         self.mse = torch.pow((self.mu - x), 2)
-        self.gauss_log_lik = -0.5 * (self.log_var + np.log(2 * np.pi) + (self.mse / (1e-8 + torch.exp(self.log_var))))
+        self.gauss_log_lik = 0.5 * (self.log_var + np.log(2 * np.pi) + (self.mse / (1e-8 + torch.exp(self.log_var))))
         self.neg_gauss_log_lik = -torch.mean(torch.sum(self.gauss_log_lik, axis=(1, 2)))
-        self.loss = self.neg_gauss_log_lik + self.latent_loss
+        self.VLB = self.neg_gauss_log_lik - self.KL
+        self.loss = -self.VLB
+
         return self.loss
+
+    def accum_update(self, key, val):
+        if key not in self.accum_loss.keys():
+            self.accum_loss[key] = AccumLoss()
+        val = val.cpu().data.numpy()
+        self.accum_loss[key].update(val)
+
+    def accum_reset(self):
+        for key in self.accum_loss.keys():
+            self.accum_loss[key].reset()
 
 
 
