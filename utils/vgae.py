@@ -18,6 +18,7 @@ class AccumLoss(object):
         self.val = val
         self.sum += val
         self.count += n
+        self.avg = self.sum / self.count
 
     def reset(self):
         self.val = 0
@@ -178,15 +179,10 @@ class VGAE_encoder(nn.Module):
         noise = torch.normal(mean=0, std=1.0, size=gamma.shape).to(torch.device("cuda"))
         z_latent = mu + torch.mul(torch.exp(gamma), noise)
 
-        print("z_mu ", mu)
-        print("z_gamma ", gamma)
-        print("e^gamma ", torch.exp(gamma))
-        print("mu^2 ", torch.pow(mu, 2))
         KL_per_sample = 0.5 * torch.sum(torch.exp(gamma) + torch.pow(mu, 2) - 1 - gamma, axis=(1, 2))
-        self.KL = torch.mean(KL_per_sample)
-        print("KL ", self.KL)
+        KL = torch.mean(KL_per_sample)
 
-        return z_latent
+        return z_latent, KL
 
 
 class VGAE_decoder(nn.Module):
@@ -264,8 +260,12 @@ class VGAE(nn.Module):
         self.accum_loss = dict()
 
     def forward(self, x):
-        self.z = self.encoder(x)
-        self.mu, self.log_var = self.decoder(x)
+        b, n, f = x.shape
+        assert(n == self.node_n)
+        assert(f == self.input_feature)
+
+        self.z, self.KL = self.encoder(x)
+        self.mu, self.log_var = self.decoder(self.z)
 
         return self.mu, self.log_var, self.z
 
@@ -293,7 +293,7 @@ class VGAE(nn.Module):
         assert (n == self.node_n)
 
         self.mse = torch.pow((self.mu - x), 2)
-        self.gauss_log_lik = 0.5 * (self.log_var + np.log(2 * np.pi) + (self.mse / (1e-8 + torch.exp(self.log_var))))
+        self.gauss_log_lik = self.mse#0.5 * (self.log_var + np.log(2 * np.pi) + (self.mse / (1e-8 + torch.exp(self.log_var))))
         self.neg_gauss_log_lik = -torch.mean(torch.sum(self.gauss_log_lik, axis=(1, 2)))
         self.VLB = self.neg_gauss_log_lik - self.KL
         self.loss = -self.VLB

@@ -41,18 +41,19 @@ print(">>> validation data {}".format(data.val_dataset.__len__()))
 ##################################################################
 print(">>> creating model")
 model = nnmodel.VGAE(input_feature=1, hidden_feature=256, p_dropout=0,
-                        num_stage=6, node_n=data.node_n, n_z=1)
+                        num_stage=6, node_n=data.node_n, n_z=32)
 if is_cuda:
     model.cuda()
 
 print(">>> total params: {:.2f}M".format(sum(p.numel() for p in model.parameters()) / 1000000.0))
-optimizer = torch.optim.Adam(model.parameters(), lr=0.0000001)
+optimizer = torch.optim.Adam(model.parameters(), lr=0.003)
 
 
-for epoch in range(0, 5):
+for epoch in range(0, 50):
 
     bar = Bar('>>>', fill='>', max=len(train_loader))
     st = time.time()
+    model.train()
     for i, (inputs, targets, all_seq) in enumerate(train_loader):
         bt = time.time()
 
@@ -62,16 +63,15 @@ for epoch in range(0, 5):
         inputs = sequences[:, 0, :]
         inputs = inputs.reshape((b, n, 1))
 
-        model.train()
         if is_cuda:
           inputs = Variable(inputs.cuda()).float()
 
         mu, log_var, z = model(inputs.float())
 
         loss = model.loss_VLB(inputs)
-        print("\n", loss.cpu().data.numpy())
-        print(model.neg_gauss_log_lik.cpu().data.numpy())
-        print(model.latent_loss.cpu().data.numpy())
+        #print("\n", loss.cpu().data.numpy())
+        #print(model.neg_gauss_log_lik.cpu().data.numpy())
+        #print(model.KL.cpu().data.numpy())
 
         optimizer.zero_grad()
         loss.backward()
@@ -79,16 +79,17 @@ for epoch in range(0, 5):
 
         model.accum_update('train_loss', loss) #updates accum_loss['train_loss']
         model.accum_update('train_neg_gauss_log_lik', model.neg_gauss_log_lik)
-        model.accum_update('train_KL', model.latent_loss)
+        model.accum_update('train_KL', model.KL)
         bar.suffix = '{}/{}|batch time {:.4f}s|total time{:.2f}s'.format(i + 1, len(train_loader), time.time() - bt,
                                                                               time.time() - st)
         bar.next()
     bar.finish()
     print("Train: ")
-    print("loss", model.accum_loss['train_loss'])
-    print("neg_gauss_log_lik", model.accum_loss['train_neg_gauss_log_lik'])
-    print("latent_loss", model.accum_loss['train_latent_loss'])
+    print("loss", model.accum_loss['train_loss'].avg)
+    print("neg_gauss_log_lik", model.accum_loss['train_neg_gauss_log_lik'].avg)
+    print("KL", model.accum_loss['train_KL'].avg)
 
+    model.eval()
     for i, (inputs, targets, all_seq) in enumerate(val_loader):
         bt = time.time()
 
@@ -107,14 +108,14 @@ for epoch in range(0, 5):
 
         model.accum_update('val_loss', loss)
         model.accum_update('val_neg_gauss_log_lik', model.neg_gauss_log_lik)
-        model.accum_update('val_KL', model.latent_loss)
+        model.accum_update('val_KL', model.KL)
 
     print("Val: ")
-    print("loss", model.accum_loss['val_loss'])
-    print("neg_gauss_log_lik", model.accum_loss['val_neg_gauss_log_lik'])
-    print("latent_loss", model.accum_loss['val_latent_loss'])
+    print("loss", model.accum_loss['val_loss'].avg)
+    print("neg_gauss_log_lik", model.accum_loss['val_neg_gauss_log_lik'].avg)
+    print("KL", model.accum_loss['val_KL'].avg)
 
-    model.accum_loss.reset()
+    model.accum_reset()
 
 
 
