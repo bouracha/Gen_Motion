@@ -41,12 +41,13 @@ print(">>> validation data {}".format(data.val_dataset.__len__()))
 ##################################################################
 print(">>> creating model")
 model = nnmodel.VGAE(input_feature=1, hidden_feature=256, p_dropout=0,
-                        num_stage=6, node_n=data.node_n, n_z=32)
+                        num_stage=1, node_n=data.node_n, n_z=32)
 if is_cuda:
     model.cuda()
 
 print(">>> total params: {:.2f}M".format(sum(p.numel() for p in model.parameters()) / 1000000.0))
-optimizer = torch.optim.Adam(model.parameters(), lr=0.003)
+lr=0.00003
+optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
 
 for epoch in range(0, 50):
@@ -116,6 +117,14 @@ for epoch in range(0, 50):
     print("KL", model.accum_loss['val_KL'].avg)
 
     model.accum_reset()
+
+    state = {'epoch': epoch + 1,
+                         'lr': lr,
+                         'err':  model.accum_loss['val_loss'].avg,
+                         'state_dict': model.state_dict(),
+                         'optimizer': optimizer.state_dict()}
+    file_path = 'ckpt_' + str(epoch) + '_weights.path.tar'
+    torch.save(state, file_path)
 
 
 

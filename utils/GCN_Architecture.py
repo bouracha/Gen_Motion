@@ -199,7 +199,7 @@ class GCN(nn.Module):
             reconstructions_mu = recon_mu
             reconstructions_log_var = torch.clamp(recon_sigma, min=-20.0, max=3.0)
 
-            self.KL = 0.5 * torch.sum(torch.exp(gamma) + torch.pow(mu, 2) - 1 - gamma, axis=(1,2))
+            self.KL = 0.5 * torch.sum(torch.exp(gamma/2.0) + torch.pow(mu, 2) - 1 - gamma, axis=(1,2))
         else:
             reconstructions_mu = 1
             reconstructions_log_var = 1

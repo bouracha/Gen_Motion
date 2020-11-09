@@ -18,7 +18,7 @@ from matplotlib import pyplot as plt
 from utils import loss_funcs, utils as utils
 from utils.opt import Options
 from utils.h36motion import H36motion
-import utils.model as nnmodel
+import utils.GCN_Architecture as nnmodel
 import utils.data_utils as data_utils
 import utils.viz as viz
 
@@ -74,7 +74,8 @@ def main(opt):
                 inputs = inputs.cuda()
                 all_seq = all_seq.cuda()
 
-            outputs = model(inputs)
+            outputs, _, _, _ = model(inputs)
+            print(outputs.shape)
 
             n, seq_len, dim_full_len = all_seq.data.shape
             dim_used_len = len(dim_used)

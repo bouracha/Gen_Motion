@@ -177,7 +177,7 @@ class VGAE_encoder(nn.Module):
         mu = self.gc_mu(y)
         gamma = self.gc_sigma(y)
         noise = torch.normal(mean=0, std=1.0, size=gamma.shape).to(torch.device("cuda"))
-        z_latent = mu + torch.mul(torch.exp(gamma), noise)
+        z_latent = mu + torch.mul(torch.exp(gamma/2.0), noise)
 
         KL_per_sample = 0.5 * torch.sum(torch.exp(gamma) + torch.pow(mu, 2) - 1 - gamma, axis=(1, 2))
         KL = torch.mean(KL_per_sample)
@@ -211,12 +211,15 @@ class VGAE_decoder(nn.Module):
         self.gc_decoder_mu = GraphConvolution(hidden_feature, output_feature, node_n=node_n)
         self.gc_decoder_sigma = GraphConvolution(hidden_feature, output_feature, node_n=node_n)
 
+        self.fc2_decoder = FullyConnected(8 * 48, 16 * 48)
+
         self.do = nn.Dropout(p_dropout)
         self.act_f = nn.LeakyReLU(0.1)
 
     def forward(self, z_latent):
-        z = self.decoder_gc1(z_latent)
-        b, n, f = z.shape
+        b = z_latent.shape[0]
+        z = z_latent.view(b, self.n_node, self.n_z)
+        z = self.decoder_gc1(z)
         z = self.decoder_bn1(z.view(b, -1)).view(b, n, f)
         z = self.act_f(z)
         z = self.do(z)
@@ -275,11 +278,11 @@ class VGAE(nn.Module):
         :param z: batch of random variables
         :return: batch of generated samples
         """
-        b, n, t = z.shape
-        assert (t == self.input_feature)
+        b, n, n_z = z.shape
+        assert (n_z == self.n_z)
         assert (n == self.node_n)
 
-        mu, log_var = self.decoder(x)
+        mu, log_var = self.decoder(z)
         return mu
 
     def loss_VLB(self, x):
@@ -293,7 +296,7 @@ class VGAE(nn.Module):
         assert (n == self.node_n)
 
         self.mse = torch.pow((self.mu - x), 2)
-        self.gauss_log_lik = self.mse#0.5 * (self.log_var + np.log(2 * np.pi) + (self.mse / (1e-8 + torch.exp(self.log_var))))
+        self.gauss_log_lik = 0.5 * (self.log_var + np.log(2 * np.pi) + (self.mse / (1e-8 + torch.exp(self.log_var))))
         self.neg_gauss_log_lik = -torch.mean(torch.sum(self.gauss_log_lik, axis=(1, 2)))
         self.VLB = self.neg_gauss_log_lik - self.KL
         self.loss = -self.VLB
