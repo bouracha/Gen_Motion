@@ -176,6 +176,7 @@ class VGAE_encoder(nn.Module):
 
         mu = self.gc_mu(y)
         gamma = self.gc_sigma(y)
+        gamma = torch.clamp(gamma, min=-5.0, max=5.0)
         noise = torch.normal(mean=0, std=1.0, size=gamma.shape).to(torch.device("cuda"))
         z_latent = mu + torch.mul(torch.exp(gamma/2.0), noise)
 
@@ -218,8 +219,9 @@ class VGAE_decoder(nn.Module):
 
     def forward(self, z_latent):
         b = z_latent.shape[0]
-        z = z_latent.view(b, self.n_node, self.n_z)
+        z = z_latent.view(b, self.node_n, self.n_z)
         z = self.decoder_gc1(z)
+        b, n, f = z.shape
         z = self.decoder_bn1(z.view(b, -1)).view(b, n, f)
         z = self.act_f(z)
         z = self.do(z)
