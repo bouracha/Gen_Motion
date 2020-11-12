@@ -41,7 +41,7 @@ print(">>> validation data {}".format(data.val_dataset.__len__()))
 ##################################################################
 print(">>> creating model")
 model = nnmodel.VGAE(input_feature=1, hidden_feature=256, p_dropout=0,
-                        num_stage=1, node_n=data.node_n, n_z=32)
+                        num_stage=1, node_n=data.node_n, n_z=32, hybrid=True)
 if is_cuda:
     model.cuda()
 

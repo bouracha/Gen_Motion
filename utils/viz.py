@@ -56,10 +56,10 @@ class Ax3DPose(object):
         self.ax.set_xlabel("x")
         self.ax.set_ylabel("y")
         self.ax.set_zlabel("z")
-        # self.ax.set_axis_off()
+        self.ax.set_axis_off()
         # self.ax.axes.get_xaxis().set_visible(False)
         # self.axes.get_yaxis().set_visible(False)
-        self.ax.legend(loc='lower left')
+        #self.ax.legend(loc='lower left')
         self.ax.view_init(120, -90)
 
     def update(self, gt_channels, pred_channels):

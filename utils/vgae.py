@@ -136,7 +136,7 @@ class GC_Block(nn.Module):
 
 
 class VGAE_encoder(nn.Module):
-    def __init__(self, input_feature, hidden_feature, p_dropout, num_stage=6, node_n=48, n_z=16):
+    def __init__(self, input_feature, hidden_feature, p_dropout, num_stage=6, node_n=48, n_z=16, hybrid=True):
         """
 
         :param input_feature: num of input feature
@@ -149,6 +149,8 @@ class VGAE_encoder(nn.Module):
         self.num_stage = num_stage
         self.input_feature = input_feature
         self.node_n = node_n
+        self.n_z = n_z
+        self.hybrid = hybrid
 
         self.gc1 = GraphConvolution(input_feature, hidden_feature, node_n=node_n)
         self.bn1 = nn.BatchNorm1d(node_n * hidden_feature)
@@ -158,8 +160,12 @@ class VGAE_encoder(nn.Module):
             self.gcbs.append(GC_Block(hidden_feature, p_dropout=p_dropout, node_n=node_n))
         self.gcbs = nn.ModuleList(self.gcbs)
 
-        self.gc_mu = GraphConvolution(hidden_feature, n_z, node_n=node_n)
-        self.gc_sigma = GraphConvolution(hidden_feature, n_z, node_n=node_n)
+        if self.hybrid:
+            self.fc_z_mu = FullyConnected(node_n*hidden_feature, n_z)
+            self.fc_z_sigma = FullyConnected(node_n*hidden_feature, n_z)
+        else:
+            self.gc_mu = GraphConvolution(hidden_feature, n_z, node_n=node_n)
+            self.gc_sigma = GraphConvolution(hidden_feature, n_z, node_n=node_n)
 
         self.do = nn.Dropout(p_dropout)
         self.act_f = nn.LeakyReLU(0.1)
@@ -174,20 +180,31 @@ class VGAE_encoder(nn.Module):
         for i in range(self.num_stage):
             y = self.gcbs[i](y)
 
-        mu = self.gc_mu(y)
-        gamma = self.gc_sigma(y)
+        if self.hybrid:
+            y = y.view(b, n*f)
+            mu = self.fc_z_mu(y)
+            gamma = self.fc_z_sigma(y)
+        else:
+            mu = self.gc_mu(y)
+            gamma = self.gc_sigma(y)
         gamma = torch.clamp(gamma, min=-5.0, max=5.0)
         noise = torch.normal(mean=0, std=1.0, size=gamma.shape).to(torch.device("cuda"))
         z_latent = mu + torch.mul(torch.exp(gamma/2.0), noise)
 
-        KL_per_sample = 0.5 * torch.sum(torch.exp(gamma) + torch.pow(mu, 2) - 1 - gamma, axis=(1, 2))
+        if self.hybrid:
+            assert(z_latent.shape == (b, self.n_z))
+            KL_per_sample = 0.5 * torch.sum(torch.exp(gamma) + torch.pow(mu, 2) - 1 - gamma, axis=1)
+        else:
+            assert(z_latent.shape == (b, n, self.n_z))
+            KL_per_sample = 0.5 * torch.sum(torch.exp(gamma) + torch.pow(mu, 2) - 1 - gamma, axis=(1, 2))
+
         KL = torch.mean(KL_per_sample)
 
         return z_latent, KL
 
 
 class VGAE_decoder(nn.Module):
-    def __init__(self, n_z, output_feature, hidden_feature, p_dropout, num_stage=6, node_n=48):
+    def __init__(self, n_z, output_feature, hidden_feature, p_dropout, num_stage=6, node_n=48, hybrid=True):
         """
 
         :param input_feature: num of input feature
@@ -200,8 +217,13 @@ class VGAE_decoder(nn.Module):
         self.num_stage = num_stage
         self.n_z = n_z
         self.node_n = node_n
+        self.hybrid = hybrid
+        self.hidden_feature = hidden_feature
 
-        self.decoder_gc1 = GraphConvolution(n_z, hidden_feature, node_n=node_n)
+        if self.hybrid:
+            self.decoder_fc = FullyConnected(n_z, node_n * hidden_feature)
+        else:
+            self.decoder_gc1 = GraphConvolution(n_z, hidden_feature, node_n=node_n)
         self.decoder_bn1 = nn.BatchNorm1d(node_n * hidden_feature)
 
         self.decoder_gcbs = []
@@ -212,15 +234,18 @@ class VGAE_decoder(nn.Module):
         self.gc_decoder_mu = GraphConvolution(hidden_feature, output_feature, node_n=node_n)
         self.gc_decoder_sigma = GraphConvolution(hidden_feature, output_feature, node_n=node_n)
 
-        self.fc2_decoder = FullyConnected(8 * 48, 16 * 48)
-
         self.do = nn.Dropout(p_dropout)
         self.act_f = nn.LeakyReLU(0.1)
 
-    def forward(self, z_latent):
-        b = z_latent.shape[0]
-        z = z_latent.view(b, self.node_n, self.n_z)
-        z = self.decoder_gc1(z)
+    def forward(self, z):
+        b = z.shape[0]
+        if self.hybrid:
+            assert(z.shape == (b, self.n_z))
+            z = self.decoder_fc(z)
+            z = z.view(b, self.node_n, self.hidden_feature)
+        else:
+            assert(z.shape == (b, self.node_n, self.hidden_feature))
+            z = self.decoder_gc1(z)
         b, n, f = z.shape
         z = self.decoder_bn1(z.view(b, -1)).view(b, n, f)
         z = self.act_f(z)
@@ -238,7 +263,7 @@ class VGAE_decoder(nn.Module):
 
 
 class VGAE(nn.Module):
-    def __init__(self, input_feature, hidden_feature, p_dropout, num_stage=6, node_n=48, n_z=16):
+    def __init__(self, input_feature, hidden_feature, p_dropout, num_stage=6, node_n=48, n_z=16, hybrid=True):
         """
 
         :param input_feature: num of input feature
@@ -252,11 +277,12 @@ class VGAE(nn.Module):
         self.input_feature = input_feature
         self.node_n = node_n
         self.n_z = n_z
+        self.hybrid = hybrid
 
         self.encoder = VGAE_encoder(input_feature, hidden_feature, p_dropout, num_stage=num_stage, node_n=node_n,
-                                    n_z=self.n_z)
+                                    n_z=self.n_z, hybrid=self.hybrid)
         self.decoder = VGAE_decoder(self.n_z, input_feature, hidden_feature, p_dropout, num_stage=num_stage,
-                                    node_n=node_n)
+                                    node_n=node_n, hybrid=self.hybrid)
 
         self.gc1 = GraphConvolution(input_feature, hidden_feature, node_n=node_n)
         self.bn1 = nn.BatchNorm1d(node_n * hidden_feature)
@@ -265,9 +291,8 @@ class VGAE(nn.Module):
         self.accum_loss = dict()
 
     def forward(self, x):
-        b, n, f = x.shape
-        assert(n == self.node_n)
-        assert(f == self.input_feature)
+        b = x.shape[0]
+        x.shape == (b, self.node_n, self.input_feature)
 
         self.z, self.KL = self.encoder(x)
         self.mu, self.log_var = self.decoder(self.z)
@@ -280,9 +305,10 @@ class VGAE(nn.Module):
         :param z: batch of random variables
         :return: batch of generated samples
         """
-        b, n, n_z = z.shape
-        assert (n_z == self.n_z)
-        assert (n == self.node_n)
+        if self.hybrid:
+            assert(z.shape == (b, self.node_n * self.n_z))
+        else:
+            assert(z.shape == (b, self.node_n, self.n_z))
 
         mu, log_var = self.decoder(z)
         return mu

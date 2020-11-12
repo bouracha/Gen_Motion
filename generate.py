@@ -26,17 +26,22 @@ import utils.vgae as nnmodel
 import utils.viz as viz
 from matplotlib import pyplot as plt
 
+import argparse
+parser = argparse.ArgumentParser()
+parser.add_argument('--ckpt', type=str, default='ckpt_49_weights.path.tar', help='path to saved model')
+opt = parser.parse_args()
+
 is_cuda = torch.cuda.is_available()
 
 print(">>> creating model")
 model = nnmodel.VGAE(input_feature=1, hidden_feature=256, p_dropout=0,
-                        num_stage=1, node_n=48, n_z=32)
+                        num_stage=1, node_n=48, n_z=1)
 print(">>> total params: {:.2f}M".format(sum(p.numel() for p in model.parameters()) / 1000000.0))
 lr=0.00003
 optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 if is_cuda:
     model.cuda()
-    ckpt = torch.load('ckpt_49_weights.path.tar')
+    ckpt = torch.load(opt.ckpt)
 start_epoch = ckpt['epoch']
 err_best = ckpt['err']
 lr_now = ckpt['lr']
@@ -78,20 +83,26 @@ for i, (inputs, targets, all_seq) in enumerate(test_data['walking']):
 model.eval()
 
 #print(y)
-n_samples = 512
-#noise = torch.normal(mean=0, std=1.0, size=(n_samples, 48, 32)).to(torch.device("cuda"))
+n_samples = 128
+n_z = 1
+noise = torch.normal(mean=0, std=1.0, size=(n_samples, 48, n_z)).to(torch.device("cuda"))
 
-noise_const = torch.normal(mean=0, std=1.0, size=(1, 47, 32)).to(torch.device("cuda"))
-noise_const = noise_const.repeat(n_samples, 1, 1)
-print(noise_const.shape)
-noise_var = torch.normal(mean=0, std=1.0, size=(n_samples, 1, 32)).to(torch.device("cuda"))
-noise = torch.cat((noise_const, noise_var), 1)
-print(noise.shape)
+#noise_const = torch.normal(mean=0, std=1.0, size=(1, 47, n_z)).to(torch.device("cuda"))
+#noise_const = noise_const.repeat(n_samples, 1, 1)
+#print(noise_const.shape)
+#noise_var = torch.normal(mean=0, std=1.0, size=(n_samples, 1, n_z)).to(torch.device("cuda"))
+#val = -3
+#for i in range(n_samples):
+#    noise_var[0] = val
+#    val += (6.0/128)
+#noise = torch.cat((noise_const, noise_var), 1)
+#print(noise.shape)
+
 
 for i in range(0, n_samples):
     #print(i)
     z = noise[i, :, :]
-    z = z.reshape(1, 48, 32)
+    z = z.reshape(1, 48, n_z)
 
     y = model.generate(z)
 
