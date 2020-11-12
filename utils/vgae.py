@@ -305,8 +305,9 @@ class VGAE(nn.Module):
         :param z: batch of random variables
         :return: batch of generated samples
         """
+        b = z.shape[0]
         if self.hybrid:
-            assert(z.shape == (b, self.node_n * self.n_z))
+            assert(z.shape == (b, self.n_z))
         else:
             assert(z.shape == (b, self.node_n, self.n_z))
 

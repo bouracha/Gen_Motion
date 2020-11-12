@@ -42,11 +42,13 @@ print(">>> validation data {}".format(data.val_dataset.__len__()))
 print(">>> creating model")
 model = nnmodel.VGAE(input_feature=1, hidden_feature=256, p_dropout=0,
                         num_stage=1, node_n=data.node_n, n_z=32, hybrid=True)
+clipping_value = 1
+torch.nn.utils.clip_grad_norm(model.parameters(), clipping_value)
 if is_cuda:
     model.cuda()
 
 print(">>> total params: {:.2f}M".format(sum(p.numel() for p in model.parameters()) / 1000000.0))
-lr=0.00003
+lr=0.00001
 optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
 
