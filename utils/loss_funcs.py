@@ -42,7 +42,7 @@ def sen_loss(outputs, all_seq, dim_used, dct_n, inputs, cartesian=False, lambda_
     else:
         latent_loss = torch.mean(KL)
         mse = torch.pow((reconstructions - inputs), 2)
-        gauss_log_lik = -0.5*(log_var + np.log(2*np.pi) + (mse/(1e-8 + torch.exp(log_var))))
+        gauss_log_lik = -mse#0.5*(log_var + np.log(2*np.pi) + (mse/(1e-8 + torch.exp(log_var))))
         neg_gauss_log_lik = -torch.mean(torch.sum(gauss_log_lik, axis=(1, 2)))
 
         loss = joint_loss + lambda_*(neg_gauss_log_lik + latent_loss)

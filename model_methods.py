@@ -18,7 +18,7 @@ class MODEL_METHODS():
         self.model = architecture
         self.is_cuda = is_cuda
         clipping_value = 1
-        torch.nn.utils.clip_grad_norm(self.model.parameters(), clipping_value)
+        torch.nn.utils.clip_grad_norm_(self.model.parameters(), clipping_value)
         if is_cuda:
             self.model.cuda()
 

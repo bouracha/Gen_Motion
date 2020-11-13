@@ -53,7 +53,7 @@ optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
 
 for epoch in range(0, 50):
-
+    print("Epoch: ", epoch+1)
     bar = Bar('>>>', fill='>', max=len(train_loader))
     st = time.time()
     model.train()

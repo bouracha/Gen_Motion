@@ -147,10 +147,13 @@ class GCN(nn.Module):
 
         self.variational = variational
         if variational:
-            self.gc_mu = GraphConvolution(hidden_feature, n_z, node_n=node_n)
-            self.gc_sigma = GraphConvolution(hidden_feature, n_z, node_n=node_n)
+            self.fc_z_mu = FullyConnected(node_n*hidden_feature, n_z)
+            self.fc_z_sigma = FullyConnected(node_n*hidden_feature, n_z)
+            #self.gc_mu = GraphConvolution(hidden_feature, n_z, node_n=node_n)
+            #self.gc_sigma = GraphConvolution(hidden_feature, n_z, node_n=node_n)
 
-            self.decoder_gc1 = GraphConvolution(n_z, hidden_feature, node_n=node_n)
+            self.fc_decoder = FullyConnected(n_z, node_n * hidden_feature)
+            #self.decoder_gc1 = GraphConvolution(n_z, hidden_feature, node_n=node_n)
             self.decoder_bn1 = nn.BatchNorm1d(node_n * hidden_feature)
 
             self.decoder_gcbs = []
@@ -180,12 +183,18 @@ class GCN(nn.Module):
 
         self.KL = None
         if self.variational:
-            mu = self.gc_mu(y)
-            gamma = self.gc_sigma(y)
+            y = y.view(b, n*f)
+            mu = self.fc_z_mu(y)
+            gamma = self.fc_z_sigma(y)
+            #mu = self.gc_mu(y)
+            #gamma = self.gc_sigma(y)
+            gamma = torch.clamp(gamma, min=-5.0, max=5.0)
             noise = torch.normal(mean=0, std=1.0, size=gamma.shape).to(torch.device("cuda"))
             z_latent = mu + torch.mul(torch.exp(gamma), noise)
 
-            z = self.decoder_gc1(z_latent)
+            z = self.fc_decoder(z_latent)
+            z = z.view(b, n, f)
+            #z = self.decoder_gc1(z_latent)
             b, n, f = z.shape
             z = self.decoder_bn1(z.view(b, -1)).view(b, n, f)
             z = self.act_f(z)
