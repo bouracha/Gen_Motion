@@ -174,7 +174,6 @@ class VGAE_encoder(nn.Module):
             self.gc_down_2 = GraphConvolution(hidden_feature, out_hidden_feature, node_n=node_n, out_node_n=out_node_n)
             self.bn_down_2 = nn.BatchNorm1d(out_node_n * out_hidden_feature)
             node_n = out_node_n
-            #out_node_n = 2
             hidden_feature = out_hidden_feature
             #out_hidden_feature = n_z
             #self.gc_mu = GraphConvolution(hidden_feature, out_hidden_feature, node_n=node_n, out_node_n=out_node_n)

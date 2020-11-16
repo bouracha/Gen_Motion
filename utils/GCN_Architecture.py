@@ -48,12 +48,14 @@ class GraphConvolution(nn.Module):
     adapted from : https://github.com/tkipf/gcn/blob/92600c39797c2bfb61a508e52b88fb554df30177/gcn/layers.py#L132
     """
 
-    def __init__(self, in_features, out_features, bias=True, node_n=48):
+    def __init__(self, in_features, out_features, bias=True, node_n=48, out_node_n=None):
         super(GraphConvolution, self).__init__()
+        if out_node_n is None:
+            out_node_n = node_n
         self.in_features = in_features
         self.out_features = out_features
         self.weight = Parameter(torch.FloatTensor(in_features, out_features))
-        self.att = Parameter(torch.FloatTensor(node_n, node_n))
+        self.att = Parameter(torch.FloatTensor(out_node_n, node_n))
         if bias:
             self.bias = Parameter(torch.FloatTensor(out_features))
         else:
@@ -167,8 +169,8 @@ class GCN(nn.Module):
         self.gc7 = GraphConvolution(hidden_feature, input_feature, node_n=self.node_n)
 
         self.do = nn.Dropout(p_dropout)
-        # self.act_f = nn.Tanh()
-        self.act_f = nn.LeakyReLU(0.1)
+        self.act_f = nn.Tanh()
+        #self.act_f = nn.LeakyReLU(0.1)
         self.normalised_act_f = nn.Sigmoid()
 
     def forward(self, x):
@@ -191,7 +193,7 @@ class GCN(nn.Module):
             #gamma = self.gc_sigma(y)
             gamma = torch.clamp(gamma, min=-5.0, max=5.0)
             noise = torch.normal(mean=0, std=1.0, size=gamma.shape).to(torch.device("cuda"))
-            z_latent = mu + torch.mul(torch.exp(gamma), noise)
+            z_latent = mu + torch.mul(torch.exp(gamma/2.0), noise)
 
             z = self.fc_decoder(z_latent)
             z = z.view(b, n, f)
@@ -209,8 +211,8 @@ class GCN(nn.Module):
             reconstructions_mu = recon_mu
             reconstructions_log_var = torch.clamp(recon_sigma, min=-20.0, max=3.0)
 
-            self.KL = 0.5 * torch.sum(torch.exp(gamma/2.0) + torch.pow(mu, 2) - 1 - gamma, axis=1)
-            #self.KL = 0.5 * torch.sum(torch.exp(gamma/2.0) + torch.pow(mu, 2) - 1 - gamma, axis=(1,2))
+            self.KL = 0.5 * torch.sum(torch.exp(gamma) + torch.pow(mu, 2) - 1 - gamma, axis=1)
+            #self.KL = 0.5 * torch.sum(torch.exp(gamma) + torch.pow(mu, 2) - 1 - gamma, axis=(1,2))
         else:
             reconstructions_mu = 1
             reconstructions_log_var = 1
