@@ -183,9 +183,10 @@ class GCN(nn.Module):
 
         self.KL = None
         if self.variational:
-            y = y.view(b, n*f)
-            mu = self.fc_z_mu(y)
-            gamma = self.fc_z_sigma(y)
+            y_gen = y.clone()
+            y_gen = y_gen.view(b, n*f)
+            mu = self.fc_z_mu(y_gen)
+            gamma = self.fc_z_sigma(y_gen)
             #mu = self.gc_mu(y)
             #gamma = self.gc_sigma(y)
             gamma = torch.clamp(gamma, min=-5.0, max=5.0)
@@ -208,7 +209,8 @@ class GCN(nn.Module):
             reconstructions_mu = recon_mu
             reconstructions_log_var = torch.clamp(recon_sigma, min=-20.0, max=3.0)
 
-            self.KL = 0.5 * torch.sum(torch.exp(gamma/2.0) + torch.pow(mu, 2) - 1 - gamma, axis=(1,2))
+            self.KL = 0.5 * torch.sum(torch.exp(gamma/2.0) + torch.pow(mu, 2) - 1 - gamma, axis=1)
+            #self.KL = 0.5 * torch.sum(torch.exp(gamma/2.0) + torch.pow(mu, 2) - 1 - gamma, axis=(1,2))
         else:
             reconstructions_mu = 1
             reconstructions_log_var = 1
