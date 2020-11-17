@@ -75,7 +75,7 @@ class DATA():
                                             output_n=output_n, split=1, data_mean=self.data_mean, data_std=self.data_std, dim_used=self.dim_used, dct_n=dct_n)
         else:
             raise Exception("Dataset name ({}) is not valid!".format(dataset))
-        return None
+        return self.out_of_distribution
 
     def get_dataloaders(self, train_batch, test_batch, job):
         # load dadasets for training
