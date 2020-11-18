@@ -191,7 +191,7 @@ class GCN(nn.Module):
             gamma = self.fc_z_sigma(y_gen)
             #mu = self.gc_mu(y)
             #gamma = self.gc_sigma(y)
-            gamma = torch.clamp(gamma, min=-5.0, max=5.0)
+            gamma = torch.clamp(gamma, min=-20.0, max=3.0)
             noise = torch.normal(mean=0, std=1.0, size=gamma.shape).to(torch.device("cuda"))
             z_latent = mu + torch.mul(torch.exp(gamma/2.0), noise)
 
