@@ -16,7 +16,7 @@ from utils.opt import Options
 from utils.h36motion import H36motion
 from utils.cmu_motion import CMU_Motion
 from utils.cmu_motion_3d import CMU_Motion3D
-import utils.model as nnmodel
+import utils.GCN_Architecture as nnmodel
 import utils.data_utils as data_utils
 
 import argparse
@@ -47,7 +47,7 @@ elif opt.dataset == 'cmu_mocap':
     n_z = 512
 
 model = nnmodel.GCN(input_feature=dct_n, hidden_feature=256, p_dropout=0.3,
-                    num_stage=12, node_n=node_n, variational=True, n_z=8, num_decoder_stage=6)
+                    num_stage=12, node_n=node_n, variational=True, n_z=32, num_decoder_stage=6)
 if is_cuda:
     model.cuda()
 print(">>> total params: {:.2f}M".format(sum(p.numel() for p in model.parameters()) / 1000000.0))
