@@ -21,7 +21,7 @@ import utils.data_utils as data_utils
 
 from data import DATA
 
-import utils.vgae as nnmodel
+import models.VGAE as nnmodel
 
 
 is_cuda = torch.cuda.is_available()

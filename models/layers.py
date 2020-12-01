@@ -1,6 +1,7 @@
 import torch.nn as nn
 import torch
-
+from torch.nn.parameter import Parameter
+import math
 
 class FullyConnected(nn.Module):
 
