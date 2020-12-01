@@ -7,8 +7,8 @@ import torch.nn as nn
 import torch
 
 from models.utils import *
-from model.encoders import VGAE_Encoder
-from model.decoders import VGAE_Decoder
+from models.encoders import VGAE_Encoder
+from models.decoders import VGAE_Decoder
 
 
 
