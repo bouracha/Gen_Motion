@@ -11,7 +11,7 @@ import numpy as np
 from progress.bar import Bar
 import pandas as pd
 
-from utils import loss_funcs, utils as utils
+from utils import utils as utils
 from utils.opt import Options
 from utils.h36motion import H36motion
 from utils.cmu_motion import CMU_Motion

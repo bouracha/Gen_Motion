@@ -15,7 +15,7 @@ from progress.bar import Bar
 import pandas as pd
 from matplotlib import pyplot as plt
 
-from utils import loss_funcs, utils as utils
+from utils import utils as utils
 from utils.opt import Options
 from utils.h36motion import H36motion
 import utils.GCN_Architecture as nnmodel
