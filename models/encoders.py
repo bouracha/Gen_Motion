@@ -3,6 +3,54 @@ import torch
 
 from models.layers import *
 
+class VAE_Encoder(nn.Module):
+    def __init__(self, layers = [48, 100, 50, 2], variational=False, device="cuda"):
+        """
+
+        :param input_feature: num of input feature
+        :param hidden_feature: num of hidden feature
+        :param p_dropout: drop out prob.
+        :param num_stage: number of residual blocks
+        :param node_n: number of nodes in graph
+        """
+        super(VAE_Encoder, self).__init__()
+        self.variational = variational
+        self.device = device
+
+        self.n_x = layers[0]
+        self.n_z = layers[-1]
+        self.layers = np.array(layers)
+        self.n_layers = self.layers.shape[0]-1
+
+        self.fc_layers = []
+        for i in range(self.n_layers-1):
+            self.fc_layers.append(FullyConnected(self.layers[i], self.layers[i+1]))
+
+        self.z_mu = FullyConnected(self.layers[-2], n_z)
+        self.z_log_var_squared = FullyConnected(self.layers[-2], n_z)
+
+        self.act_f = nn.LeakyReLU(0.1)
+
+    def forward(self, x):
+        y = x
+        for i in range(self.n_layers-2):
+            y = self.fc_layers[i](y)
+            y = self.act_f(y)
+
+        mu = self.z_mu(y)
+        log_var_squared = self.z_log_var_squared(y)
+
+        log_var_squared = torch.clamp(log_var_squared, min=-20.0, max=3.0)
+        noise = torch.normal(mean=0, std=1.0, size=gamma.shape).to(torch.device(self.device))
+
+        z = mu + torch.mul(torch.exp(log_var_squared / 2.0), noise)
+
+        KL_per_sample = 0.5 * torch.sum(torch.exp(log_var_squared) + torch.pow(mu, 2) - 1 - log_var_squared , axis=1)
+        KL = torch.mean(KL_per_sample)
+
+        return mu, z, KL
+
+
 class VGAE_Encoder(nn.Module):
     def __init__(self, input_feature, hidden_feature, p_dropout, num_stage=6, node_n=48, n_z=16, hybrid=True):
         """
@@ -13,7 +61,7 @@ class VGAE_Encoder(nn.Module):
         :param num_stage: number of residual blocks
         :param node_n: number of nodes in graph
         """
-        super(VGAE_encoder, self).__init__()
+        super(VGAE_Encoder, self).__init__()
         self.num_stage = num_stage
         self.input_feature = input_feature
         self.node_n = node_n

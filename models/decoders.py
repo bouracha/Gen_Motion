@@ -3,6 +3,44 @@ import torch
 
 from models.layers import *
 
+class VAE_Decoder(nn.Module):
+    def __init__(self, layers = [2, 50, 100, 48], device="cuda"):
+        """
+
+        :param input_feature: num of input feature
+        :param hidden_feature: num of hidden feature
+        :param p_dropout: drop out prob.
+        :param num_stage: number of residual blocks
+        :param node_n: number of nodes in graph
+        """
+        super(VAE_Decoder, self).__init__()
+        self.device = device
+
+        self.n_x = layers[-1]
+        self.n_z = layers[0]
+        self.layers = np.array(layers)
+        self.n_layers = self.layers.shape[0]-1
+
+        self.fc_layers = []
+        for i in range(self.n_layers - 1):
+            self.fc_layers.append(FullyConnected(self.layers[i], self.layers[i + 1]))
+
+        self.reconstructions_mu = FullyConnected(self.layers[-2], self.n_x)
+
+        self.act_f = nn.LeakyReLU(0.1)
+
+    def forward(self, x):
+        y = x
+        for i in range(self.n_layers - 2):
+            y = self.fc_layers[i](y)
+            y = self.act_f(y)
+
+        reconstructions_mu = self.reconstructions_mu(y)
+
+        return reconstructions_mu
+
+
+
 class VGAE_Decoder(nn.Module):
     def __init__(self, n_z, output_feature, hidden_feature, p_dropout, num_stage=6, node_n=48, hybrid=True):
         """

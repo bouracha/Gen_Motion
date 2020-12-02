@@ -7,12 +7,11 @@ import torch.nn as nn
 import torch
 
 from models.utils import *
-from models.encoders import VGAE_Encoder
-from models.decoders import VGAE_Decoder
+from models.encoders import VAE_Encoder
+from models.decoders import VAE_Decoder
 
-
-class VGAE(nn.Module):
-    def __init__(self, input_feature, hidden_feature, p_dropout, num_stage=6, node_n=48, n_z=16, hybrid=True):
+class VAE(nn.Module):
+    def __init__(self, encoder_layers=[48, 100, 50, 2],  decoder_layers = [2, 50, 100, 48], variational=False, device="cuda"):
         """
 
         :param input_feature: num of input feature
@@ -22,28 +21,26 @@ class VGAE(nn.Module):
         :param node_n: number of nodes in graph
         """
         super(VGAE, self).__init__()
-        self.num_stage = num_stage
-        self.input_feature = input_feature
-        self.node_n = node_n
-        self.n_z = n_z
-        self.hybrid = hybrid
+        self.n_x = encoder_layers[0]
+        self.n_z = encoder_layers[-1]
+        assert(self.n_x == decoder_layers[-1])
+        assert(self.n_z == decoder_layers[0])
 
-        self.encoder = VGAE_Encoder(input_feature, hidden_feature, p_dropout, num_stage=num_stage, node_n=node_n,
-                                    n_z=self.n_z, hybrid=self.hybrid)
-        self.decoder = VGAE_Decoder(self.n_z, input_feature, hidden_feature, p_dropout, num_stage=num_stage,
-                                    node_n=node_n, hybrid=self.hybrid)
+        self.encoder = VAE_Encoder(layers=encoder_layers, variational=variational, device=device)
+        self.decoder = VAE_Decoder(layers=decoder_layers, device=device)
 
         # Book keeping values
         self.accum_loss = dict()
 
     def forward(self, x):
-        b = x.shape[0]
-        x.shape == (b, self.node_n, self.input_feature)
+        """
+        :param x: batch of samples
+        :return: reconstructions and latent value
+        """
+        self.mu, self.z, self.KL = self.encoder(x)
+        self.reconstructions_mu = self.decoder(self.z)
 
-        self.z, self.KL = self.encoder(x)
-        self.mu, self.log_var = self.decoder(self.z)
-
-        return self.mu, self.log_var, self.z
+        return self.reconstructions_mu
 
     def generate(self, z):
         """
@@ -51,10 +48,9 @@ class VGAE(nn.Module):
         :param z: batch of random variables
         :return: batch of generated samples
         """
-        b = z.shape[0]
 
-        mu, log_var = self.decoder(z)
-        return mu
+        reconstructions_mu = self.decoder(z)
+        return reconstructions_mu
 
     def loss_VLB(self, x):
         """
@@ -62,12 +58,11 @@ class VGAE(nn.Module):
         :param x: batch of inputs
         :return: loss of reconstructions
         """
-        b, n, t = x.shape
-        assert (t == self.input_feature)
-        assert (n == self.node_n)
+        b_n, x_n = x.shape
+        assert(x_n == self.x_n)
 
         self.mse = torch.pow((self.mu - x), 2)
-        self.gauss_log_lik = self.mse#0.5 * (self.log_var + np.log(2 * np.pi) + (self.mse / (1e-8 + torch.exp(self.log_var))))
+        self.gauss_log_lik = self.mse #0.5 * (self.log_var + np.log(2 * np.pi) + (self.mse / (1e-8 + torch.exp(self.log_var))))
         self.neg_gauss_log_lik = -torch.mean(torch.sum(self.gauss_log_lik, axis=(1, 2)))
         self.VLB = self.neg_gauss_log_lik - self.KL
         self.loss = -self.VLB
@@ -83,4 +78,3 @@ class VGAE(nn.Module):
     def accum_reset(self):
         for key in self.accum_loss.keys():
             self.accum_loss[key].reset()
-
