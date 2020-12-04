@@ -5,8 +5,9 @@ from models.layers import *
 
 import numpy as np
 
+
 class VAE_Encoder(nn.Module):
-    def __init__(self, layers = [48, 100, 50, 2], variational=False, device="cuda"):
+    def __init__(self, layers=[48, 100, 50, 2], variational=False, device="cuda"):
         """
 
         :param input_feature: num of input feature
@@ -22,33 +23,37 @@ class VAE_Encoder(nn.Module):
         self.n_x = layers[0]
         self.n_z = layers[-1]
         self.layers = np.array(layers)
-        self.n_layers = self.layers.shape[0]-1
+        self.n_layers = self.layers.shape[0] - 1
 
         self.fc_layers = []
-        for i in range(self.n_layers-1):
-            self.fc_layers.append(FullyConnected(self.layers[i], self.layers[i+1]))
+        for i in range(self.n_layers - 1):
+            self.fc_layers.append(FullyConnected(self.layers[i], self.layers[i + 1]))
+        self.fc_layers = nn.ModuleList(self.fc_layers)
 
         self.z_mu = FullyConnected(self.layers[-2], self.n_z)
-        self.z_log_var_squared = FullyConnected(self.layers[-2], self.n_z)
+        if self.variational:
+            self.z_log_var_squared = FullyConnected(self.layers[-2], self.n_z)
 
         self.act_f = nn.LeakyReLU(0.1)
 
     def forward(self, x):
         y = x
-        for i in range(self.n_layers-2):
+        for i in range(self.n_layers - 1):
             y = self.fc_layers[i](y)
             y = self.act_f(y)
 
         mu = self.z_mu(y)
-        log_var_squared = self.z_log_var_squared(y)
+        if self.variational:
+            log_var_squared = self.z_log_var_squared(y)
+            log_var_squared = torch.clamp(log_var_squared, min=-20.0, max=3.0)
+            noise = torch.normal(mean=0, std=1.0, size=log_var_squared.shape).to(torch.device(self.device))
+            z = mu + torch.mul(torch.exp(log_var_squared / 2.0), noise)
 
-        log_var_squared = torch.clamp(log_var_squared, min=-20.0, max=3.0)
-        noise = torch.normal(mean=0, std=1.0, size=gamma.shape).to(torch.device(self.device))
-
-        z = mu + torch.mul(torch.exp(log_var_squared / 2.0), noise)
-
-        KL_per_sample = 0.5 * torch.sum(torch.exp(log_var_squared) + torch.pow(mu, 2) - 1 - log_var_squared , axis=1)
-        KL = torch.mean(KL_per_sample)
+            KL_per_sample = 0.5 * torch.sum(torch.exp(log_var_squared) + torch.pow(mu, 2) - 1 - log_var_squared, axis=1)
+            KL = torch.mean(KL_per_sample)
+        else:
+            z = mu
+            KL = None
 
         return mu, z, KL
 
@@ -91,11 +96,11 @@ class VGAE_Encoder(nn.Module):
             self.bn_down_2 = nn.BatchNorm1d(out_node_n * out_hidden_feature)
             node_n = out_node_n
             hidden_feature = out_hidden_feature
-            #out_hidden_feature = n_z
-            #self.gc_mu = GraphConvolution(hidden_feature, out_hidden_feature, node_n=node_n, out_node_n=out_node_n)
-            #self.gc_sigma = GraphConvolution(hidden_feature, out_hidden_feature, node_n=node_n, out_node_n=out_node_n)
-            self.fc_z_mu = FullyConnected(node_n*hidden_feature, n_z)
-            self.fc_z_sigma = FullyConnected(node_n*hidden_feature, n_z)
+            # out_hidden_feature = n_z
+            # self.gc_mu = GraphConvolution(hidden_feature, out_hidden_feature, node_n=node_n, out_node_n=out_node_n)
+            # self.gc_sigma = GraphConvolution(hidden_feature, out_hidden_feature, node_n=node_n, out_node_n=out_node_n)
+            self.fc_z_mu = FullyConnected(node_n * hidden_feature, n_z)
+            self.fc_z_sigma = FullyConnected(node_n * hidden_feature, n_z)
         else:
             self.gc_mu = GraphConvolution(hidden_feature, n_z, node_n=node_n)
             self.gc_sigma = GraphConvolution(hidden_feature, n_z, node_n=node_n)
@@ -134,14 +139,14 @@ class VGAE_Encoder(nn.Module):
             gamma = self.gc_sigma(y)
         gamma = torch.clamp(gamma, min=-5.0, max=5.0)
         noise = torch.normal(mean=0, std=1.0, size=gamma.shape).to(torch.device("cuda"))
-        z_latent = mu + torch.mul(torch.exp(gamma/2.0), noise)
+        z_latent = mu + torch.mul(torch.exp(gamma / 2.0), noise)
 
-        #if self.hybrid:
+        # if self.hybrid:
         #    assert(z_latent.shape == (b, self.n_z))
         KL_per_sample = 0.5 * torch.sum(torch.exp(gamma) + torch.pow(mu, 2) - 1 - gamma, axis=1)
-        #else:
-        #assert(z_latent.shape == (b, n, self.n_z))
-        #KL_per_sample = 0.5 * torch.sum(torch.exp(gamma) + torch.pow(mu, 2) - 1 - gamma, axis=(1, 2))
+        # else:
+        # assert(z_latent.shape == (b, n, self.n_z))
+        # KL_per_sample = 0.5 * torch.sum(torch.exp(gamma) + torch.pow(mu, 2) - 1 - gamma, axis=(1, 2))
 
         KL = torch.mean(KL_per_sample)
 

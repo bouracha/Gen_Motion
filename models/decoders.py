@@ -24,8 +24,9 @@ class VAE_Decoder(nn.Module):
         self.n_layers = self.layers.shape[0]-1
 
         self.fc_layers = []
-        for i in range(self.n_layers - 1):
+        for i in range(self.n_layers-1):
             self.fc_layers.append(FullyConnected(self.layers[i], self.layers[i + 1]))
+        self.fc_layers = nn.ModuleList(self.fc_layers)
 
         self.reconstructions_mu = FullyConnected(self.layers[-2], self.n_x)
 
@@ -33,7 +34,7 @@ class VAE_Decoder(nn.Module):
 
     def forward(self, x):
         y = x
-        for i in range(self.n_layers - 2):
+        for i in range(self.n_layers-1):
             y = self.fc_layers[i](y)
             y = self.act_f(y)
 
@@ -53,7 +54,7 @@ class VGAE_Decoder(nn.Module):
         :param num_stage: number of residual blocks
         :param node_n: number of nodes in graph
         """
-        super(VGAE_decoder, self).__init__()
+        super(VGAE_Decoder, self).__init__()
         self.num_stage = num_stage
         self.n_z = n_z
         self.node_n = node_n
