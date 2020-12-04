@@ -72,3 +72,60 @@ class H36motion(Dataset):
 
     def __getitem__(self, item):
         return self.input_dct_seq[item], self.output_dct_seq[item], self.all_seqs[item]
+
+class H36motion_pose(Dataset):
+
+    def __init__(self, path_to_data, actions, input_n=10, output_n=10, dct_n=20, split=0, sample_rate=2, data_mean=0,
+                 data_std=0):
+        """
+        read h36m data to get the dct coefficients.
+        :param path_to_data:
+        :param actions: actions to read
+        :param input_n: past frame length
+        :param output_n: future frame length
+        :param dct_n: number of dct coeff. used
+        :param split: 0 train, 1 test, 2 validation
+        :param sample_rate: 2
+        :param data_mean: mean of expmap
+        :param data_std: standard deviation of expmap
+        """
+
+        self.path_to_data = path_to_data
+        self.split = split
+        subs = np.array([[1, 6, 7, 8, 9], [5], [11]])
+
+        acts = data_utils.define_actions(actions)
+
+        # subs = np.array([[1], [5], [11]])
+        # acts = ['walking']
+
+        subjs = subs[split]
+        all_seqs, dim_ignore, dim_use, data_mean, data_std = data_utils.load_data(path_to_data, subjs, acts,
+                                                                                  sample_rate,
+                                                                                  1,
+                                                                                  data_mean=data_mean,
+                                                                                  data_std=data_std,
+                                                                                  input_n=1)
+
+        self.data_mean = data_mean
+        self.data_std = data_std
+
+        self.max = np.max(all_seqs)
+        self.min = np.min(all_seqs)
+
+        # first 6 elements are global translation and global rotation
+        dim_used = dim_use[6:]
+        self.all_seqs = all_seqs
+        self.dim_used = dim_used
+
+        m = self.all_seqs.shape[0]
+        n = self.all_seqs.shape[-1]
+        self.all_seqs = self.all_seqs.reshape((m, n))
+        #print("all seq_shape ", self.all_seqs.shape)
+        self.all_seqs = self.all_seqs[:, dim_used]
+
+    def __len__(self):
+        return self.all_seqs.shape[0]
+
+    def __getitem__(self, item):
+        return self.all_seqs[item]

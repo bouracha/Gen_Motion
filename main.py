@@ -30,7 +30,7 @@ is_cuda = torch.cuda.is_available()
 # Load data
 #####################################################
 data = DATA("h3.6m", "h3.6m/dataset/")
-out_of_distribution = data.get_dct_and_sequences(input_n=1, output_n=1, sample_rate=2, dct_n=2, out_of_distribution_action=None)
+out_of_distribution = data.get_poses(input_n=1, output_n=1, sample_rate=2, dct_n=2, out_of_distribution_action=None)
 train_loader, val_loader, OoD_val_loader, test_loaders = data.get_dataloaders(train_batch=16, test_batch=128, job=10)
 print(">>> data loaded !")
 print(">>> train data {}".format(data.train_dataset.__len__()))
@@ -40,11 +40,12 @@ print(">>> validation data {}".format(data.val_dataset.__len__()))
 # Instantiate model, and methods used fro training and valdation
 ##################################################################
 print(">>> creating model")
-model = nnmodel.VAE(encoder_layers=[48, 100, 50, 2],  decoder_layers = [2, 50, 100, 48], variational=False, device="cuda")
+model = nnmodel.VAE(encoder_layers=[48, 100, 50, 2],  decoder_layers = [2, 50, 100, 48], variational=True, device="cuda")
 clipping_value = 1
 torch.nn.utils.clip_grad_norm(model.parameters(), clipping_value)
 if is_cuda:
     model.cuda()
+print(model)
 
 print(">>> total params: {:.2f}M".format(sum(p.numel() for p in model.parameters()) / 1000000.0))
 lr=0.00001
@@ -53,58 +54,19 @@ optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
 for epoch in range(0, 50):
     print("Epoch: ", epoch+1)
-    bar = Bar('>>>', fill='>', max=len(train_loader))
-    st = time.time()
-    model.train()
-    for i, (inputs, targets, all_seq) in enumerate(train_loader):
-        bt = time.time()
 
-        sequences = all_seq[:, :, data.train_dataset.dim_used]
-        b, l, n = sequences.shape
-        inputs = sequences.view(b, n, l)
-        inputs = sequences[:, 0, :]
-        inputs = inputs.reshape((b, n))
-
-        if is_cuda:
-          inputs = Variable(inputs.cuda()).float()
-
-        mu, log_var, z = model(inputs.float())
-
-        loss = model.loss_VLB(inputs)
-        #print("\n", loss.cpu().data.numpy())
-        #print(model.neg_gauss_log_lik.cpu().data.numpy())
-        #print(model.KL.cpu().data.numpy())
-
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-
-        model.accum_update('train_loss', loss) #updates accum_loss['train_loss']
-        model.accum_update('train_neg_gauss_log_lik', model.neg_gauss_log_lik)
-        model.accum_update('train_KL', model.KL)
-        bar.suffix = '{}/{}|batch time {:.4f}s|total time{:.2f}s'.format(i + 1, len(train_loader), time.time() - bt,
-                                                                              time.time() - st)
-        bar.next()
-    bar.finish()
-    print("Train: ")
-    print("loss", model.accum_loss['train_loss'].avg)
-    print("neg_gauss_log_lik", model.accum_loss['train_neg_gauss_log_lik'].avg)
-    print("KL", model.accum_loss['train_KL'].avg)
+    model.train_epoch(train_loader, optimizer)
 
     model.eval()
-    for i, (inputs, targets, all_seq) in enumerate(val_loader):
+    for i, (all_seq) in enumerate(val_loader):
         bt = time.time()
 
-        sequences = all_seq[:, :, data.train_dataset.dim_used]
-        b, l, n = sequences.shape
-        inputs = sequences.view(b, n, l)
-        inputs = sequences[:, 0, :]
-        inputs = inputs.reshape((b, n, 1))
+        inputs = all_seq
 
         if is_cuda:
           inputs = Variable(inputs.cuda()).float()
 
-        mu, log_var, z = model(inputs.float())
+        mu = model(inputs.float())
 
         loss = model.loss_VLB(inputs)
 

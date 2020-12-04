@@ -5,7 +5,6 @@ from models.layers import *
 
 import numpy as np
 
-
 class VAE_Encoder(nn.Module):
     def __init__(self, layers=[48, 100, 50, 2], variational=False, device="cuda"):
         """

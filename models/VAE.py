@@ -10,6 +10,10 @@ from models.utils import *
 from models.encoders import VAE_Encoder
 from models.decoders import VAE_Decoder
 
+from progress.bar import Bar
+import time
+from torch.autograd import Variable
+
 class VAE(nn.Module):
     def __init__(self, encoder_layers=[48, 100, 50, 2],  decoder_layers = [2, 50, 100, 48], variational=False, device="cuda"):
         """
@@ -25,6 +29,7 @@ class VAE(nn.Module):
         self.n_z = encoder_layers[-1]
         assert(self.n_x == decoder_layers[-1])
         assert(self.n_z == decoder_layers[0])
+        self.device = device
 
         self.encoder = VAE_Encoder(layers=encoder_layers, variational=variational, device=device)
         self.decoder = VAE_Decoder(layers=decoder_layers, device=device)
@@ -58,12 +63,12 @@ class VAE(nn.Module):
         :param x: batch of inputs
         :return: loss of reconstructions
         """
-        b_n, x_n = x.shape
-        assert(x_n == self.x_n)
+        b_n, n_x = x.shape
+        assert(n_x == self.n_x)
 
-        self.mse = torch.pow((self.mu - x), 2)
+        self.mse = torch.pow((self.reconstructions_mu - x), 2)
         self.gauss_log_lik = self.mse #0.5 * (self.log_var + np.log(2 * np.pi) + (self.mse / (1e-8 + torch.exp(self.log_var))))
-        self.neg_gauss_log_lik = -torch.mean(torch.sum(self.gauss_log_lik, axis=(1, 2)))
+        self.neg_gauss_log_lik = -torch.mean(torch.sum(self.gauss_log_lik, axis=1))
         self.VLB = self.neg_gauss_log_lik - self.KL
         self.loss = -self.VLB
 
@@ -78,3 +83,42 @@ class VAE(nn.Module):
     def accum_reset(self):
         for key in self.accum_loss.keys():
             self.accum_loss[key].reset()
+
+    def train_epoch(self, train_loader, optimizer):
+        self.train()
+        bar = Bar('>>>', fill='>', max=len(train_loader))
+        st = time.time()
+        for i, (all_seq) in enumerate(train_loader):
+            bt = time.time()
+
+            inputs = all_seq
+
+            if self.device == "cuda":
+              inputs = Variable(inputs.cuda()).float()
+
+            mu = self(inputs.float())
+
+            loss = self.loss_VLB(inputs)
+            #print("\n", loss.cpu().data.numpy())
+            #print(model.neg_gauss_log_lik.cpu().data.numpy())
+            #print(model.KL.cpu().data.numpy())
+
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+            self.accum_update('train_loss', loss) #updates accum_loss['train_loss']
+            self.accum_update('train_neg_gauss_log_lik', self.neg_gauss_log_lik)
+            if self.variational:
+                self.accum_update('train_KL', self.KL)
+            bar.suffix = '{}/{}|batch time {:.4f}s|total time{:.2f}s'.format(i + 1, len(train_loader), time.time() - bt,
+                                                                                  time.time() - st)
+            bar.next()
+        bar.finish()
+        print("Train: ")
+        print("loss", self.accum_loss['train_loss'].avg)
+        print("neg_gauss_log_lik", self.accum_loss['train_neg_gauss_log_lik'].avg)
+        print("KL", self.accum_loss['train_KL'].avg)
+
+
+
