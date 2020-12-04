@@ -40,7 +40,7 @@ print(">>> validation data {}".format(data.val_dataset.__len__()))
 # Instantiate model, and methods used fro training and valdation
 ##################################################################
 print(">>> creating model")
-model = nnmodel.VGAE(encoder_layers=[48, 100, 50, 2],  decoder_layers = [2, 50, 100, 48], variational=False, device="cuda")
+model = nnmodel.VAE(encoder_layers=[48, 100, 50, 2],  decoder_layers = [2, 50, 100, 48], variational=False, device="cuda")
 clipping_value = 1
 torch.nn.utils.clip_grad_norm(model.parameters(), clipping_value)
 if is_cuda:

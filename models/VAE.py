@@ -20,7 +20,7 @@ class VAE(nn.Module):
         :param num_stage: number of residual blocks
         :param node_n: number of nodes in graph
         """
-        super(VGAE, self).__init__()
+        super(VAE, self).__init__()
         self.n_x = encoder_layers[0]
         self.n_z = encoder_layers[-1]
         assert(self.n_x == decoder_layers[-1])

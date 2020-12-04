@@ -3,6 +3,8 @@ import torch
 
 from models.layers import *
 
+import numpy as np
+
 class VAE_Decoder(nn.Module):
     def __init__(self, layers = [2, 50, 100, 48], device="cuda"):
         """

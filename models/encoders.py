@@ -3,6 +3,8 @@ import torch
 
 from models.layers import *
 
+import numpy as np
+
 class VAE_Encoder(nn.Module):
     def __init__(self, layers = [48, 100, 50, 2], variational=False, device="cuda"):
         """
@@ -26,8 +28,8 @@ class VAE_Encoder(nn.Module):
         for i in range(self.n_layers-1):
             self.fc_layers.append(FullyConnected(self.layers[i], self.layers[i+1]))
 
-        self.z_mu = FullyConnected(self.layers[-2], n_z)
-        self.z_log_var_squared = FullyConnected(self.layers[-2], n_z)
+        self.z_mu = FullyConnected(self.layers[-2], self.n_z)
+        self.z_log_var_squared = FullyConnected(self.layers[-2], self.n_z)
 
         self.act_f = nn.LeakyReLU(0.1)
 
