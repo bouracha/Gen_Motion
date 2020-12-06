@@ -13,6 +13,10 @@ from models.decoders import VAE_Decoder
 from progress.bar import Bar
 import time
 from torch.autograd import Variable
+import os
+import sys
+import numpy as np
+import pandas as pd
 
 class VAE(nn.Module):
     def __init__(self, encoder_layers=[48, 100, 50, 2],  decoder_layers = [2, 50, 100, 48], variational=False, device="cuda"):
@@ -29,6 +33,7 @@ class VAE(nn.Module):
         self.n_z = encoder_layers[-1]
         assert(self.n_x == decoder_layers[-1])
         assert(self.n_z == decoder_layers[0])
+        self.variational = variational
         self.device = device
 
         self.encoder = VAE_Encoder(layers=encoder_layers, variational=variational, device=device)
@@ -36,6 +41,26 @@ class VAE(nn.Module):
 
         # Book keeping values
         self.accum_loss = dict()
+
+
+        if variational:
+            self.folder_name = "VAE"
+        else:
+            self.folder_name = "AE"
+        os.mkdir(self.folder_name)
+
+        original_stdout = sys.stdout
+        with open(str(self.folder_name)+'/'+'architecture.txt', 'w') as f:
+            sys.stdout = f
+            print(self)
+            sys.stdout = original_stdout
+
+        if self.variational:
+            self.head = ["Epoch", "loss_train", "reconstruction_train", "KL_train", "loss_val", "reconstruction_val", "KL_val", "loss_test", "reconstruction_test", "KL_test"]
+        else:
+            self.head = ["Epoch", "loss_train", "reconstruction_train", "loss_val", "reconstruction_val", "loss_test", "reconstruction_test"]
+        self.head = []
+        self.ret_log = np.array([])
 
     def forward(self, x):
         """
@@ -67,7 +92,7 @@ class VAE(nn.Module):
         assert(n_x == self.n_x)
 
         self.mse = torch.pow((self.reconstructions_mu - x), 2)
-        self.gauss_log_lik = self.mse #0.5 * (self.log_var + np.log(2 * np.pi) + (self.mse / (1e-8 + torch.exp(self.log_var))))
+        self.gauss_log_lik = self.mse
         self.neg_gauss_log_lik = -torch.mean(torch.sum(self.gauss_log_lik, axis=1))
         self.VLB = self.neg_gauss_log_lik - self.KL
         self.loss = -self.VLB
@@ -99,26 +124,60 @@ class VAE(nn.Module):
             mu = self(inputs.float())
 
             loss = self.loss_VLB(inputs)
-            #print("\n", loss.cpu().data.numpy())
-            #print(model.neg_gauss_log_lik.cpu().data.numpy())
-            #print(model.KL.cpu().data.numpy())
 
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
 
-            self.accum_update('train_loss', loss) #updates accum_loss['train_loss']
+            self.accum_update('train_loss', loss)
             self.accum_update('train_neg_gauss_log_lik', self.neg_gauss_log_lik)
             if self.variational:
                 self.accum_update('train_KL', self.KL)
             bar.suffix = '{}/{}|batch time {:.4f}s|total time{:.2f}s'.format(i + 1, len(train_loader), time.time() - bt,
                                                                                   time.time() - st)
             bar.next()
+
+            self.head = np.append(self.head, ['train_loss', 'reconstruction_train', 'KL_train'])
+            self.ret_log = np.append(self.ret_log, [self.accum_loss['train_loss'].avg, self.accum_loss['train_neg_gauss_log_lik'].avg, self.accum_loss['train_KL'].avg])
+            df = pd.DataFrame(np.expand_dims(self.ret_log, axis=0))
+            df.to_csv(self.folder_name+'.csv', header=self.head, index=False)
+
         bar.finish()
-        print("Train: ")
-        print("loss", self.accum_loss['train_loss'].avg)
-        print("neg_gauss_log_lik", self.accum_loss['train_neg_gauss_log_lik'].avg)
-        print("KL", self.accum_loss['train_KL'].avg)
+
+
+    def eval_full_batch(self, loader, dataset_name='val'):
+        self.eval()
+        for i, (all_seq) in enumerate(loader):
+            bt = time.time()
+
+            inputs = all_seq
+
+            if self.device == "cuda":
+                inputs = Variable(inputs.cuda()).float()
+
+            mu = self(inputs.float())
+
+            loss = self.loss_VLB(inputs)
+
+            self.accum_update(str(dataset_name)+'_loss', loss)
+            self.accum_update(str(dataset_name)+'_neg_gauss_log_lik', self.neg_gauss_log_lik)
+            if self.variational:
+                self.accum_update(str(dataset_name)+'_KL', self.KL)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

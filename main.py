@@ -31,7 +31,7 @@ is_cuda = torch.cuda.is_available()
 #####################################################
 data = DATA("h3.6m", "h3.6m/dataset/")
 out_of_distribution = data.get_poses(input_n=1, output_n=1, sample_rate=2, dct_n=2, out_of_distribution_action=None)
-train_loader, val_loader, OoD_val_loader, test_loaders = data.get_dataloaders(train_batch=16, test_batch=128, job=10)
+train_loader, val_loader, OoD_val_loader, test_loader = data.get_dataloaders(train_batch=16, test_batch=128, job=10)
 print(">>> data loaded !")
 print(">>> train data {}".format(data.train_dataset.__len__()))
 print(">>> validation data {}".format(data.val_dataset.__len__()))
@@ -57,27 +57,18 @@ for epoch in range(0, 50):
 
     model.train_epoch(train_loader, optimizer)
 
-    model.eval()
-    for i, (all_seq) in enumerate(val_loader):
-        bt = time.time()
+    print("Train: ")
+    print("loss", model.accum_loss['train_loss'].avg)
+    print("neg_gauss_log_lik", model.accum_loss['train_neg_gauss_log_lik'].avg)
+    print("KL", model.accum_loss['train_KL'].avg)
 
-        inputs = all_seq
-
-        if is_cuda:
-          inputs = Variable(inputs.cuda()).float()
-
-        mu = model(inputs.float())
-
-        loss = model.loss_VLB(inputs)
-
-        model.accum_update('val_loss', loss)
-        model.accum_update('val_neg_gauss_log_lik', model.neg_gauss_log_lik)
-        model.accum_update('val_KL', model.KL)
+    model.eval_full_batch(val_loader, 'val')
 
     print("Val: ")
     print("loss", model.accum_loss['val_loss'].avg)
     print("neg_gauss_log_lik", model.accum_loss['val_neg_gauss_log_lik'].avg)
     print("KL", model.accum_loss['val_KL'].avg)
+
 
     model.accum_reset()
 
