@@ -50,8 +50,6 @@ print(">>> validation data {}".format(data.val_dataset.__len__()))
 ##################################################################
 n_zs = [2, 3, 5, 10, 20, 48]
 for n_z in n_zs:
-    print(opt.variational)
-    print(n_z)
     print(">>> creating model")
     model = nnmodel.VAE(encoder_layers=[48, 100, 50, n_z],  decoder_layers = [n_z, 50, 100, 48], variational=opt.variational, device="cuda", ID='test')
     clipping_value = 1
@@ -65,7 +63,7 @@ for n_z in n_zs:
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
 
-    for epoch in range(0, 50):
+    for epoch in range(0, 300):
         print("Epoch: ", epoch+1)
 
         model.train_epoch(epoch, lr, train_loader, optimizer)
