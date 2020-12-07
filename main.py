@@ -23,6 +23,15 @@ from data import DATA
 
 import models.VAE as nnmodel
 
+import argparse
+
+parser = argparse.ArgumentParser()
+
+parser.add_argument('--variational', dest='variational', action='store_true', help='toggle VAE or AE')
+parser.set_defaults(variational=False)
+
+opt = parser.parse_args()
+
 
 is_cuda = torch.cuda.is_available()
 
@@ -39,46 +48,34 @@ print(">>> validation data {}".format(data.val_dataset.__len__()))
 ##################################################################
 # Instantiate model, and methods used fro training and valdation
 ##################################################################
-print(">>> creating model")
-model = nnmodel.VAE(encoder_layers=[48, 100, 50, 2],  decoder_layers = [2, 50, 100, 48], variational=True, device="cuda")
-clipping_value = 1
-torch.nn.utils.clip_grad_norm(model.parameters(), clipping_value)
-if is_cuda:
-    model.cuda()
-print(model)
+n_zs = [2, 3, 5, 10, 20, 48]
+for n_z in n_zs:
+    print(opt.variational)
+    print(n_z)
+    print(">>> creating model")
+    model = nnmodel.VAE(encoder_layers=[48, 100, 50, n_z],  decoder_layers = [n_z, 50, 100, 48], variational=opt.variational, device="cuda", ID='test')
+    clipping_value = 1
+    torch.nn.utils.clip_grad_norm(model.parameters(), clipping_value)
+    if is_cuda:
+        model.cuda()
+    print(model)
 
-print(">>> total params: {:.2f}M".format(sum(p.numel() for p in model.parameters()) / 1000000.0))
-lr=0.00001
-optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-
-
-for epoch in range(0, 50):
-    print("Epoch: ", epoch+1)
-
-    model.train_epoch(train_loader, optimizer)
-
-    print("Train: ")
-    print("loss", model.accum_loss['train_loss'].avg)
-    print("neg_gauss_log_lik", model.accum_loss['train_neg_gauss_log_lik'].avg)
-    print("KL", model.accum_loss['train_KL'].avg)
-
-    model.eval_full_batch(val_loader, 'val')
-
-    print("Val: ")
-    print("loss", model.accum_loss['val_loss'].avg)
-    print("neg_gauss_log_lik", model.accum_loss['val_neg_gauss_log_lik'].avg)
-    print("KL", model.accum_loss['val_KL'].avg)
+    print(">>> total params: {:.2f}M".format(sum(p.numel() for p in model.parameters()) / 1000000.0))
+    lr=0.00001
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
 
-    model.accum_reset()
+    for epoch in range(0, 50):
+        print("Epoch: ", epoch+1)
 
-    state = {'epoch': epoch + 1,
-                         'lr': lr,
-                         'err':  model.accum_loss['val_loss'].avg,
-                         'state_dict': model.state_dict(),
-                         'optimizer': optimizer.state_dict()}
-    file_path = 'ckpt_' + str(epoch) + '_weights.path.tar'
-    torch.save(state, file_path)
+        model.train_epoch(epoch, lr, train_loader, optimizer)
+
+        model.eval_full_batch(train_loader, 'train')
+        model.eval_full_batch(val_loader, 'val')
+
+        model.save_checkpoint_and_csv(epoch, lr, optimizer)
+
+
 
 
 
