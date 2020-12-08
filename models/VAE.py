@@ -19,7 +19,7 @@ import numpy as np
 import pandas as pd
 
 class VAE(nn.Module):
-    def __init__(self, encoder_layers=[48, 100, 50, 2],  decoder_layers = [2, 50, 100, 48], variational=False, device="cuda", ID='default'):
+    def __init__(self, encoder_layers=[48, 100, 50, 2],  decoder_layers = [2, 50, 100, 48], variational=False, device="cuda", batch_norm=False, p_dropout=0.0):
         """
 
         :param input_feature: num of input feature
@@ -37,10 +37,10 @@ class VAE(nn.Module):
         self.device = device
         self.losses_file_exists = False
 
-        self.encoder = VAE_Encoder(layers=encoder_layers, variational=variational, device=device)
-        self.decoder = VAE_Decoder(layers=decoder_layers, device=device)
+        self.encoder = VAE_Encoder(layers=encoder_layers, variational=variational, device=device, batch_norm=batch_norm, p_dropout=p_dropout)
+        self.decoder = VAE_Decoder(layers=decoder_layers, device=device, batch_norm=batch_norm, p_dropout=p_dropout)
 
-        self.book_keeping(encoder_layers, decoder_layers, ID)
+        self.book_keeping(encoder_layers, decoder_layers, batch_norm, p_dropout)
 
     def forward(self, x):
         """
@@ -157,7 +157,7 @@ class VAE(nn.Module):
         self.head = np.append(self.head, head)
         self.ret_log = np.append(self.ret_log, ret_log)
 
-    def book_keeping(self, encoder_layers, decoder_layers, ID='default'):
+    def book_keeping(self, encoder_layers, decoder_layers, batch_norm=False, p_dropout=0.0):
         self.accum_loss = dict()
 
         if self.variational:
@@ -168,7 +168,10 @@ class VAE(nn.Module):
             self.folder_name = self.folder_name+'_'+str(layer)
         for layer in decoder_layers:
             self.folder_name = self.folder_name+'_'+str(layer)
-        self.folder_name = self.folder_name+'_'+str(ID)
+        if batch_norm:
+            self.folder_name = self.folder_name+'_bn'
+        if p_dropout != 0.0:
+            self.folder_name = self.folder_name + '_p_drop='+str(p_dropout)
         os.makedirs(os.path.join(self.folder_name, 'checkpoints'))
 
         original_stdout = sys.stdout

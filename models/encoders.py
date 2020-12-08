@@ -6,7 +6,7 @@ from models.layers import *
 import numpy as np
 
 class VAE_Encoder(nn.Module):
-    def __init__(self, layers=[48, 100, 50, 2], variational=False, device="cuda"):
+    def __init__(self, layers=[48, 100, 50, 2], variational=False, device="cuda", batch_norm=False, p_dropout=0.0):
         """
 
         :param input_feature: num of input feature
@@ -24,10 +24,10 @@ class VAE_Encoder(nn.Module):
         self.layers = np.array(layers)
         self.n_layers = self.layers.shape[0] - 1
 
-        self.fc_layers = []
+        self.fc_blocks = []
         for i in range(self.n_layers - 1):
-            self.fc_layers.append(FullyConnected(self.layers[i], self.layers[i + 1]))
-        self.fc_layers = nn.ModuleList(self.fc_layers)
+            self.fc_blocks.append(FC_Block(self.layers[i], self.layers[i + 1], activation=nn.LeakyReLU(0.1), batch_norm=batch_norm, p_dropout=p_dropout, bias=True))
+        self.fc_blocks = nn.ModuleList(self.fc_blocks)
 
         self.z_mu = FullyConnected(self.layers[-2], self.n_z)
         if self.variational:
@@ -38,8 +38,8 @@ class VAE_Encoder(nn.Module):
     def forward(self, x):
         y = x
         for i in range(self.n_layers - 1):
-            y = self.fc_layers[i](y)
-            y = self.act_f(y)
+            y = self.fc_blocks[i](y)
+            #y = self.act_f(y)
 
         mu = self.z_mu(y)
         if self.variational:

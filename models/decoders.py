@@ -6,7 +6,7 @@ from models.layers import *
 import numpy as np
 
 class VAE_Decoder(nn.Module):
-    def __init__(self, layers = [2, 50, 100, 48], device="cuda"):
+    def __init__(self, layers = [2, 50, 100, 48], device="cuda", batch_norm=False, p_dropout=0.0):
         """
 
         :param input_feature: num of input feature
@@ -23,10 +23,10 @@ class VAE_Decoder(nn.Module):
         self.layers = np.array(layers)
         self.n_layers = self.layers.shape[0]-1
 
-        self.fc_layers = []
+        self.fc_blocks = []
         for i in range(self.n_layers-1):
-            self.fc_layers.append(FullyConnected(self.layers[i], self.layers[i + 1]))
-        self.fc_layers = nn.ModuleList(self.fc_layers)
+            self.fc_blocks.append(FC_Block(self.layers[i], self.layers[i + 1], activation=nn.LeakyReLU(0.1), batch_norm=batch_norm, p_dropout=p_dropout, bias=True))
+        self.fc_blocks = nn.ModuleList(self.fc_blocks)
 
         self.reconstructions_mu = FullyConnected(self.layers[-2], self.n_x)
 
@@ -36,7 +36,7 @@ class VAE_Decoder(nn.Module):
         y = x
         for i in range(self.n_layers-1):
             y = self.fc_layers[i](y)
-            y = self.act_f(y)
+            #y = self.act_f(y)
 
         reconstructions_mu = self.reconstructions_mu(y)
 

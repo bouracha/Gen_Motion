@@ -112,3 +112,41 @@ class GC_Block(nn.Module):
         return self.__class__.__name__ + ' (' \
                + str(self.in_features) + ' -> ' \
                + str(self.out_features) + ')'
+
+
+class FC_Block(nn.Module):
+    def __init__(self, in_features, out_features, activation=nn.LeakyReLU(0.1), batch_norm=False, p_dropout=0.0, bias=True):
+        """
+        Define a residual block of GCN
+        """
+        super(GC_Block, self).__init__()
+        self.in_features = in_features
+        self.out_features = out_features
+        self.act_f = activation
+        self.batch_norm = batch_norm
+        self.p_dropout = p_dropout
+        self.do = nn.Dropout(p_dropout)
+
+        self.fc = FullyConnected(self.in_features, self.out_features, bias=bias)
+        if self.batch_norm:
+            self.bn = nn.BatchNorm1d(out_features)
+
+
+    def forward(self, x):
+        y = self.fc(x)
+        y = self.act_f(y)
+        if self.batch_norm:
+            b, f = y.shape
+            y = self.bn(y.view(b, -1)).view(b, f)
+        y = self.do(y)
+        return y
+
+    def __repr__(self):
+        representation = self.__class__.__name__ + ' (' \
+               + str(self.in_features) + ' -> ' \
+               + str(self.out_features) + ')' \
+               + 'dropout: '+str(self.p_dropout)
+        if self.batch_norm:
+            representation = representation+', batch norm'
+        representation = representation+', act_fn({0})'.format(self.act_f)
+        return representation
