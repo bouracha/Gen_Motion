@@ -187,8 +187,8 @@ class VAE(nn.Module):
             self.folder_name = self.folder_name + '_p_drop='+str(p_dropout)
         if self.output_variance:
             self.folder_name = self.folder_name + '_model-var'
-        if self.beta:
-            self.folder_name = self.folder_name + '_beta'
+        if self.beta != 1.0:
+            self.folder_name = self.folder_name + '_beta=' + str(self.beta)
         os.makedirs(os.path.join(self.folder_name, 'checkpoints'))
 
         original_stdout = sys.stdout
