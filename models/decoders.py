@@ -38,7 +38,7 @@ class VAE_Decoder(nn.Module):
         for i in range(self.n_layers-1):
             y = self.fc_blocks[i](y)
 
-        reconstructions_mu = self.reconstructions_mu(y)
+        reconstructions_mu = self.reconstructions_mu_fc(y)
         if self.output_variance:
             reconstructions_log_var = self.reconstructions_log_var_fc(y)
             reconstructions_log_var = torch.clamp(reconstructions_log_var, min=-20.0, max=3.0)

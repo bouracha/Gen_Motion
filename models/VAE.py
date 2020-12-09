@@ -82,8 +82,10 @@ class VAE(nn.Module):
         if self.output_variance:
             self.gauss_log_lik = 0.5*(self.reconstructions_log_var + np.log(2*np.pi) + (self.mse/(1e-8 + torch.exp(self.reconstructions_log_var))))
             self.gauss_log_lik = torch.mean(torch.sum(self.gauss_log_lik, axis=1))
+            self.mse = torch.mean(torch.sum(self.mse, axis=1))
         else:
-            self.gauss_log_lik = torch.mean(torch.sum(self.mse, axis=1))
+            self.mse = torch.mean(torch.sum(self.mse, axis=1))
+            self.gauss_log_lik = self.mse
         if self.variational:
             self.neg_gauss_log_lik = -self.gauss_log_lik
             self.VLB = self.neg_gauss_log_lik - self.beta*self.KL
@@ -151,7 +153,7 @@ class VAE(nn.Module):
             loss = self.loss_VLB(inputs)
 
             self.accum_update(str(dataset_name)+'_loss', loss)
-            self.accum_update(str(dataset_name)+'_gauss_log_lik', self.gauss_log_lik)
+            self.accum_update(str(dataset_name)+'_gauss_log_lik', self.mse)
             if self.variational:
                 self.accum_update(str(dataset_name)+'_KL', self.KL)
 
@@ -183,6 +185,8 @@ class VAE(nn.Module):
             self.folder_name = self.folder_name+'_bn'
         if p_dropout != 0.0:
             self.folder_name = self.folder_name + '_p_drop='+str(p_dropout)
+        if self.output_variance:
+            self.folder_name = self.folder_name + '_model-var'
         os.makedirs(os.path.join(self.folder_name, 'checkpoints'))
 
         original_stdout = sys.stdout

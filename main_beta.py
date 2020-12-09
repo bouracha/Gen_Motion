@@ -23,20 +23,6 @@ from data import DATA
 
 import models.VAE as nnmodel
 
-import argparse
-
-parser = argparse.ArgumentParser()
-
-parser.add_argument('--variational', dest='variational', action='store_true', help='toggle VAE or AE')
-parser.add_argument('--batch_norm', dest='batch_norm', action='store_true', help='toggle use batch_norm or not')
-parser.add_argument('--output_variance', dest='output_variance', action='store_true', help='toggle model output variance or use as constant')
-parser.add_argument('--beta', type=float, default=1.0, help='Downweighting of the KL divergence')
-parser.set_defaults(variational=False)
-parser.set_defaults(batch_norm=False)
-parser.set_defaults(output_variance=False)
-
-opt = parser.parse_args()
-
 
 is_cuda = torch.cuda.is_available()
 
@@ -53,10 +39,10 @@ print(">>> validation data {}".format(data.val_dataset.__len__()))
 ##################################################################
 # Instantiate model, and methods used fro training and valdation
 ##################################################################
-n_zs = [2, 3, 5, 10, 20, 48]
-for n_z in n_zs:
+betas = [0.3, 0.1, 0.03, 0.01, 0.003, 0.001]
+for beta in betas:
     print(">>> creating model")
-    model = nnmodel.VAE(encoder_layers=[48, 100, 50, n_z],  decoder_layers = [n_z, 50, 100, 48], variational=opt.variational, output_variance=opt.output_variance, device="cuda", batch_norm=opt.batch_norm, p_dropout=0.0, beta=opt.beta)
+    model = nnmodel.VAE(encoder_layers=[48, 100, 50, 48],  decoder_layers = [48, 50, 100, 48], variational=True, output_variance=False, device="cuda", batch_norm=False, p_dropout=0.0, beta=beta)
     clipping_value = 1
     torch.nn.utils.clip_grad_norm(model.parameters(), clipping_value)
     if is_cuda:
