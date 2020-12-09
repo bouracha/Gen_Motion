@@ -119,7 +119,7 @@ class FC_Block(nn.Module):
         """
         Define a residual block of GCN
         """
-        super(GC_Block, self).__init__()
+        super(FC_Block, self).__init__()
         self.in_features = in_features
         self.out_features = out_features
         self.act_f = activation
@@ -145,8 +145,8 @@ class FC_Block(nn.Module):
         representation = self.__class__.__name__ + ' (' \
                + str(self.in_features) + ' -> ' \
                + str(self.out_features) + ')' \
-               + 'dropout: '+str(self.p_dropout)
+               + ', dropout: '+str(self.p_dropout)
         if self.batch_norm:
             representation = representation+', batch norm'
-        representation = representation+', act_fn({0})'.format(self.act_f)
+        representation = representation+', act_fn: {0}'.format(self.act_f)
         return representation

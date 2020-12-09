@@ -29,26 +29,23 @@ class VAE_Encoder(nn.Module):
             self.fc_blocks.append(FC_Block(self.layers[i], self.layers[i + 1], activation=nn.LeakyReLU(0.1), batch_norm=batch_norm, p_dropout=p_dropout, bias=True))
         self.fc_blocks = nn.ModuleList(self.fc_blocks)
 
-        self.z_mu = FullyConnected(self.layers[-2], self.n_z)
+        self.z_mu_fc = FullyConnected(self.layers[-2], self.n_z)
         if self.variational:
-            self.z_log_var_squared = FullyConnected(self.layers[-2], self.n_z)
-
-        self.act_f = nn.LeakyReLU(0.1)
+            self.z_log_var_fc = FullyConnected(self.layers[-2], self.n_z)
 
     def forward(self, x):
         y = x
         for i in range(self.n_layers - 1):
             y = self.fc_blocks[i](y)
-            #y = self.act_f(y)
 
-        mu = self.z_mu(y)
+        mu = self.z_mu_fc(y)
         if self.variational:
-            log_var_squared = self.z_log_var_squared(y)
-            log_var_squared = torch.clamp(log_var_squared, min=-20.0, max=3.0)
-            noise = torch.normal(mean=0, std=1.0, size=log_var_squared.shape).to(torch.device(self.device))
-            z = mu + torch.mul(torch.exp(log_var_squared / 2.0), noise)
+            log_var = self.z_log_var_fc(y)
+            log_var = torch.clamp(log_var, min=-20.0, max=3.0)
+            noise = torch.normal(mean=0, std=1.0, size=log_var.shape).to(torch.device(self.device))
+            z = mu + torch.mul(torch.exp(log_var / 2.0), noise)
 
-            KL_per_sample = 0.5 * torch.sum(torch.exp(log_var_squared) + torch.pow(mu, 2) - 1 - log_var_squared, axis=1)
+            KL_per_sample = 0.5 * torch.sum(torch.exp(log_var) + torch.pow(mu, 2) - 1 - log_var, axis=1)
             KL = torch.mean(KL_per_sample)
         else:
             z = mu

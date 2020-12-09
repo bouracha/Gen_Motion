@@ -19,7 +19,7 @@ import numpy as np
 import pandas as pd
 
 class VAE(nn.Module):
-    def __init__(self, encoder_layers=[48, 100, 50, 2],  decoder_layers = [2, 50, 100, 48], variational=False, device="cuda", batch_norm=False, p_dropout=0.0):
+    def __init__(self, encoder_layers=[48, 100, 50, 2],  decoder_layers = [2, 50, 100, 48], variational=False, output_variance=False, device="cuda", batch_norm=False, p_dropout=0.0, beta=1.0):
         """
 
         :param input_feature: num of input feature
@@ -35,10 +35,12 @@ class VAE(nn.Module):
         assert(self.n_z == decoder_layers[0])
         self.variational = variational
         self.device = device
+        self.beta = beta
+        self.output_variance = output_variance
         self.losses_file_exists = False
 
         self.encoder = VAE_Encoder(layers=encoder_layers, variational=variational, device=device, batch_norm=batch_norm, p_dropout=p_dropout)
-        self.decoder = VAE_Decoder(layers=decoder_layers, device=device, batch_norm=batch_norm, p_dropout=p_dropout)
+        self.decoder = VAE_Decoder(layers=decoder_layers, output_variance=output_variance, device=device, batch_norm=batch_norm, p_dropout=p_dropout)
 
         self.book_keeping(encoder_layers, decoder_layers, batch_norm, p_dropout)
 
@@ -48,7 +50,10 @@ class VAE(nn.Module):
         :return: reconstructions and latent value
         """
         self.mu, self.z, self.KL = self.encoder(x)
-        self.reconstructions_mu = self.decoder(self.z)
+        if self.output_variance:
+            self.reconstructions_mu, self.reconstructions_log_var = self.decoder(self.z)
+        else:
+            self.reconstructions_mu = self.decoder(self.z)
 
         return self.reconstructions_mu
 
@@ -58,8 +63,10 @@ class VAE(nn.Module):
         :param z: batch of random variables
         :return: batch of generated samples
         """
-
-        reconstructions_mu = self.decoder(z)
+        if self.output_variance:
+            reconstructions_mu, _ = self.decoder(z)
+        else:
+            reconstructions_mu = self.decoder(z)
         return reconstructions_mu
 
     def loss_VLB(self, x):
@@ -72,10 +79,14 @@ class VAE(nn.Module):
         assert(n_x == self.n_x)
 
         self.mse = torch.pow((self.reconstructions_mu - x), 2)
-        self.gauss_log_lik = torch.mean(torch.sum(self.mse, axis=1))
+        if self.output_variance:
+            self.gauss_log_lik = 0.5*(self.reconstructions_log_var + np.log(2*np.pi) + (self.mse/(1e-8 + torch.exp(self.reconstructions_log_var))))
+            self.gauss_log_lik = torch.mean(torch.sum(self.gauss_log_lik, axis=1))
+        else:
+            self.gauss_log_lik = torch.mean(torch.sum(self.mse, axis=1))
         if self.variational:
             self.neg_gauss_log_lik = -self.gauss_log_lik
-            self.VLB = self.neg_gauss_log_lik - self.KL
+            self.VLB = self.neg_gauss_log_lik - self.beta*self.KL
             self.loss = -self.VLB
         else:
             self.loss = self.gauss_log_lik
