@@ -136,7 +136,7 @@ def plot_predictions(expmap_gt, expmap_pred, fig, ax, f_title):
 
         ob.update(xyz_gt[i, :], xyz_pred[i, :])
         #ax.set_title(f_title + ' frame:{:d}'.format(i + 1), loc="left")
-        plt.savefig('demo/' + f_title + ' frame:{:d}.png'.format(i + 1))
+        plt.savefig('demo/' + f_title + '.png')
         #plt.show(block=False)
 
         #fig.canvas.draw()

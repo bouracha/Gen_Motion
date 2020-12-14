@@ -21,7 +21,7 @@ import utils.data_utils as data_utils
 
 from data import DATA
 
-import models.VGAE as nnmodel
+import models.VAE as nnmodel
 
 import utils.viz as viz
 from matplotlib import pyplot as plt
@@ -32,10 +32,10 @@ parser.add_argument('--ckpt', type=str, default='ckpt_49_weights.path.tar', help
 opt = parser.parse_args()
 
 is_cuda = torch.cuda.is_available()
+n_z = 2
 
 print(">>> creating model")
-model = nnmodel.VGAE(input_feature=1, hidden_feature=256, p_dropout=0,
-                        num_stage=1, node_n=48, n_z=1)
+model = nnmodel.VAE(encoder_layers=[48, 100, 50, n_z],  decoder_layers = [n_z, 50, 100, 48], variational=True, output_variance=True, device="cuda", batch_norm=True, p_dropout=0.0, beta=1.0)
 print(">>> total params: {:.2f}M".format(sum(p.numel() for p in model.parameters()) / 1000000.0))
 lr=0.00003
 optimizer = torch.optim.Adam(model.parameters(), lr=lr)
@@ -50,33 +50,28 @@ optimizer.load_state_dict(ckpt['optimizer'])
 
 
 
-
-
-print(">>> loading data")
-acts = data_utils.define_actions('all')
-test_data = dict()
-for act in acts:
-    test_dataset = H36motion(path_to_data='h3.6m/dataset/', actions=act, input_n=10, output_n=10, split=1,
-                                 sample_rate=2)
-    test_data[act] = DataLoader(
-        dataset=test_dataset,
-        batch_size=1,
-        shuffle=False,
-        num_workers=1,
-        pin_memory=True)
-dim_used = test_dataset.dim_used
-print(">>> data loaded !")
-for i, (inputs, targets, all_seq) in enumerate(test_data['walking']):
-    inputs = Variable(inputs).float()
-    all_seq = Variable(all_seq).float()
-    if is_cuda:
-        inputs = inputs.cuda()
-        all_seq = all_seq.cuda()
-    all_seq = all_seq[:, 0, :]
-    all_seq = all_seq.reshape((1, 1, 99))
-    #print(all_seq.shape)
-    n, seq_len, dim_full_len = all_seq.data.shape
-    dim_used_len = len(dim_used)
+all_seq = torch.tensor([[[ 3.0088e+00,  2.3565e+00,  1.2685e+01,  9.0479e-03, -2.3448e-02,
+           3.0427e-03,  1.8167e-01,  6.5091e-02, -3.8717e-02, -1.0212e+00,
+          -0.0000e+00, -0.0000e+00, -5.2310e-01, -1.0842e-01, -2.3475e-01,
+           9.2063e-01, -0.0000e+00, -0.0000e+00, -0.0000e+00, -0.0000e+00,
+          -0.0000e+00,  2.3131e-01, -9.5584e-02,  1.1178e-01, -1.9508e-01,
+          -0.0000e+00, -0.0000e+00, -4.6369e-02, -2.4654e-01,  6.8490e-02,
+           5.9577e-01, -0.0000e+00, -0.0000e+00, -0.0000e+00, -0.0000e+00,
+          -0.0000e+00,  1.1304e-01, -5.4122e-02,  5.0800e-03,  1.0436e-01,
+          -3.3177e-02, -1.4137e-01, -1.0382e+00, -2.9327e-01,  3.3821e-01,
+           1.4437e+00,  6.4356e-02, -1.9727e-01, -0.0000e+00, -0.0000e+00,
+          -0.0000e+00, -6.9275e-02, -2.1161e-01,  2.1942e+00, -9.6483e-02,
+          -2.9132e-01,  7.7537e-01, -2.2463e-01, -0.0000e+00, -0.0000e+00,
+           2.1930e-01, -3.6066e-02, -2.8463e-02, -0.0000e+00, -0.0000e+00,
+          -0.0000e+00, -0.0000e+00, -0.0000e+00, -0.0000e+00, -0.0000e+00,
+          -0.0000e+00, -0.0000e+00, -0.0000e+00, -0.0000e+00, -0.0000e+00,
+          -2.4333e-01,  2.3345e-01, -2.0615e+00,  1.0563e-01, -1.7902e-01,
+          -7.2105e-01, -2.1639e-01, -0.0000e+00, -0.0000e+00,  1.8257e-01,
+           3.8653e-01,  6.5862e-02, -0.0000e+00, -0.0000e+00, -0.0000e+00,
+          -0.0000e+00, -0.0000e+00, -0.0000e+00, -0.0000e+00, -0.0000e+00,
+          -0.0000e+00, -0.0000e+00, -0.0000e+00, -0.0000e+00]]])
+all_seq = all_seq.cuda()
+dim_used = [6, 7, 8, 9, 12, 13, 14, 15, 21, 22, 23, 24, 27, 28, 29, 30, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 51, 52, 53, 54, 55, 56, 57, 60, 61, 62, 75, 76, 77, 78, 79, 80, 81, 84, 85, 86]
 
 
 
@@ -84,8 +79,7 @@ model.eval()
 
 #print(y)
 n_samples = 128
-n_z = 1
-noise = torch.normal(mean=0, std=1.0, size=(n_samples, 48, n_z)).to(torch.device("cuda"))
+noise = torch.normal(mean=0, std=1.0, size=(n_samples, n_z)).to(torch.device("cuda"))
 
 #noise_const = torch.normal(mean=0, std=1.0, size=(1, 47, n_z)).to(torch.device("cuda"))
 #noise_const = noise_const.repeat(n_samples, 1, 1)
@@ -101,12 +95,12 @@ noise = torch.normal(mean=0, std=1.0, size=(n_samples, 48, n_z)).to(torch.device
 
 for i in range(0, n_samples):
     #print(i)
-    z = noise[i, :, :]
-    z = z.reshape(1, 48, n_z)
+    z = noise[i, :]
+    z = z.reshape(1, n_z)
 
     y = model.generate(z)
 
-    outputs_t = y.view(-1, seq_len).transpose(0, 1)
+    outputs_t = y.view(-1, 1).transpose(0, 1)
 
     pred_expmap = all_seq.clone()
     dim_used = np.array(dim_used)
