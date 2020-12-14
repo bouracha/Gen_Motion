@@ -30,14 +30,22 @@ import argparse
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--ckpt', type=str, default='ckpt_49_weights.path.tar', help='path to saved model')
+parser.add_argument('--variational', dest='variational', action='store_true', help='toggle VAE or AE')
+parser.add_argument('--batch_norm', dest='batch_norm', action='store_true', help='toggle use batch_norm or not')
+parser.add_argument('--output_variance', dest='output_variance', action='store_true', help='toggle model output variance or use as constant')
+parser.add_argument('--beta', type=float, default=1.0, help='Downweighting of the KL divergence')
+parser.add_argument('--n_z', type=int, default=2, help='Size of latent variable')
+parser.set_defaults(variational=False)
+parser.set_defaults(batch_norm=False)
+parser.set_defaults(output_variance=False)
 opt = parser.parse_args()
 
 is_cuda = torch.cuda.is_available()
-n_z = 2
+n_z = opt.n_z
 
 print(">>> creating model")
-model = nnmodel.VAE(encoder_layers=[48, 100, 50, n_z], decoder_layers=[n_z, 50, 100, 48], variational=True,
-                    output_variance=True, device="cuda", batch_norm=True, p_dropout=0.0, beta=1.0)
+model = nnmodel.VAE(encoder_layers=[48, 100, 50, n_z], decoder_layers=[n_z, 50, 100, 48], variational=opt.variational,
+                    output_variance=opt.output_variance, device="cuda", batch_norm=opt.batch_norm, p_dropout=0.0, beta=opt.beta)
 print(">>> total params: {:.2f}M".format(sum(p.numel() for p in model.parameters()) / 1000000.0))
 lr = 0.00003
 optimizer = torch.optim.Adam(model.parameters(), lr=lr)
