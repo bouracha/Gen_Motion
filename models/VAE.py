@@ -13,13 +13,17 @@ from models.decoders import VAE_Decoder
 from progress.bar import Bar
 import time
 from torch.autograd import Variable
+from tqdm.auto import tqdm
 import os
 import sys
 import numpy as np
 import pandas as pd
 
+from torchvision.utils import make_grid
+import matplotlib.pyplot as plt
+
 class VAE(nn.Module):
-    def __init__(self, encoder_layers=[48, 100, 50, 2],  decoder_layers = [2, 50, 100, 48], variational=False, output_variance=False, device="cuda", batch_norm=False, p_dropout=0.0, beta=1.0):
+    def __init__(self, encoder_layers=[48, 100, 50, 2],  decoder_layers = [2, 50, 100, 48], variational=False, output_variance=False, device="cuda", batch_norm=False, p_dropout=0.0, beta=1.0, folder_name=""):
         """
 
         :param input_feature: num of input feature
@@ -38,9 +42,11 @@ class VAE(nn.Module):
         self.beta = beta
         self.output_variance = output_variance
         self.losses_file_exists = False
+        self.folder_name= folder_name
+        self.activation = nn.LeakyReLU(0.1)
 
-        self.encoder = VAE_Encoder(layers=encoder_layers, variational=variational, device=device, batch_norm=batch_norm, p_dropout=p_dropout)
-        self.decoder = VAE_Decoder(layers=decoder_layers, output_variance=output_variance, device=device, batch_norm=batch_norm, p_dropout=p_dropout)
+        self.encoder = VAE_Encoder(layers=encoder_layers, activation=self.activation, variational=variational, device=device, batch_norm=batch_norm, p_dropout=p_dropout)
+        self.decoder = VAE_Decoder(layers=decoder_layers, activation=self.activation, output_variance=output_variance, device=device, batch_norm=batch_norm, p_dropout=p_dropout)
 
         self.book_keeping(encoder_layers, decoder_layers, batch_norm, p_dropout)
 
@@ -54,6 +60,8 @@ class VAE(nn.Module):
             self.reconstructions_mu, self.reconstructions_log_var = self.decoder(self.z)
         else:
             self.reconstructions_mu = self.decoder(self.z)
+        sig = nn.Sigmoid()
+        self.bernoulli_output = sig(self.reconstructions_mu)
 
         return self.reconstructions_mu
 
@@ -69,9 +77,30 @@ class VAE(nn.Module):
             reconstructions_mu = self.decoder(z)
         return reconstructions_mu
 
+    def loss_bernoulli(self, x):
+        """
+        :param x: batch of inputs
+        :return
+        """
+        b_n, n_x = x.shape
+        assert (n_x == self.n_x)
+
+        loss_fn = nn.BCELoss()
+        self.loss = loss_fn(self.bernoulli_output, x)
+        BCE = torch.maximum(self.reconstructions_mu, torch.zeros_like(self.reconstructions_mu)) - torch.multiply(self.reconstructions_mu, x) + torch.log(1 + torch.exp(-torch.abs(self.reconstructions_mu)))
+        BCE_per_sample = torch.sum(BCE, axis=1)
+        self.recon_loss = torch.mean(BCE_per_sample)
+        if self.variational:
+            self.loss = self.recon_loss + self.KL
+            self.VLB = -self.loss
+        else:
+            self.loss = self.recon_loss
+
+        return self.loss
+
+
     def loss_VLB(self, x):
         """
-
         :param x: batch of inputs
         :return: loss of reconstructions
         """
@@ -79,16 +108,14 @@ class VAE(nn.Module):
         assert(n_x == self.n_x)
 
         self.mse = torch.pow((self.reconstructions_mu - x), 2)
+        self.recon_loss = torch.mean(torch.sum(self.mse, axis=1))
         if self.output_variance:
-            self.gauss_log_lik = 0.5*(self.reconstructions_log_var + np.log(2*np.pi) + (self.mse/(1e-8 + torch.exp(self.reconstructions_log_var))))
+            self.gauss_log_lik = -0.5*(self.reconstructions_log_var + np.log(2*np.pi) + (self.mse/(1e-8 + torch.exp(self.reconstructions_log_var))))
             self.gauss_log_lik = torch.mean(torch.sum(self.gauss_log_lik, axis=1))
-            self.mse = torch.mean(torch.sum(self.mse, axis=1))
         else:
-            self.mse = torch.mean(torch.sum(self.mse, axis=1))
-            self.gauss_log_lik = self.mse
+            self.gauss_log_lik = -self.recon_loss
         if self.variational:
-            self.neg_gauss_log_lik = -self.gauss_log_lik
-            self.VLB = self.neg_gauss_log_lik - self.beta*self.KL
+            self.VLB = self.gauss_log_lik - self.beta*self.KL
             self.loss = -self.VLB
         else:
             self.loss = self.gauss_log_lik
@@ -104,20 +131,16 @@ class VAE(nn.Module):
         for key in self.accum_loss.keys():
             self.accum_loss[key].reset()
 
-    def train_epoch(self, epoch, lr, train_loader, optimizer):
+    def train_epoch(self, epoch, train_loader, optimizer):
         self.train()
         bar = Bar('>>>', fill='>', max=len(train_loader))
         st = time.time()
         for i, (all_seq) in enumerate(train_loader):
             bt = time.time()
 
-            inputs = all_seq
-
-            if self.device == "cuda":
-              inputs = Variable(inputs.cuda()).float()
+            inputs = all_seq.to(self.device).float()
 
             mu = self(inputs.float())
-
             loss = self.loss_VLB(inputs)
 
             optimizer.zero_grad()
@@ -135,6 +158,70 @@ class VAE(nn.Module):
 
         bar.finish()
 
+    def train_epoch_mnist(self, epoch, train_loader, optimizer, use_bernoulli_loss=False):
+        self.train()
+        i=0
+        for image, labels in tqdm(train_loader):
+            i+=1
+            cur_batch_size = len(image)
+
+            image.to(self.device)
+            image_flattened = image.reshape(cur_batch_size, -1)
+
+            mu = self(image_flattened.float())
+            if use_bernoulli_loss:
+                loss = self.loss_bernoulli(image_flattened)
+            else:
+                loss = self.loss_VLB(image_flattened)
+
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+        head = ['Epoch']
+        ret_log = [epoch]
+        self.head = np.append(self.head, head)
+        self.ret_log = np.append(self.ret_log, ret_log)
+
+    def eval_full_batch_mnist(self, loader, epoch, dataset_name='val', use_bernoulli_loss=False):
+        self.eval()
+        i=0
+        for image, labels in tqdm(loader):
+            i+=1
+            cur_batch_size = len(image)
+
+            image.to(self.device)
+            image_flattened = image.reshape(cur_batch_size, -1)
+
+            reconstructions = self(image_flattened.float())
+            if use_bernoulli_loss:
+                loss = self.loss_bernoulli(image_flattened)
+                sig = nn.Sigmoid()
+                reconstructions = sig(reconstructions)
+            else:
+                loss = self.loss_VLB(image_flattened)
+
+            self.accum_update(str(dataset_name)+'_loss', loss)
+            self.accum_update(str(dataset_name)+'_recon', self.recon_loss)
+            if self.variational:
+                self.accum_update(str(dataset_name)+'_VLB', self.VLB)
+                self.accum_update(str(dataset_name)+'_KL', self.KL)
+
+        head = [dataset_name+'_loss', dataset_name+'_reconstruction']
+        ret_log = [self.accum_loss[str(dataset_name)+'_loss'].avg, self.accum_loss[str(dataset_name)+'_recon'].avg]
+        if self.variational:
+            head.append(str(dataset_name)+'_VLB')
+            head.append(str(dataset_name)+'_KL')
+            ret_log.append(self.accum_loss[str(dataset_name)+'_VLB'].avg)
+            ret_log.append(self.accum_loss[str(dataset_name)+'_KL'].avg)
+        self.head = np.append(self.head, head)
+        self.ret_log = np.append(self.ret_log, ret_log)
+
+        reconstructions = reconstructions.reshape(cur_batch_size, 1, 28, 28)
+        file_path = self.folder_name + '/images/' + str(dataset_name) + '_' + str(epoch) + '_' + 'reals'
+        self.show_tensor_images(image, num_images=25, size=(1, 28, 28), nrow=5, show=False, save_as=file_path)
+        file_path = self.folder_name + '/images/' + str(dataset_name) + '_' + str(epoch) + '_' + 'reconstructions'
+        self.show_tensor_images(reconstructions, num_images=25, size=(1, 28, 28), nrow=5, show=False, save_as=file_path)
 
     def eval_full_batch(self, loader, dataset_name='val'):
         self.eval()
@@ -143,17 +230,13 @@ class VAE(nn.Module):
         for i, (all_seq) in enumerate(loader):
             bt = time.time()
 
-            inputs = all_seq
-
-            if self.device == "cuda":
-                inputs = Variable(inputs.cuda()).float()
+            inputs = all_seq.to(self.device).float()
 
             mu = self(inputs.float())
-
             loss = self.loss_VLB(inputs)
 
             self.accum_update(str(dataset_name)+'_loss', loss)
-            self.accum_update(str(dataset_name)+'_gauss_log_lik', self.mse)
+            self.accum_update(str(dataset_name)+'_gauss_log_lik', self.recon_loss)
             if self.variational:
                 self.accum_update(str(dataset_name)+'_KL', self.KL)
 
@@ -174,9 +257,9 @@ class VAE(nn.Module):
         self.accum_loss = dict()
 
         if self.variational:
-            self.folder_name = "VAE"
+            self.folder_name = self.folder_name+"_VAE"
         else:
-            self.folder_name = "AE"
+            self.folder_name = self.folder_name+"_AE"
         for layer in encoder_layers:
             self.folder_name = self.folder_name+'_'+str(layer)
         for layer in decoder_layers:
@@ -190,11 +273,17 @@ class VAE(nn.Module):
         if self.beta != 1.0:
             self.folder_name = self.folder_name + '_beta=' + str(self.beta)
         os.makedirs(os.path.join(self.folder_name, 'checkpoints'))
+        os.makedirs(os.path.join(self.folder_name, 'images'))
 
         original_stdout = sys.stdout
         with open(str(self.folder_name)+'/'+'architecture.txt', 'w') as f:
             sys.stdout = f
             print(self)
+            print("BN:{}".format(batch_norm))
+            print("p_dropout:{}".format(p_dropout))
+            print("Output variance:{}".format(self.output_variance))
+            print("Beta(downweight of KL):{}".format(self.beta))
+            print("Activation function:{}".format(self.activation))
             sys.stdout = original_stdout
 
         self.head = []
@@ -219,6 +308,19 @@ class VAE(nn.Module):
         self.ret_log = []
         self.accum_reset()
 
+    def show_tensor_images(self, image_tensor, num_images=25, size=(1, 28, 28), nrow=5, show=True, save_as=None):
+        '''
+        Function for visualizing images: Given a tensor of images, number of images, and
+        size per image, plots and prints the images in an uniform grid.
+        '''
+        #image_tensor = (image_tensor + 1) / 2
+        image_unflat = image_tensor.detach().cpu()
+        image_grid = make_grid(image_unflat[:num_images], nrow=nrow)
+        plt.imshow(image_grid.permute(1, 2, 0).squeeze())
+        if show:
+            plt.show()
+        if not save_as==None:
+            plt.savefig(save_as)
 
 
 
