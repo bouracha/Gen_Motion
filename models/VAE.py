@@ -23,7 +23,7 @@ from torchvision.utils import make_grid
 import matplotlib.pyplot as plt
 
 class VAE(nn.Module):
-    def __init__(self, encoder_layers=[48, 100, 50, 2],  decoder_layers = [2, 50, 100, 48], variational=False, output_variance=False, device="cuda", batch_norm=False, p_dropout=0.0, beta=1.0, folder_name=""):
+    def __init__(self, encoder_layers=[48, 100, 50, 2],  decoder_layers = [2, 50, 100, 48], variational=False, output_variance=False, device="cuda", batch_norm=False, p_dropout=0.0, beta=1.0, new_model=True, folder_name=""):
         """
 
         :param input_feature: num of input feature
@@ -48,7 +48,8 @@ class VAE(nn.Module):
         self.encoder = VAE_Encoder(layers=encoder_layers, activation=self.activation, variational=variational, device=device, batch_norm=batch_norm, p_dropout=p_dropout)
         self.decoder = VAE_Decoder(layers=decoder_layers, activation=self.activation, output_variance=output_variance, device=device, batch_norm=batch_norm, p_dropout=p_dropout)
 
-        self.book_keeping(encoder_layers, decoder_layers, batch_norm, p_dropout)
+        if new_model:
+            self.book_keeping(encoder_layers, decoder_layers, batch_norm, p_dropout)
 
     def forward(self, x):
         """
@@ -118,7 +119,7 @@ class VAE(nn.Module):
             self.VLB = self.gauss_log_lik - self.beta*self.KL
             self.loss = -self.VLB
         else:
-            self.loss = self.gauss_log_lik
+            self.loss = -self.gauss_log_lik
         return self.loss
 
     def accum_update(self, key, val):
@@ -223,12 +224,13 @@ class VAE(nn.Module):
         file_path = self.folder_name + '/images/' + str(dataset_name) + '_' + str(epoch) + '_' + 'reconstructions'
         self.show_tensor_images(reconstructions, num_images=25, size=(1, 28, 28), nrow=5, show=False, save_as=file_path)
 
-    def eval_full_batch(self, loader, dataset_name='val'):
+    def eval_full_batch(self, loader, epoch, dataset_name='val'):
         self.eval()
         bar = Bar('>>>', fill='>', max=len(loader))
         st = time.time()
         for i, (all_seq) in enumerate(loader):
             bt = time.time()
+            cur_batch_size = len(all_seq)
 
             inputs = all_seq.to(self.device).float()
 
@@ -252,6 +254,16 @@ class VAE(nn.Module):
             ret_log.append(self.accum_loss[str(dataset_name)+'_KL'].avg)
         self.head = np.append(self.head, head)
         self.ret_log = np.append(self.ret_log, ret_log)
+
+        inputs_reshaped = inputs.reshape(cur_batch_size, 1, 8, 6)
+        reconstructions = mu.reshape(cur_batch_size, 1, 8, 6)
+        diffs = inputs_reshaped - reconstructions
+        file_path = self.folder_name + '/images/' + str(dataset_name) + '_' + str(epoch) + '_' + 'reals'
+        self.show_tensor_images(inputs_reshaped, num_images=25, size=(1, 28, 28), nrow=5, show=False, save_as=file_path)
+        file_path = self.folder_name + '/images/' + str(dataset_name) + '_' + str(epoch) + '_' + 'reconstructions'
+        self.show_tensor_images(reconstructions, num_images=25, size=(1, 28, 28), nrow=5, show=False, save_as=file_path)
+        file_path = self.folder_name + '/images/' + str(dataset_name) + '_' + str(epoch) + '_' + 'diffs'
+        self.show_tensor_images(diffs, num_images=25, size=(1, 28, 28), nrow=5, show=False, save_as=file_path)
 
     def book_keeping(self, encoder_layers, decoder_layers, batch_norm=False, p_dropout=0.0):
         self.accum_loss = dict()
@@ -313,7 +325,6 @@ class VAE(nn.Module):
         Function for visualizing images: Given a tensor of images, number of images, and
         size per image, plots and prints the images in an uniform grid.
         '''
-        #image_tensor = (image_tensor + 1) / 2
         image_unflat = image_tensor.detach().cpu()
         image_grid = make_grid(image_unflat[:num_images], nrow=nrow)
         plt.imshow(image_grid.permute(1, 2, 0).squeeze())

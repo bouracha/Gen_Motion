@@ -64,7 +64,6 @@ if opt.use_MNIST:
 
     transform = transforms.Compose([
         transforms.ToTensor(),
-        #transforms.Normalize((0.5,), (0.5,)),
     ])
 
     train_loader = DataLoader(
@@ -88,10 +87,11 @@ print(">>> data loaded !")
 # Instantiate model, and methods used fro training and valdation
 ##################################################################
 #n_zs = [2, 3, 5, 10, 20, 48]
-n_z = 20
+n_z = 2
+
 #for n_z in n_zs:
 print(">>> creating model")
-model = nnmodel.VAE(encoder_layers=[784, 500, n_z],  decoder_layers = [n_z, 500, 784], variational=opt.variational, output_variance=opt.output_variance, device=device, batch_norm=opt.batch_norm, p_dropout=0.0, beta=opt.beta, folder_name=folder_name)
+model = nnmodel.VAE(encoder_layers=[48, 100, n_z],  decoder_layers = [n_z, 100, 48], variational=opt.variational, output_variance=opt.output_variance, device=device, batch_norm=opt.batch_norm, p_dropout=0.0, beta=opt.beta, new_model=True, folder_name=folder_name)
 clipping_value = 1
 torch.nn.utils.clip_grad_norm_(model.parameters(), clipping_value)
 if is_cuda:
@@ -99,7 +99,7 @@ if is_cuda:
 print(model)
 
 print(">>> total params: {:.2f}M".format(sum(p.numel() for p in model.parameters()) / 1000000.0))
-lr=0.0001
+lr=0.001
 optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
 
@@ -111,9 +111,9 @@ for epoch in range(0, 500):
         model.eval_full_batch_mnist(train_loader, epoch, 'train', opt.use_bernoulli_loss)
         model.eval_full_batch_mnist(val_loader, epoch, 'val', opt.use_bernoulli_loss)
     else:
-        model.train_epoch(epoch, lr, train_loader, optimizer)
-        model.eval_full_batch(train_loader, 'train')
-        model.eval_full_batch(val_loader, 'val')
+        model.train_epoch(epoch, train_loader, optimizer)
+        model.eval_full_batch(train_loader, epoch, 'train')
+        model.eval_full_batch(val_loader, epoch, 'val')
 
     model.save_checkpoint_and_csv(epoch, lr, optimizer)
 

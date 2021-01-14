@@ -41,17 +41,23 @@ parser.set_defaults(output_variance=False)
 opt = parser.parse_args()
 
 is_cuda = torch.cuda.is_available()
+if is_cuda:
+    device="cuda"
+    job=10
+else:
+    device="cpu"
+    job=0
 n_z = opt.n_z
 
 print(">>> creating model")
-model = nnmodel.VAE(encoder_layers=[48, 100, 50, n_z], decoder_layers=[n_z, 50, 100, 48], variational=opt.variational,
-                    output_variance=opt.output_variance, device="cuda", batch_norm=opt.batch_norm, p_dropout=0.0, beta=opt.beta)
+model = nnmodel.VAE(encoder_layers=[48, 24, n_z], decoder_layers=[n_z, 24, 48], variational=opt.variational,
+                    output_variance=opt.output_variance, device=device, batch_norm=opt.batch_norm, p_dropout=0.0, beta=opt.beta, new_model=False)
 print(">>> total params: {:.2f}M".format(sum(p.numel() for p in model.parameters()) / 1000000.0))
 lr = 0.00003
 optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 if is_cuda:
     model.cuda()
-    ckpt = torch.load(opt.ckpt)
+ckpt = torch.load(opt.ckpt, map_location=torch.device(device))
 start_epoch = ckpt['epoch']
 err_best = ckpt['err']
 lr_now = ckpt['lr']
@@ -80,7 +86,8 @@ all_seq = torch.tensor([[[3.0088e+00, 2.3565e+00, 1.2685e+01, 9.0479e-03, -2.344
                           3.8653e-01, 6.5862e-02, -0.0000e+00, -0.0000e+00, -0.0000e+00,
                           -0.0000e+00, -0.0000e+00, -0.0000e+00, -0.0000e+00, -0.0000e+00,
                           -0.0000e+00, -0.0000e+00, -0.0000e+00, -0.0000e+00]]])
-all_seq = all_seq.cuda()
+if is_cuda:
+    all_seq = all_seq.cuda()
 dim_used = [6, 7, 8, 9, 12, 13, 14, 15, 21, 22, 23, 24, 27, 28, 29, 30, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47,
             51, 52, 53, 54, 55, 56, 57, 60, 61, 62, 75, 76, 77, 78, 79, 80, 81, 84, 85, 86]
 
@@ -94,7 +101,7 @@ for act in acts:
         dataset=test_dataset,
         batch_size=1,
         shuffle=False,
-        num_workers=1,
+        num_workers=job,
         pin_memory=True)
 dim_used = test_dataset.dim_used
 print(">>> data loaded !")
