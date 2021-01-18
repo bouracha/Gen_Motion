@@ -58,3 +58,51 @@ class H36motion3D(Dataset):
 
     def __getitem__(self, item):
         return self.input_dct_seq[item], self.output_dct_seq[item], self.all_seqs[item]
+
+
+class H36motion3D_pose(Dataset):
+
+    def __init__(self, path_to_data, actions, input_n=20, output_n=10, dct_used=15, split=0, sample_rate=2):
+        """
+        :param path_to_data:
+        :param actions:
+        :param input_n:
+        :param output_n:
+        :param dct_used:
+        :param split: 0 train, 1 testing, 2 validation
+        :param sample_rate:
+        """
+        self.path_to_data = path_to_data
+        self.split = split
+        self.dct_used = dct_used
+
+        subs = np.array([[1, 6, 7, 8, 9], [5], [11]])
+        acts = data_utils.define_actions(actions)
+
+        # subs = np.array([[1], [5], [11]])
+        # acts = ['walking']
+
+        subjs = subs[split]
+        all_seqs, dim_ignore, dim_used = data_utils.load_data_3d(path_to_data, subjs, acts, sample_rate,
+                                                                 1)
+        self.all_seqs = all_seqs
+        self.dim_used = dim_used
+
+        m = self.all_seqs.shape[0]
+        n = self.all_seqs.shape[-1]
+        self.all_seqs = self.all_seqs.reshape((m, n))
+
+        max_per_pose = np.amax(self.all_seqs, -1)
+        max_per_pose = np.repeat(max_per_pose.reshape(m, 1), 96, axis=1)
+        min_per_pose = np.amin(self.all_seqs, -1)
+        min_per_pose = np.repeat(min_per_pose.reshape(m, 1), 96, axis=1)
+        self.all_seqs = (self.all_seqs - min_per_pose)/(max_per_pose - min_per_pose)
+
+        #print("all seq_shape ", self.all_seqs.shape)
+        self.all_seqs = self.all_seqs[:, dim_used]
+
+    def __len__(self):
+        return self.all_seqs.shape[0]
+
+    def __getitem__(self, item):
+        return self.all_seqs[item]

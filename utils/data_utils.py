@@ -288,7 +288,7 @@ def define_actions(action, dataset='h3.6m', out_of_distribution=False):
       ValueError if the action is not included in H3.6M
     """
 
-    if dataset=='h3.6m':
+    if dataset=='h3.6m' or dataset=='h3.6m_3d':
         actions = ["walking", "eating", "smoking", "discussion", "directions",
                   "greeting", "phoning", "posing", "purchases", "sitting",
                   "sittingdown", "takingphoto", "waiting", "walkingdog",
@@ -596,7 +596,7 @@ def expmap2rotmat_torch(r):
     r1 = r1.view(-1, 3, 3)
     r1 = r1 - r1.transpose(1, 2)
     n = r1.data.shape[0]
-    R = Variable(torch.eye(3, 3).repeat(n, 1, 1)).float().cuda() + torch.mul(
+    R = Variable(torch.eye(3, 3).repeat(n, 1, 1)).float() + torch.mul(
         torch.sin(theta).unsqueeze(1).repeat(1, 9).view(-1, 3, 3), r1) + torch.mul(
         (1 - torch.cos(theta).unsqueeze(1).repeat(1, 9).view(-1, 3, 3)), torch.matmul(r1, r1))
     return R
@@ -736,7 +736,7 @@ def load_data_3d(path_to_dataset, subjects, actions, sample_rate, seq_len):
                     even_list = range(0, n, sample_rate)
                     num_frames = len(even_list)
                     the_sequence = np.array(action_sequence[even_list, :])
-                    the_seq = Variable(torch.from_numpy(the_sequence)).float().cuda()
+                    the_seq = Variable(torch.from_numpy(the_sequence)).float()
                     # remove global rotation and translation
                     the_seq[:, 0:6] = 0
                     p3d = expmap2xyz_torch(the_seq)
@@ -763,7 +763,7 @@ def load_data_3d(path_to_dataset, subjects, actions, sample_rate, seq_len):
 
                 num_frames1 = len(even_list)
                 the_sequence1 = np.array(action_sequence[even_list, :])
-                the_seq1 = Variable(torch.from_numpy(the_sequence1)).float().cuda()
+                the_seq1 = Variable(torch.from_numpy(the_sequence1)).float()
                 the_seq1[:, 0:6] = 0
                 p3d1 = expmap2xyz_torch(the_seq1)
                 the_sequence1 = p3d1.view(num_frames1, -1).cpu().data.numpy()
@@ -776,7 +776,7 @@ def load_data_3d(path_to_dataset, subjects, actions, sample_rate, seq_len):
 
                 num_frames2 = len(even_list)
                 the_sequence2 = np.array(action_sequence[even_list, :])
-                the_seq2 = Variable(torch.from_numpy(the_sequence2)).float().cuda()
+                the_seq2 = Variable(torch.from_numpy(the_sequence2)).float()
                 the_seq2[:, 0:6] = 0
                 p3d2 = expmap2xyz_torch(the_seq2)
                 the_sequence2 = p3d2.view(num_frames2, -1).cpu().data.numpy()

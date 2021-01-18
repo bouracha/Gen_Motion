@@ -76,7 +76,7 @@ if opt.use_MNIST:
         shuffle=True)
 else:
     ### Human Motion Data
-    data = DATA("h3.6m", "h3.6m/dataset/")
+    data = DATA("h3.6m_3d", "h3.6m/dataset/")
     out_of_distribution = data.get_poses(input_n=1, output_n=1, sample_rate=2, dct_n=2, out_of_distribution_action=None)
     train_loader, val_loader, OoD_val_loader, test_loader = data.get_dataloaders(train_batch=train_batch, test_batch=test_batch, job=job)
     print(">>> train data {}".format(data.train_dataset.__len__()))
@@ -87,11 +87,12 @@ print(">>> data loaded !")
 # Instantiate model, and methods used fro training and valdation
 ##################################################################
 #n_zs = [2, 3, 5, 10, 20, 48]
+input_n = data.node_n
 n_z = 2
 
 #for n_z in n_zs:
 print(">>> creating model")
-model = nnmodel.VAE(encoder_layers=[48, 100, n_z],  decoder_layers = [n_z, 100, 48], variational=opt.variational, output_variance=opt.output_variance, device=device, batch_norm=opt.batch_norm, p_dropout=0.0, beta=opt.beta, new_model=True, folder_name=folder_name)
+model = nnmodel.VAE(encoder_layers=[input_n, 100, n_z],  decoder_layers = [n_z, 100, input_n], variational=opt.variational, output_variance=opt.output_variance, device=device, batch_norm=opt.batch_norm, p_dropout=0.0, beta=opt.beta, new_model=True, folder_name=folder_name)
 clipping_value = 1
 torch.nn.utils.clip_grad_norm_(model.parameters(), clipping_value)
 if is_cuda:

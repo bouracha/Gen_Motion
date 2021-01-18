@@ -220,9 +220,9 @@ class VAE(nn.Module):
 
         reconstructions = reconstructions.reshape(cur_batch_size, 1, 28, 28)
         file_path = self.folder_name + '/images/' + str(dataset_name) + '_' + str(epoch) + '_' + 'reals'
-        self.show_tensor_images(image, num_images=25, size=(1, 28, 28), nrow=5, show=False, save_as=file_path)
+        self.show_tensor_images(image, num_images=25, nrow=5, show=False, save_as=file_path)
         file_path = self.folder_name + '/images/' + str(dataset_name) + '_' + str(epoch) + '_' + 'reconstructions'
-        self.show_tensor_images(reconstructions, num_images=25, size=(1, 28, 28), nrow=5, show=False, save_as=file_path)
+        self.show_tensor_images(reconstructions, num_images=25, nrow=5, show=False, save_as=file_path)
 
     def eval_full_batch(self, loader, epoch, dataset_name='val'):
         self.eval()
@@ -255,15 +255,16 @@ class VAE(nn.Module):
         self.head = np.append(self.head, head)
         self.ret_log = np.append(self.ret_log, ret_log)
 
-        inputs_reshaped = inputs.reshape(cur_batch_size, 1, 8, 6)
-        reconstructions = mu.reshape(cur_batch_size, 1, 8, 6)
+        inputs_reshaped = inputs.reshape(cur_batch_size, 1, 11, 6)
+        reconstructions = mu.reshape(cur_batch_size, 1, 11, 6)
         diffs = inputs_reshaped - reconstructions
+
         file_path = self.folder_name + '/images/' + str(dataset_name) + '_' + str(epoch) + '_' + 'reals'
-        self.show_tensor_images(inputs_reshaped, num_images=25, size=(1, 28, 28), nrow=5, show=False, save_as=file_path)
+        self.show_tensor_images(inputs_reshaped, num_images=25, nrow=5, show=False, save_as=file_path)
         file_path = self.folder_name + '/images/' + str(dataset_name) + '_' + str(epoch) + '_' + 'reconstructions'
-        self.show_tensor_images(reconstructions, num_images=25, size=(1, 28, 28), nrow=5, show=False, save_as=file_path)
+        self.show_tensor_images(reconstructions, num_images=25, nrow=5, show=False, save_as=file_path)
         file_path = self.folder_name + '/images/' + str(dataset_name) + '_' + str(epoch) + '_' + 'diffs'
-        self.show_tensor_images(diffs, num_images=25, size=(1, 28, 28), nrow=5, show=False, save_as=file_path)
+        self.show_tensor_images(diffs, num_images=25, nrow=5, show=False, save_as=file_path)
 
     def book_keeping(self, encoder_layers, decoder_layers, batch_norm=False, p_dropout=0.0):
         self.accum_loss = dict()
@@ -320,7 +321,7 @@ class VAE(nn.Module):
         self.ret_log = []
         self.accum_reset()
 
-    def show_tensor_images(self, image_tensor, num_images=25, size=(1, 28, 28), nrow=5, show=True, save_as=None):
+    def show_tensor_images(self, image_tensor, num_images=25, nrow=5, show=True, save_as=None):
         '''
         Function for visualizing images: Given a tensor of images, number of images, and
         size per image, plots and prints the images in an uniform grid.

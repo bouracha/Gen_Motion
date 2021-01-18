@@ -1,6 +1,7 @@
 from torch.utils.data import DataLoader
 
 from utils.h36motion import H36motion, H36motion_pose
+from utils.h36motion3d import H36motion3D, H36motion3D_pose
 from utils.cmu_motion import CMU_Motion
 from utils.cmu_motion_3d import CMU_Motion3D
 
@@ -45,6 +46,22 @@ class DATA():
             for act in acts_test:
                 self.test_dataset[act] = H36motion(path_to_data=self.data_dir, actions=act, input_n=input_n, output_n=output_n,
                                          split=1, sample_rate=sample_rate, data_mean=self.data_mean, data_std=self.data_std, dct_n=dct_n)
+        elif self.dataset == 'h3.6m_3d':
+            self.cartesian = True
+            self.node_n=66
+            self.train_dataset = H36motion3D(path_to_data=self.data_dir, actions=acts_train, input_n=input_n, output_n=output_n,
+                                          split=0, sample_rate=sample_rate, dct_n=dct_n)
+            self.val_dataset = H36motion3D(path_to_data=self.data_dir, actions=acts_train, input_n=input_n, output_n=output_n,
+                                        split=2, sample_rate=sample_rate, dct_used=dct_n)
+            if self.out_of_distribution:
+                  self.OoD_val_dataset = H36motion3D(path_to_data=self.data_dir, actions=acts_OoD, input_n=input_n, output_n=output_n,
+                                          split=2, sample_rate=sample_rate, dct_used=dct_n)
+            else:
+                  self.OoD_val_dataset = None
+            self.test_dataset = dict()
+            for act in acts_test:
+                self.test_dataset[act] = H36motion3D(path_to_data=self.data_dir, actions=act, input_n=input_n, output_n=output_n,
+                                         split=1, sample_rate=sample_rate, dct_used=dct_n)
         elif self.dataset == 'cmu_mocap':
             self.cartesian = False
             self.node_n = 64
@@ -87,18 +104,18 @@ class DATA():
             num_workers=job,
             pin_memory=True)
         # We only use validation for the h3.6M dataset
-        if self.dataset == 'h3.6m':
+        if self.dataset == 'h3.6m' or 'h3.6m_3d':
             val_loader = DataLoader(
                 dataset=self.val_dataset,
                 batch_size=test_batch,
-                shuffle=False,
+                shuffle=True,
                 num_workers=job,
                 pin_memory=True)
             if self.out_of_distribution:
                 OoD_val_loader = DataLoader(
                     dataset=self.OoD_val_dataset,
                     batch_size=test_batch,
-                    shuffle=False,
+                    shuffle=True,
                     num_workers=job,
                     pin_memory=True)
             else:
@@ -148,6 +165,22 @@ class DATA():
             for act in acts_test:
                 self.test_dataset[act] = H36motion_pose(path_to_data=self.data_dir, actions=act, input_n=input_n, output_n=output_n,
                                          split=1, sample_rate=sample_rate, data_mean=self.data_mean, data_std=self.data_std, dct_n=dct_n)
+        elif self.dataset == 'h3.6m_3d':
+            self.cartesian = False
+            self.node_n=66
+            self.train_dataset = H36motion3D_pose(path_to_data=self.data_dir, actions=acts_train, input_n=input_n, output_n=output_n,
+                                          split=0, sample_rate=sample_rate, dct_used=dct_n)
+            self.val_dataset = H36motion3D_pose(path_to_data=self.data_dir, actions=acts_train, input_n=input_n, output_n=output_n,
+                                        split=2, sample_rate=sample_rate, dct_used=dct_n)
+            if self.out_of_distribution:
+                  self.OoD_val_dataset = H36motion3D_pose(path_to_data=self.data_dir, actions=acts_OoD, input_n=input_n, output_n=output_n,
+                                          split=2, sample_rate=sample_rate, dct_used=dct_n)
+            else:
+                  self.OoD_val_dataset = None
+            self.test_dataset = dict()
+            for act in acts_test:
+                self.test_dataset[act] = H36motion3D_pose(path_to_data=self.data_dir, actions=act, input_n=input_n, output_n=output_n,
+                                         split=1, sample_rate=sample_rate, dct_used=dct_n)
         elif self.dataset == 'cmu_mocap':
             self.cartesian = False
             self.node_n = 64
