@@ -10,6 +10,8 @@ from models.utils import *
 from models.encoders import VAE_Encoder
 from models.decoders import VAE_Decoder
 
+import utils.viz_3d as viz_3d
+
 from progress.bar import Bar
 import time
 from torch.autograd import Variable
@@ -61,6 +63,7 @@ class VAE(nn.Module):
             self.reconstructions_mu, self.reconstructions_log_var = self.decoder(self.z)
         else:
             self.reconstructions_mu = self.decoder(self.z)
+            self.reconstructions_log_var = torch.zeros_like(self.reconstructions_mu)
         sig = nn.Sigmoid()
         self.bernoulli_output = sig(self.reconstructions_mu)
 
@@ -110,11 +113,8 @@ class VAE(nn.Module):
 
         self.mse = torch.pow((self.reconstructions_mu - x), 2)
         self.recon_loss = torch.mean(torch.sum(self.mse, axis=1))
-        if self.output_variance:
-            self.gauss_log_lik = -0.5*(self.reconstructions_log_var + np.log(2*np.pi) + (self.mse/(1e-8 + torch.exp(self.reconstructions_log_var))))
-            self.gauss_log_lik = torch.mean(torch.sum(self.gauss_log_lik, axis=1))
-        else:
-            self.gauss_log_lik = -self.recon_loss
+        self.gauss_log_lik = -0.5*(self.reconstructions_log_var + np.log(2*np.pi) + (self.mse/(1e-8 + torch.exp(self.reconstructions_log_var))))
+        self.gauss_log_lik = torch.mean(torch.sum(self.gauss_log_lik, axis=1))
         if self.variational:
             self.VLB = self.gauss_log_lik - self.beta*self.KL
             self.loss = -self.VLB
@@ -220,9 +220,9 @@ class VAE(nn.Module):
 
         reconstructions = reconstructions.reshape(cur_batch_size, 1, 28, 28)
         file_path = self.folder_name + '/images/' + str(dataset_name) + '_' + str(epoch) + '_' + 'reals'
-        self.show_tensor_images(image, num_images=25, nrow=5, show=False, save_as=file_path)
+        self.plot_tensor_images(image, num_images=25, nrow=5, show=False, save_as=file_path)
         file_path = self.folder_name + '/images/' + str(dataset_name) + '_' + str(epoch) + '_' + 'reconstructions'
-        self.show_tensor_images(reconstructions, num_images=25, nrow=5, show=False, save_as=file_path)
+        self.plot_tensor_images(reconstructions, num_images=25, nrow=5, show=False, save_as=file_path)
 
     def eval_full_batch(self, loader, epoch, dataset_name='val'):
         self.eval()
@@ -238,7 +238,7 @@ class VAE(nn.Module):
             loss = self.loss_VLB(inputs)
 
             self.accum_update(str(dataset_name)+'_loss', loss)
-            self.accum_update(str(dataset_name)+'_gauss_log_lik', self.recon_loss)
+            self.accum_update(str(dataset_name)+'_recon_loss', self.recon_loss)
             if self.variational:
                 self.accum_update(str(dataset_name)+'_KL', self.KL)
 
@@ -248,23 +248,29 @@ class VAE(nn.Module):
         bar.finish()
 
         head = [dataset_name+'_loss', dataset_name+'_reconstruction']
-        ret_log = [self.accum_loss[str(dataset_name)+'_loss'].avg, self.accum_loss[str(dataset_name)+'_gauss_log_lik'].avg]
+        ret_log = [self.accum_loss[str(dataset_name)+'_loss'].avg, self.accum_loss[str(dataset_name)+'_recon_loss'].avg]
         if self.variational:
             head.append(str(dataset_name)+'_KL')
             ret_log.append(self.accum_loss[str(dataset_name)+'_KL'].avg)
         self.head = np.append(self.head, head)
         self.ret_log = np.append(self.ret_log, ret_log)
 
-        inputs_reshaped = inputs.reshape(cur_batch_size, 1, 11, 6)
-        reconstructions = mu.reshape(cur_batch_size, 1, 11, 6)
+        inputs_reshaped = inputs.reshape(cur_batch_size, 1, 12, 8)
+        reconstructions = mu.reshape(cur_batch_size, 1, 12, 8)
         diffs = inputs_reshaped - reconstructions
 
         file_path = self.folder_name + '/images/' + str(dataset_name) + '_' + str(epoch) + '_' + 'reals'
-        self.show_tensor_images(inputs_reshaped, num_images=25, nrow=5, show=False, save_as=file_path)
+        self.plot_tensor_images(inputs_reshaped, num_images=25, nrow=5, show=False, save_as=file_path)
         file_path = self.folder_name + '/images/' + str(dataset_name) + '_' + str(epoch) + '_' + 'reconstructions'
-        self.show_tensor_images(reconstructions, num_images=25, nrow=5, show=False, save_as=file_path)
+        self.plot_tensor_images(reconstructions, num_images=25, nrow=5, show=False, save_as=file_path)
         file_path = self.folder_name + '/images/' + str(dataset_name) + '_' + str(epoch) + '_' + 'diffs'
-        self.show_tensor_images(diffs, num_images=25, nrow=5, show=False, save_as=file_path)
+        self.plot_tensor_images(diffs, num_images=25, nrow=5, show=False, save_as=file_path)
+        file_path = self.folder_name + '/poses/' + str(dataset_name) + '_' + str(epoch) + '_' + 'poses_xz'
+        self.plot_poses(inputs, mu, num_images=25, azim=0, evl=90, save_as=file_path)
+        file_path = self.folder_name + '/poses/' + str(dataset_name) + '_' + str(epoch) + '_' + 'poses_yz'
+        self.plot_poses(inputs, mu, num_images=25, azim=0, evl=-0, save_as=file_path)
+        file_path = self.folder_name + '/poses/' + str(dataset_name) + '_' + str(epoch) + '_' + 'poses_xy'
+        self.plot_poses(inputs, mu, num_images=25, azim=90, evl=90, save_as=file_path)
 
     def book_keeping(self, encoder_layers, decoder_layers, batch_norm=False, p_dropout=0.0):
         self.accum_loss = dict()
@@ -287,6 +293,7 @@ class VAE(nn.Module):
             self.folder_name = self.folder_name + '_beta=' + str(self.beta)
         os.makedirs(os.path.join(self.folder_name, 'checkpoints'))
         os.makedirs(os.path.join(self.folder_name, 'images'))
+        os.makedirs(os.path.join(self.folder_name, 'poses'))
 
         original_stdout = sys.stdout
         with open(str(self.folder_name)+'/'+'architecture.txt', 'w') as f:
@@ -321,7 +328,7 @@ class VAE(nn.Module):
         self.ret_log = []
         self.accum_reset()
 
-    def show_tensor_images(self, image_tensor, num_images=25, nrow=5, show=True, save_as=None):
+    def plot_tensor_images(self, image_tensor, num_images=25, nrow=5, show=False, save_as=None):
         '''
         Function for visualizing images: Given a tensor of images, number of images, and
         size per image, plots and prints the images in an uniform grid.
@@ -333,9 +340,47 @@ class VAE(nn.Module):
             plt.show()
         if not save_as==None:
             plt.savefig(save_as)
+        plt.close()
 
+    def plot_poses(self, xyz_gt, xyz_pred, num_images=25, azim=0, evl=0, save_as=None):
+        '''
+        Function for visualizing poses: saves grid of poses.
+        Assumes poses are normalised between 0 and 1
+        :param xyz_gt: set of ground truth 3D joint positions (batch_size, 96)
+        :param xyz_pred: set of predicted 3D joint positions (batch_size, 96)
+        :param num_images: number of poses to plotted from given set (int)
+        :param azim: azimuthal angle for viewing (int)
+        :param evl: angle of elevation for viewing (int)
+        :param save_as: path and name to save (str)
+        '''
+        xyz_gt = xyz_gt.detach().cpu().numpy()
+        xyz_pred = xyz_pred.detach().cpu().numpy()
 
+        xyz_gt = xyz_gt[:num_images].reshape(num_images, 32, 3)
+        xyz_pred = xyz_pred[:num_images].reshape(num_images, 32, 3)
 
+        fig = plt.figure()
+        if num_images > 4:
+            fig = plt.figure(figsize=(20, 20))
+
+        grid_dim_size = np.ceil(np.sqrt(num_images))
+        for i in range(num_images):
+            ax = fig.add_subplot(grid_dim_size, grid_dim_size, i+1, projection='3d')
+            ax.set_xlim3d([0, 1])
+            ax.set_ylim3d([0, 1])
+            ax.set_zlim3d([0, 1])
+
+            ob = viz_3d.Ax3DPose(ax)
+            ob.update(xyz_gt[i], xyz_pred[i])
+
+            ob.ax.set_axis_off()
+            ob.ax.view_init(azim, evl)
+
+        fig.subplots_adjust(hspace=0)
+        fig.subplots_adjust(wspace=0)
+
+        plt.savefig(save_as)
+        plt.close()
 
 
 

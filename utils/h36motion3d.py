@@ -83,8 +83,7 @@ class H36motion3D_pose(Dataset):
         # acts = ['walking']
 
         subjs = subs[split]
-        all_seqs, dim_ignore, dim_used = data_utils.load_data_3d(path_to_data, subjs, acts, sample_rate,
-                                                                 1)
+        all_seqs, dim_ignore, dim_used = data_utils.load_data_3d(path_to_data, subjs, acts, sample_rate, 1)
         self.all_seqs = all_seqs
         self.dim_used = dim_used
 
@@ -99,7 +98,7 @@ class H36motion3D_pose(Dataset):
         self.all_seqs = (self.all_seqs - min_per_pose)/(max_per_pose - min_per_pose)
 
         #print("all seq_shape ", self.all_seqs.shape)
-        self.all_seqs = self.all_seqs[:, dim_used]
+        #self.all_seqs = self.all_seqs[:, dim_used]
 
     def __len__(self):
         return self.all_seqs.shape[0]

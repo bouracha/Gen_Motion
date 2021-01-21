@@ -48,7 +48,7 @@ class DATA():
                                          split=1, sample_rate=sample_rate, data_mean=self.data_mean, data_std=self.data_std, dct_n=dct_n)
         elif self.dataset == 'h3.6m_3d':
             self.cartesian = True
-            self.node_n=66
+            self.node_n=96
             self.train_dataset = H36motion3D(path_to_data=self.data_dir, actions=acts_train, input_n=input_n, output_n=output_n,
                                           split=0, sample_rate=sample_rate, dct_n=dct_n)
             self.val_dataset = H36motion3D(path_to_data=self.data_dir, actions=acts_train, input_n=input_n, output_n=output_n,
@@ -167,7 +167,7 @@ class DATA():
                                          split=1, sample_rate=sample_rate, data_mean=self.data_mean, data_std=self.data_std, dct_n=dct_n)
         elif self.dataset == 'h3.6m_3d':
             self.cartesian = False
-            self.node_n=66
+            self.node_n=96
             self.train_dataset = H36motion3D_pose(path_to_data=self.data_dir, actions=acts_train, input_n=input_n, output_n=output_n,
                                           split=0, sample_rate=sample_rate, dct_used=dct_n)
             self.val_dataset = H36motion3D_pose(path_to_data=self.data_dir, actions=acts_train, input_n=input_n, output_n=output_n,

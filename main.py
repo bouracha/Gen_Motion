@@ -86,37 +86,37 @@ print(">>> data loaded !")
 ##################################################################
 # Instantiate model, and methods used fro training and valdation
 ##################################################################
-#n_zs = [2, 3, 5, 10, 20, 48]
+n_zs = [2, 3, 5, 10, 20, 48]
 input_n = data.node_n
-n_z = 2
+#n_z = 2
 
-#for n_z in n_zs:
-print(">>> creating model")
-model = nnmodel.VAE(encoder_layers=[input_n, 100, n_z],  decoder_layers = [n_z, 100, input_n], variational=opt.variational, output_variance=opt.output_variance, device=device, batch_norm=opt.batch_norm, p_dropout=0.0, beta=opt.beta, new_model=True, folder_name=folder_name)
-clipping_value = 1
-torch.nn.utils.clip_grad_norm_(model.parameters(), clipping_value)
-if is_cuda:
-    model.cuda()
-print(model)
+for n_z in n_zs:
+    print(">>> creating model")
+    model = nnmodel.VAE(encoder_layers=[input_n, 100, n_z],  decoder_layers = [n_z, 100, input_n], variational=opt.variational, output_variance=opt.output_variance, device=device, batch_norm=opt.batch_norm, p_dropout=0.0, beta=opt.beta, new_model=True, folder_name=folder_name)
+    clipping_value = 1
+    torch.nn.utils.clip_grad_norm_(model.parameters(), clipping_value)
+    if is_cuda:
+        model.cuda()
+    print(model)
 
-print(">>> total params: {:.2f}M".format(sum(p.numel() for p in model.parameters()) / 1000000.0))
-lr=0.001
-optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    print(">>> total params: {:.2f}M".format(sum(p.numel() for p in model.parameters()) / 1000000.0))
+    lr=0.001
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
 
-for epoch in range(0, 500):
-    print("Epoch: ", epoch+1)
+    for epoch in range(0, 50):
+        print("Epoch: ", epoch+1)
 
-    if opt.use_MNIST:
-        model.train_epoch_mnist(epoch, train_loader, optimizer, opt.use_bernoulli_loss)
-        model.eval_full_batch_mnist(train_loader, epoch, 'train', opt.use_bernoulli_loss)
-        model.eval_full_batch_mnist(val_loader, epoch, 'val', opt.use_bernoulli_loss)
-    else:
-        model.train_epoch(epoch, train_loader, optimizer)
-        model.eval_full_batch(train_loader, epoch, 'train')
-        model.eval_full_batch(val_loader, epoch, 'val')
+        if opt.use_MNIST:
+            model.train_epoch_mnist(epoch, train_loader, optimizer, opt.use_bernoulli_loss)
+            model.eval_full_batch_mnist(train_loader, epoch, 'train', opt.use_bernoulli_loss)
+            model.eval_full_batch_mnist(val_loader, epoch, 'val', opt.use_bernoulli_loss)
+        else:
+            model.train_epoch(epoch, train_loader, optimizer)
+            model.eval_full_batch(train_loader, epoch, 'train')
+            model.eval_full_batch(val_loader, epoch, 'val')
 
-    model.save_checkpoint_and_csv(epoch, lr, optimizer)
+        model.save_checkpoint_and_csv(epoch, lr, optimizer)
 
 
 
