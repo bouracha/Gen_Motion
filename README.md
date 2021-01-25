@@ -24,6 +24,17 @@ To train as VAE add:
 --variational
 ``` 
 flag.
+Other useful boolean flags:
+```bash
+--output_variance
+--batch_norm
+--use_MNIST
+--use_bernoulli_loss
+```
+and can enter a value for beta via:
+```bash
+--beta. 0.01
+```
 
 
 ## Licence
