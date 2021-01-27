@@ -25,7 +25,7 @@ from torchvision.utils import make_grid
 import matplotlib.pyplot as plt
 
 class VAE(nn.Module):
-    def __init__(self, encoder_layers=[48, 100, 50, 2],  decoder_layers = [2, 50, 100, 48], variational=False, output_variance=False, device="cuda", batch_norm=False, p_dropout=0.0, beta=1.0, new_model=True, folder_name=""):
+    def __init__(self, encoder_layers=[48, 100, 50, 2],  decoder_layers = [2, 50, 100, 48], lr=0.001, train_batch_size=100, variational=False, output_variance=False, device="cuda", batch_norm=False, weight_decay=0.0, p_dropout=0.0, beta=1.0, new_model=True, folder_name=""):
         """
 
         :param input_feature: num of input feature
@@ -51,7 +51,7 @@ class VAE(nn.Module):
         self.decoder = VAE_Decoder(layers=decoder_layers, activation=self.activation, output_variance=output_variance, device=device, batch_norm=batch_norm, p_dropout=p_dropout)
 
         if new_model:
-            self.book_keeping(encoder_layers, decoder_layers, batch_norm, p_dropout)
+            self.book_keeping(encoder_layers, decoder_layers, lr=lr, train_batch_size=train_batch_size, batch_norm=batch_norm, weight_decay=weight_decay, p_dropout=p_dropout)
 
     def forward(self, x):
         """
@@ -272,7 +272,7 @@ class VAE(nn.Module):
         file_path = self.folder_name + '/poses/' + str(dataset_name) + '_' + str(epoch) + '_' + 'poses_xy'
         self.plot_poses(inputs, mu, num_images=25, azim=90, evl=90, save_as=file_path)
 
-    def book_keeping(self, encoder_layers, decoder_layers, batch_norm=False, p_dropout=0.0):
+    def book_keeping(self, encoder_layers, decoder_layers, lr=0.001, train_batch_size=100, batch_norm=False, weight_decay=0.0, p_dropout=0.0):
         self.accum_loss = dict()
 
         if self.variational:
@@ -299,7 +299,10 @@ class VAE(nn.Module):
         with open(str(self.folder_name)+'/'+'architecture.txt', 'w') as f:
             sys.stdout = f
             print(self)
+            print("Learning rate:{}".format(lr))
+            print("Training batch size:{}".format(train_batch_size))
             print("BN:{}".format(batch_norm))
+            print("Weight Decay (1e-4):{}".format(weight_decay))
             print("p_dropout:{}".format(p_dropout))
             print("Output variance:{}".format(self.output_variance))
             print("Beta(downweight of KL):{}".format(self.beta))

@@ -29,17 +29,26 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument('--variational', dest='variational', action='store_true', help='toggle VAE or AE')
 parser.add_argument('--batch_norm', dest='batch_norm', action='store_true', help='toggle use batch_norm or not')
+parser.add_argument('--weight_decay', dest='weight_decay', action='store_true', help='toggle use weight decay or not')
 parser.add_argument('--output_variance', dest='output_variance', action='store_true', help='toggle model output variance or use as constant')
 parser.add_argument('--use_MNIST', dest='use_MNIST', action='store_true', help='toggle to use MNIST data instead')
 parser.add_argument('--use_bernoulli_loss', dest='use_bernoulli_loss', action='store_true', help='toggle to bernoulli of gauss loss')
 parser.add_argument('--beta', type=float, default=1.0, help='Downweighting of the KL divergence')
+parser.add_argument('--lr', type=float, default=0.001, help='Learning rate')
 parser.set_defaults(variational=False)
 parser.set_defaults(batch_norm=False)
+parser.set_defaults(weight_decay=False)
 parser.set_defaults(output_variance=False)
 parser.set_defaults(use_MNIST=False)
 parser.set_defaults(use_bernoulli_loss=False)
 
 opt = parser.parse_args()
+
+weight_decay = 0.0
+if opt.weight_decay:
+    weight_decay = 1e-4
+
+lr=opt.lr
 
 folder_name=""
 is_cuda = torch.cuda.is_available()
@@ -53,8 +62,8 @@ else:
 #####################################################
 # Load data
 #####################################################
-train_batch=100
-test_batch=128
+train_batch_size=100
+test_batch_size=128
 if opt.use_MNIST:
     ### MNIST
     folder_name = folder_name+"MNIST"
@@ -68,17 +77,17 @@ if opt.use_MNIST:
 
     train_loader = DataLoader(
         MNIST('.', train=True, download=False, transform=transform),
-        batch_size=train_batch,
+        batch_size=train_batch_size,
         shuffle=True)
     val_loader = DataLoader(
         MNIST('.', train=False, download=False, transform=transform),
-        batch_size=train_batch,
+        batch_size=train_batch_size,
         shuffle=True)
 else:
     ### Human Motion Data
     data = DATA("h3.6m_3d", "h3.6m/dataset/")
     out_of_distribution = data.get_poses(input_n=1, output_n=1, sample_rate=2, dct_n=2, out_of_distribution_action=None)
-    train_loader, val_loader, OoD_val_loader, test_loader = data.get_dataloaders(train_batch=train_batch, test_batch=test_batch, job=job)
+    train_loader, val_loader, OoD_val_loader, test_loader = data.get_dataloaders(train_batch=train_batch_size, test_batch=test_batch_size, job=job)
     print(">>> train data {}".format(data.train_dataset.__len__()))
     print(">>> validation data {}".format(data.val_dataset.__len__()))
 
@@ -92,7 +101,7 @@ input_n = data.node_n
 
 for n_z in n_zs:
     print(">>> creating model")
-    model = nnmodel.VAE(encoder_layers=[input_n, 100, n_z],  decoder_layers = [n_z, 100, input_n], variational=opt.variational, output_variance=opt.output_variance, device=device, batch_norm=opt.batch_norm, p_dropout=0.0, beta=opt.beta, new_model=True, folder_name=folder_name)
+    model = nnmodel.VAE(encoder_layers=[input_n, 500, 200, 100, 50, n_z],  decoder_layers = [n_z, 50, 100, 200, 500, input_n], lr=lr, train_batch_size=train_batch_size, variational=opt.variational, output_variance=opt.output_variance, device=device, batch_norm=opt.batch_norm, weight_decay=weight_decay, p_dropout=0.0, beta=opt.beta, new_model=True, folder_name=folder_name)
     clipping_value = 1
     torch.nn.utils.clip_grad_norm_(model.parameters(), clipping_value)
     if is_cuda:
@@ -100,8 +109,7 @@ for n_z in n_zs:
     print(model)
 
     print(">>> total params: {:.2f}M".format(sum(p.numel() for p in model.parameters()) / 1000000.0))
-    lr=0.001
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
 
 
     for epoch in range(0, 50):
