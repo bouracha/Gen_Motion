@@ -325,8 +325,9 @@ class VAE(nn.Module):
                          'err':  self.accum_loss['train_loss'].avg,
                          'state_dict': self.state_dict(),
                          'optimizer': optimizer.state_dict()}
-        file_path = self.folder_name + '/checkpoints/' + 'ckpt_' + str(epoch) + '_weights.path.tar'
-        torch.save(state, file_path)
+        if epoch % 10 == 0:
+            file_path = self.folder_name + '/checkpoints/' + 'ckpt_' + str(epoch) + '_weights.path.tar'
+            torch.save(state, file_path)
         self.head = []
         self.ret_log = []
         self.accum_reset()

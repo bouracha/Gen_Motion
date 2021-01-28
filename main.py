@@ -20,7 +20,7 @@ parser.add_argument('--beta', type=float, default=1.0, help='Downweighting of th
 parser.add_argument('--lr', type=float, default=0.001, help='Learning rate')
 parser.add_argument('--n_z', type=int, default=2, help='Number of latent variables')
 parser.add_argument('--n_epochs', type=int, default=50, help='Number of epochs to train for')
-parser.add_argument('--n_epochs_per_save', type=int, default=10, help='Number of epochs before saving the checkpoints')
+#parser.add_argument('--n_epochs_per_save', type=int, default=10, help='Number of epochs before saving the checkpoints')
 parser.add_argument('--encoder_hidden_layers', nargs='+', type=int, default=[500, 200, 100, 50], help='input the out of distribution action')
 parser.set_defaults(variational=False)
 parser.set_defaults(batch_norm=False)
@@ -123,8 +123,7 @@ for epoch in range(1, n_epochs+1):
         model.eval_full_batch(train_loader, epoch, 'train')
         model.eval_full_batch(val_loader, epoch, 'val')
 
-    if epoch%10 == 0:
-        model.save_checkpoint_and_csv(epoch, lr, optimizer)
+    model.save_checkpoint_and_csv(epoch, lr, optimizer)
 
 
 
