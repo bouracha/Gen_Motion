@@ -58,9 +58,6 @@ optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 if is_cuda:
     model.cuda()
 ckpt = torch.load(opt.ckpt, map_location=torch.device(device))
-start_epoch = ckpt['epoch']
-err_best = ckpt['err']
-lr_now = ckpt['lr']
 model.load_state_dict(ckpt['state_dict'])
 optimizer.load_state_dict(ckpt['optimizer'])
 

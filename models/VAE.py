@@ -25,7 +25,7 @@ from torchvision.utils import make_grid
 import matplotlib.pyplot as plt
 
 class VAE(nn.Module):
-    def __init__(self, encoder_layers=[48, 100, 50, 2],  decoder_layers = [2, 50, 100, 48], lr=0.001, train_batch_size=100, variational=False, output_variance=False, device="cuda", batch_norm=False, weight_decay=0.0, p_dropout=0.0, beta=1.0, new_model=True, folder_name=""):
+    def __init__(self, encoder_layers=[48, 100, 50, 2],  decoder_layers = [2, 50, 100, 48], lr=0.001, train_batch_size=100, variational=False, output_variance=False, device="cuda", batch_norm=False, weight_decay=0.0, p_dropout=0.0, beta=1.0, start_epoch=1, folder_name=""):
         """
 
         :param input_feature: num of input feature
@@ -43,15 +43,20 @@ class VAE(nn.Module):
         self.device = device
         self.beta = beta
         self.output_variance = output_variance
-        self.losses_file_exists = False
         self.folder_name= folder_name
         self.activation = nn.LeakyReLU(0.1)
+
+        self.encoder_layers = encoder_layers
+        self.decoder_layers = decoder_layers
 
         self.encoder = VAE_Encoder(layers=encoder_layers, activation=self.activation, variational=variational, device=device, batch_norm=batch_norm, p_dropout=p_dropout)
         self.decoder = VAE_Decoder(layers=decoder_layers, activation=self.activation, output_variance=output_variance, device=device, batch_norm=batch_norm, p_dropout=p_dropout)
 
-        if new_model:
-            self.book_keeping(encoder_layers, decoder_layers, lr=lr, train_batch_size=train_batch_size, batch_norm=batch_norm, weight_decay=weight_decay, p_dropout=p_dropout)
+        if start_epoch==1:
+            self.losses_file_exists = False
+            self.book_keeping(encoder_layers, decoder_layers, start_epoch=start_epoch, lr=lr, train_batch_size=train_batch_size, batch_norm=batch_norm, weight_decay=weight_decay, p_dropout=p_dropout)
+        else:
+            self.losses_file_exists = True
 
     def forward(self, x):
         """
@@ -272,7 +277,7 @@ class VAE(nn.Module):
         file_path = self.folder_name + '/poses/' + str(dataset_name) + '_' + str(epoch) + '_' + 'poses_xy'
         self.plot_poses(inputs, mu, num_images=25, azim=90, evl=90, save_as=file_path)
 
-    def book_keeping(self, encoder_layers, decoder_layers, lr=0.001, train_batch_size=100, batch_norm=False, weight_decay=0.0, p_dropout=0.0):
+    def book_keeping(self, encoder_layers, decoder_layers, start_epoch=1, lr=0.001, train_batch_size=100, batch_norm=False, weight_decay=0.0, p_dropout=0.0):
         self.accum_loss = dict()
 
         if self.variational:
@@ -291,14 +296,20 @@ class VAE(nn.Module):
             self.folder_name = self.folder_name + '_model-var'
         if self.beta != 1.0:
             self.folder_name = self.folder_name + '_beta=' + str(self.beta)
-        os.makedirs(os.path.join(self.folder_name, 'checkpoints'))
-        os.makedirs(os.path.join(self.folder_name, 'images'))
-        os.makedirs(os.path.join(self.folder_name, 'poses'))
+        if start_epoch==1:
+            os.makedirs(os.path.join(self.folder_name, 'checkpoints'))
+            os.makedirs(os.path.join(self.folder_name, 'images'))
+            os.makedirs(os.path.join(self.folder_name, 'poses'))
+            write_type='w'
+        else:
+            write_type = 'a'
 
         original_stdout = sys.stdout
-        with open(str(self.folder_name)+'/'+'architecture.txt', 'w') as f:
+        with open(str(self.folder_name)+'/'+'architecture.txt', write_type) as f:
             sys.stdout = f
-            print(self)
+            if start_epoch:
+                print(self)
+            print("Start epoch:{}".format(start_epoch))
             print("Learning rate:{}".format(lr))
             print("Training batch size:{}".format(train_batch_size))
             print("BN:{}".format(batch_norm))
@@ -326,6 +337,7 @@ class VAE(nn.Module):
                          'state_dict': self.state_dict(),
                          'optimizer': optimizer.state_dict()}
         if epoch % 10 == 0:
+            print("Saving checkpoint....")
             file_path = self.folder_name + '/checkpoints/' + 'ckpt_' + str(epoch) + '_weights.path.tar'
             torch.save(state, file_path)
         self.head = []

@@ -30,12 +30,19 @@ Other useful boolean flags:
 --batch_norm
 --use_MNIST
 --use_bernoulli_loss
+--lr  0.001
 ```
 and can enter a value for beta via:
 ```bash
---beta. 0.01
+--beta 0.01
 ```
 
+# Load from checkpoint
+Enter train epoch after checkpoint (ie. to use checkpoint at 10 epochs, use start_epoch 11)
+```bash
+--start_epoch 11
+```
+will automatically use right folder and subfolder names, as long as essential hyperparameters- such as layers and batch norm- are right.
 
 ## Licence
 

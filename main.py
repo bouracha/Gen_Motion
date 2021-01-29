@@ -20,6 +20,7 @@ parser.add_argument('--beta', type=float, default=1.0, help='Downweighting of th
 parser.add_argument('--lr', type=float, default=0.001, help='Learning rate')
 parser.add_argument('--n_z', type=int, default=2, help='Number of latent variables')
 parser.add_argument('--n_epochs', type=int, default=50, help='Number of epochs to train for')
+parser.add_argument('--start_epoch', type=int, default=1, help='If not 1, load checkpoint at this epoch')
 #parser.add_argument('--n_epochs_per_save', type=int, default=10, help='Number of epochs before saving the checkpoints')
 parser.add_argument('--encoder_hidden_layers', nargs='+', type=int, default=[500, 200, 100, 50], help='input the out of distribution action')
 parser.set_defaults(variational=False)
@@ -87,6 +88,8 @@ n_z = opt.n_z
 n_epochs = opt.n_epochs
 lr=opt.lr
 encoder_hidden_layers = opt.encoder_hidden_layers
+start_epoch = opt.start_epoch
+batch_norm = opt.batch_norm
 
 encoder_layers = []
 decoder_layers = []
@@ -100,7 +103,7 @@ encoder_layers.append(n_z)
 decoder_layers.append(input_n)
 
 print(">>> creating model")
-model = nnmodel.VAE(encoder_layers=encoder_layers,  decoder_layers=decoder_layers, lr=lr, train_batch_size=train_batch_size, variational=opt.variational, output_variance=opt.output_variance, device=device, batch_norm=opt.batch_norm, weight_decay=weight_decay, p_dropout=0.0, beta=opt.beta, new_model=True, folder_name=folder_name)
+model = nnmodel.VAE(encoder_layers=encoder_layers,  decoder_layers=decoder_layers, lr=lr, train_batch_size=train_batch_size, variational=opt.variational, output_variance=opt.output_variance, device=device, batch_norm=batch_norm, weight_decay=weight_decay, p_dropout=0.0, beta=opt.beta, start_epoch=start_epoch, folder_name=folder_name)
 clipping_value = 1
 torch.nn.utils.clip_grad_norm_(model.parameters(), clipping_value)
 if is_cuda:
@@ -108,10 +111,16 @@ if is_cuda:
 print(model)
 
 print(">>> total params: {:.2f}M".format(sum(p.numel() for p in model.parameters()) / 1000000.0))
+
 optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
+if start_epoch != 1:
+    model.book_keeping(model.encoder_layers, model.decoder_layers, start_epoch=start_epoch, lr=lr, train_batch_size=train_batch_size, batch_norm=batch_norm, weight_decay=weight_decay, p_dropout=0.0)
+    ckpt_path = model.folder_name + '/checkpoints/' + 'ckpt_' + str(start_epoch-1) + '_weights.path.tar'
+    ckpt = torch.load(ckpt_path, map_location=torch.device(device))
+    model.load_state_dict(ckpt['state_dict'])
+    optimizer.load_state_dict(ckpt['optimizer'])
 
-
-for epoch in range(1, n_epochs+1):
+for epoch in range(start_epoch, n_epochs+1):
     print("Epoch: ", epoch)
 
     if opt.use_MNIST:
