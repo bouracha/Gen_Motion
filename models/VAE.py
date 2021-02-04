@@ -284,18 +284,18 @@ class VAE(nn.Module):
             self.folder_name = self.folder_name+"_VAE"
         else:
             self.folder_name = self.folder_name+"_AE"
-        for layer in encoder_layers:
-            self.folder_name = self.folder_name+'_'+str(layer)
-        for layer in decoder_layers:
-            self.folder_name = self.folder_name+'_'+str(layer)
-        if batch_norm:
-            self.folder_name = self.folder_name+'_bn'
-        if p_dropout != 0.0:
-            self.folder_name = self.folder_name + '_p_drop='+str(p_dropout)
-        if self.output_variance:
-            self.folder_name = self.folder_name + '_model-var'
-        if self.beta != 1.0:
-            self.folder_name = self.folder_name + '_beta=' + str(self.beta)
+        #for layer in encoder_layers:
+        #    self.folder_name = self.folder_name+'_'+str(layer)
+        #for layer in decoder_layers:
+        #    self.folder_name = self.folder_name+'_'+str(layer)
+        #if batch_norm:
+        #    self.folder_name = self.folder_name+'_bn'
+        #if p_dropout != 0.0:
+        #    self.folder_name = self.folder_name + '_p_drop='+str(p_dropout)
+        #if self.output_variance:
+        #    self.folder_name = self.folder_name + '_model-var'
+        #if self.beta != 1.0:
+        #    self.folder_name = self.folder_name + '_beta=' + str(self.beta)
         if start_epoch==1:
             os.makedirs(os.path.join(self.folder_name, 'checkpoints'))
             os.makedirs(os.path.join(self.folder_name, 'images'))
@@ -307,7 +307,7 @@ class VAE(nn.Module):
         original_stdout = sys.stdout
         with open(str(self.folder_name)+'/'+'architecture.txt', write_type) as f:
             sys.stdout = f
-            if start_epoch:
+            if start_epoch==1:
                 print(self)
             print("Start epoch:{}".format(start_epoch))
             print("Learning rate:{}".format(lr))
