@@ -22,7 +22,9 @@ import numpy as np
 import pandas as pd
 
 from torchvision.utils import make_grid
-import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use('Agg')
+from matplotlib import pyplot as plt
 
 class VAE(nn.Module):
     def __init__(self, encoder_layers=[48, 100, 50, 2],  decoder_layers = [2, 50, 100, 48], lr=0.001, train_batch_size=100, variational=False, output_variance=False, device="cuda", batch_norm=False, weight_decay=0.0, p_dropout=0.0, beta=1.0, start_epoch=1, folder_name=""):
