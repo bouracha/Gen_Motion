@@ -21,6 +21,8 @@ parser.add_argument('--lr', type=float, default=0.001, help='Learning rate')
 parser.add_argument('--n_z', type=int, default=2, help='Number of latent variables')
 parser.add_argument('--n_epochs', type=int, default=50, help='Number of epochs to train for')
 parser.add_argument('--start_epoch', type=int, default=1, help='If not 1, load checkpoint at this epoch')
+parser.add_argument('--train_batch_size', type=int, default=100, help='Number of epochs to train for')
+parser.add_argument('--test_batch_size', type=int, default=100, help='If not 1, load checkpoint at this epoch')
 parser.add_argument('--name', type=str, default="", help='Name of master folder containing model')
 #parser.add_argument('--n_epochs_per_save', type=int, default=10, help='Number of epochs before saving the checkpoints')
 parser.add_argument('--encoder_hidden_layers', nargs='+', type=int, default=[500, 200, 100, 50], help='input the out of distribution action')
@@ -51,8 +53,8 @@ else:
 #####################################################
 # Load data
 #####################################################
-train_batch_size=100
-test_batch_size=128
+train_batch_size=opt.train_batch_size
+test_batch_size=opt.test_batch_size
 if opt.use_MNIST:
     ### MNIST
     folder_name = folder_name+"MNIST"

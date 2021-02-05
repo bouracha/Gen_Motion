@@ -47,6 +47,7 @@ class VAE(nn.Module):
         self.output_variance = output_variance
         self.folder_name= folder_name
         self.activation = nn.LeakyReLU(0.1)
+        self.figs_checkpoints_save_freq = 10
 
         self.encoder_layers = encoder_layers
         self.decoder_layers = decoder_layers
@@ -225,11 +226,12 @@ class VAE(nn.Module):
         self.head = np.append(self.head, head)
         self.ret_log = np.append(self.ret_log, ret_log)
 
-        reconstructions = reconstructions.reshape(cur_batch_size, 1, 28, 28)
-        file_path = self.folder_name + '/images/' + str(dataset_name) + '_' + str(epoch) + '_' + 'reals'
-        self.plot_tensor_images(image, num_images=25, nrow=5, show=False, save_as=file_path)
-        file_path = self.folder_name + '/images/' + str(dataset_name) + '_' + str(epoch) + '_' + 'reconstructions'
-        self.plot_tensor_images(reconstructions, num_images=25, nrow=5, show=False, save_as=file_path)
+        if epoch % self.figs_checkpoints_save_freq == 0:
+            reconstructions = reconstructions.reshape(cur_batch_size, 1, 28, 28)
+            file_path = self.folder_name + '/images/' + str(dataset_name) + '_' + str(epoch) + '_' + 'reals'
+            self.plot_tensor_images(image, num_images=25, nrow=5, show=False, save_as=file_path)
+            file_path = self.folder_name + '/images/' + str(dataset_name) + '_' + str(epoch) + '_' + 'reconstructions'
+            self.plot_tensor_images(reconstructions, num_images=25, nrow=5, show=False, save_as=file_path)
 
     def eval_full_batch(self, loader, epoch, dataset_name='val'):
         self.eval()
@@ -266,18 +268,19 @@ class VAE(nn.Module):
         reconstructions = mu.reshape(cur_batch_size, 1, 12, 8)
         diffs = inputs_reshaped - reconstructions
 
-        file_path = self.folder_name + '/images/' + str(dataset_name) + '_' + str(epoch) + '_' + 'reals'
-        self.plot_tensor_images(inputs_reshaped, num_images=25, nrow=5, show=False, save_as=file_path)
-        file_path = self.folder_name + '/images/' + str(dataset_name) + '_' + str(epoch) + '_' + 'reconstructions'
-        self.plot_tensor_images(reconstructions, num_images=25, nrow=5, show=False, save_as=file_path)
-        file_path = self.folder_name + '/images/' + str(dataset_name) + '_' + str(epoch) + '_' + 'diffs'
-        self.plot_tensor_images(diffs, num_images=25, nrow=5, show=False, save_as=file_path)
-        file_path = self.folder_name + '/poses/' + str(dataset_name) + '_' + str(epoch) + '_' + 'poses_xz'
-        self.plot_poses(inputs, mu, num_images=25, azim=0, evl=90, save_as=file_path)
-        file_path = self.folder_name + '/poses/' + str(dataset_name) + '_' + str(epoch) + '_' + 'poses_yz'
-        self.plot_poses(inputs, mu, num_images=25, azim=0, evl=-0, save_as=file_path)
-        file_path = self.folder_name + '/poses/' + str(dataset_name) + '_' + str(epoch) + '_' + 'poses_xy'
-        self.plot_poses(inputs, mu, num_images=25, azim=90, evl=90, save_as=file_path)
+        if epoch % self.figs_checkpoints_save_freq == 0:
+            file_path = self.folder_name + '/images/' + str(dataset_name) + '_' + str(epoch) + '_' + 'reals'
+            self.plot_tensor_images(inputs_reshaped, num_images=25, nrow=5, show=False, save_as=file_path)
+            file_path = self.folder_name + '/images/' + str(dataset_name) + '_' + str(epoch) + '_' + 'reconstructions'
+            self.plot_tensor_images(reconstructions, num_images=25, nrow=5, show=False, save_as=file_path)
+            file_path = self.folder_name + '/images/' + str(dataset_name) + '_' + str(epoch) + '_' + 'diffs'
+            self.plot_tensor_images(diffs, num_images=25, nrow=5, show=False, save_as=file_path)
+            file_path = self.folder_name + '/poses/' + str(dataset_name) + '_' + str(epoch) + '_' + 'poses_xz'
+            self.plot_poses(inputs, mu, num_images=25, azim=0, evl=90, save_as=file_path)
+            file_path = self.folder_name + '/poses/' + str(dataset_name) + '_' + str(epoch) + '_' + 'poses_yz'
+            self.plot_poses(inputs, mu, num_images=25, azim=0, evl=-0, save_as=file_path)
+            file_path = self.folder_name + '/poses/' + str(dataset_name) + '_' + str(epoch) + '_' + 'poses_xy'
+            self.plot_poses(inputs, mu, num_images=25, azim=90, evl=90, save_as=file_path)
 
     def book_keeping(self, encoder_layers, decoder_layers, start_epoch=1, lr=0.001, train_batch_size=100, batch_norm=False, weight_decay=0.0, p_dropout=0.0):
         self.accum_loss = dict()
@@ -286,18 +289,6 @@ class VAE(nn.Module):
             self.folder_name = self.folder_name+"_VAE"
         else:
             self.folder_name = self.folder_name+"_AE"
-        #for layer in encoder_layers:
-        #    self.folder_name = self.folder_name+'_'+str(layer)
-        #for layer in decoder_layers:
-        #    self.folder_name = self.folder_name+'_'+str(layer)
-        #if batch_norm:
-        #    self.folder_name = self.folder_name+'_bn'
-        #if p_dropout != 0.0:
-        #    self.folder_name = self.folder_name + '_p_drop='+str(p_dropout)
-        #if self.output_variance:
-        #    self.folder_name = self.folder_name + '_model-var'
-        #if self.beta != 1.0:
-        #    self.folder_name = self.folder_name + '_beta=' + str(self.beta)
         if start_epoch==1:
             os.makedirs(os.path.join(self.folder_name, 'checkpoints'))
             os.makedirs(os.path.join(self.folder_name, 'images'))
@@ -338,7 +329,7 @@ class VAE(nn.Module):
                          'err':  self.accum_loss['train_loss'].avg,
                          'state_dict': self.state_dict(),
                          'optimizer': optimizer.state_dict()}
-        if epoch % 10 == 0:
+        if epoch % self.figs_checkpoints_save_freq == 0:
             print("Saving checkpoint....")
             file_path = self.folder_name + '/checkpoints/' + 'ckpt_' + str(epoch) + '_weights.path.tar'
             torch.save(state, file_path)
