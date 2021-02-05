@@ -4,7 +4,7 @@
 ## Dependencies
 Some older versions may work. But we used the following:
 
-* cuda 10.1
+* cuda 10.1 (If running on GPU- but code is CPU compatible and faster for small models)
 * Python 3.6.9
 * [Pytorch](https://github.com/pytorch/pytorch) 1.6.0
 * [progress 1.5](https://pypi.org/project/progress/)
