@@ -371,6 +371,8 @@ class VAE(nn.Module):
         fig = plt.figure()
         if num_images > 4:
             fig = plt.figure(figsize=(20, 20))
+        if num_images > 40:
+            fig = plt.figure(figsize=(50, 50))
 
         grid_dim_size = np.ceil(np.sqrt(num_images))
         for i in range(num_images):
