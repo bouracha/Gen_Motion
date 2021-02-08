@@ -131,7 +131,7 @@ scale = 3
 fig = plt.figure()
 fig = plt.figure(figsize=(20, 20))
 
-colors = cm.rainbow(np.linspace(0, 1, 15))
+colors = cm.rainbow(np.linspace(0, 1, 13))
 i=0
 for act in data.acts_train:
     plt.scatter(embeddings[act][:, 0], embeddings[act][:, 1], s=scale, marker='o', alpha=alpha, color=colors[i], label=act)
