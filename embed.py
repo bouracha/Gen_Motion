@@ -12,6 +12,7 @@ import argparse
 
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
+from scipy.stats import norm
 
 
 parser = argparse.ArgumentParser()
@@ -113,13 +114,13 @@ for act in data.acts_train:
 
         mu, z, KL = model.encoder(inputs)
 
-        embeddings[act] = np.vstack((embeddings[act], mu.detach().numpy()))
+        embeddings[act] = np.vstack((embeddings[act], norm.cdf(mu.detach().cpu().numpy())))
 
-        for i in range(int(mu.shape[0])):
-            if (mu[i, 1] < -4):
-                num_outliers+=1
-                file_path = model.folder_name + '/pose_outliers/' + str(act) + '_' + 'poses_xz_'+str(num_outliers)
-                model.plot_poses(inputs[i], inputs[i], num_images=1, azim=0, evl=90, save_as=file_path)
+        #for i in range(int(mu.shape[0])):
+        #    if (mu[i, 1] < -4):
+        #        num_outliers+=1
+        #        file_path = model.folder_name + '/pose_outliers/' + str(act) + '_' + 'poses_xz_'+str(num_outliers)
+        #        model.plot_poses(inputs[i], inputs[i], num_images=1, azim=0, evl=90, save_as=file_path)
 
 print(embeddings['walking'].shape)
 
