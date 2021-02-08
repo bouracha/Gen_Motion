@@ -362,8 +362,8 @@ class VAE(nn.Module):
         :param evl: angle of elevation for viewing (int)
         :param save_as: path and name to save (str)
         '''
-        xyz_gt = xyz_gt.detach().cpu().numpy()
-        xyz_pred = xyz_pred.detach().cpu().numpy()
+        xyz_gt = xyz_gt.detach().cpu().numpy().reshape(-1, 96)
+        xyz_pred = xyz_pred.detach().cpu().numpy().reshape(-1, 96)
 
         xyz_gt = xyz_gt[:num_images].reshape(num_images, 32, 3)
         xyz_pred = xyz_pred[:num_images].reshape(num_images, 32, 3)
