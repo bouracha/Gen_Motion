@@ -289,15 +289,15 @@ def define_actions(action, dataset='h3.6m', out_of_distribution=False):
     """
 
     if dataset=='h3.6m' or dataset=='h3.6m_3d':
-        actions = ["walking", "eating", "smoking", "discussion", "directions",
-                  "greeting", "phoning", "posing", "purchases", "sitting",
-                  "sittingdown", "takingphoto", "waiting", "walkingdog",
-                  "walkingtogether"]
-        #Define actions without phoning and discussions as have upside-down data.
-        #actions = ["walking", "eating", "smoking", "directions",
-        #          "greeting", "posing", "purchases", "sitting",
+        #actions = ["walking", "eating", "smoking", "discussion", "directions",
+        #          "greeting", "phoning", "posing", "purchases", "sitting",
         #          "sittingdown", "takingphoto", "waiting", "walkingdog",
         #          "walkingtogether"]
+        #Define actions without phoning and discussions as have upside-down data.
+        actions = ["walking", "eating", "smoking", "directions",
+                  "greeting", "posing", "purchases", "sitting",
+                  "sittingdown", "takingphoto", "waiting", "walkingdog",
+                  "walkingtogether"]
     elif dataset=='cmu_mocap' or dataset=='cmu_mocap_3d':
         actions = ["basketball", "basketball_signal", "directing_traffic", "jumping", "running", "soccer", "walking",
                   "washwindow"]
