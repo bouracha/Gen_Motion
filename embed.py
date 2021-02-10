@@ -12,6 +12,7 @@ import argparse
 
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
+from scipy.stats import norm
 
 
 parser = argparse.ArgumentParser()
@@ -113,7 +114,7 @@ for act in data.acts_train:
 
         mu, z, KL = model.encoder(inputs)
 
-        embeddings[act] = np.vstack((embeddings[act], mu.detach().numpy()))
+        embeddings[act] = np.vstack((embeddings[act], norm.cdf(mu.detach().cpu().numpy())))
 
         #for i in range(int(mu.shape[0])):
         #    if (mu[i, 1] < -4):
@@ -130,7 +131,7 @@ scale = 3
 fig = plt.figure()
 fig = plt.figure(figsize=(20, 20))
 
-colors = cm.rainbow(np.linspace(0, 1, 15))
+colors = cm.rainbow(np.linspace(0, 1, 13))
 i=0
 for act in data.acts_train:
     plt.scatter(embeddings[act][:, 0], embeddings[act][:, 1], s=scale, marker='o', alpha=alpha, color=colors[i], label=act)
