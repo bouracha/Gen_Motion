@@ -106,7 +106,7 @@ embeddings = dict()
 num_outliers=0
 for act in data.acts_train:
     embeddings[act] = np.array([0,0]).reshape((1,2))
-    for i, (all_seq) in enumerate(train_loader[act]):
+    for i, (all_seq) in enumerate(val_loader[act]):
         cur_batch_size = len(all_seq)
 
         inputs = all_seq.to(model.device).float()
@@ -115,11 +115,11 @@ for act in data.acts_train:
 
         embeddings[act] = np.vstack((embeddings[act], mu.detach().numpy()))
 
-        for i in range(int(mu.shape[0])):
-            if (mu[i, 1] < -4):
-                num_outliers+=1
-                file_path = model.folder_name + '/pose_outliers/' + str(act) + '_' + 'poses_xz_'+str(num_outliers)
-                model.plot_poses(inputs[i], inputs[i], num_images=1, azim=0, evl=90, save_as=file_path)
+        #for i in range(int(mu.shape[0])):
+        #    if (mu[i, 1] < -4):
+        #        num_outliers+=1
+        #        file_path = model.folder_name + '/pose_outliers/' + str(act) + '_' + 'poses_xz_'+str(num_outliers)
+        #        model.plot_poses(inputs[i], inputs[i], num_images=1, azim=0, evl=90, save_as=file_path)
 
 print(embeddings['walking'].shape)
 

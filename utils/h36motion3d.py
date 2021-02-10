@@ -83,12 +83,14 @@ class H36motion3D_pose(Dataset):
         # acts = ['walking']
 
         subjs = subs[split]
-        all_seqs, dim_ignore, dim_used = data_utils.load_data_3d(path_to_data, subjs, acts, sample_rate, 1)
+        all_seqs, dim_ignore, dim_used = data_utils.load_data_3d(path_to_data, subjs, acts, sample_rate, 10)
         self.all_seqs = all_seqs
         self.dim_used = dim_used
 
         m = self.all_seqs.shape[0]
         n = self.all_seqs.shape[-1]
+        #average pose over 10 contiguous timesteps
+        self.all_seqs = np.mean(self.all_seqs, axis=1)
         self.all_seqs = self.all_seqs.reshape((m, n))
 
         max_per_pose = np.amax(self.all_seqs, -1)
