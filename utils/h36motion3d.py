@@ -83,7 +83,7 @@ class H36motion3D_pose(Dataset):
         # acts = ['walking']
 
         subjs = subs[split]
-        all_seqs, dim_ignore, dim_used = data_utils.load_data_3d(path_to_data, subjs, acts, sample_rate, 10)
+        all_seqs, dim_ignore, dim_used = data_utils.load_data_3d(path_to_data, subjs, acts, sample_rate, 20)
         self.all_seqs = all_seqs
         self.dim_used = dim_used
 
