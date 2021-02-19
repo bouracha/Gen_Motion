@@ -14,6 +14,10 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from scipy.stats import norm
 
+import utils.utils as utils
+
+import pandas as pd
+
 
 parser = argparse.ArgumentParser()
 
@@ -103,47 +107,87 @@ if start_epoch != 1:
 
 model.eval()
 
-embeddings = dict()
-num_outliers=0
-for act in data.acts_train:
-    embeddings[act] = np.array([0,0]).reshape((1,2))
-    for i, (all_seq) in enumerate(val_loader[act]):
-        cur_batch_size = len(all_seq)
+first_loop=True
+for num_occlusions in range(0, 97, 3):
+    val_mse_accum = []
+    for i in range(10):
+        for act in data.acts_train:
+            for i, (all_seq) in enumerate(val_loader[act]):
+                cur_batch_size = len(all_seq)
 
-        inputs = all_seq.to(model.device).float()
+                inputs = all_seq
+                inputs_degraded = np.copy(inputs)
+                inputs_degraded = utils.simulate_occlusions(inputs_degraded, num_occlusions=num_occlusions, folder_name="")
+                inputs_degraded = torch.from_numpy(inputs_degraded)
+                inputs_degraded = inputs_degraded.to(model.device).float()
 
-        mu, z, KL = model.encoder(inputs)
+                mu = model(inputs_degraded.float())
+                loss = model.loss_VLB(inputs_degraded)
 
-        embeddings[act] = np.vstack((embeddings[act], norm.cdf(mu.detach().cpu().numpy())))
+                model.accum_update('val_loss', loss)
+                model.accum_update('val_mse_loss', model.recon_loss)
 
-        #for i in range(int(mu.shape[0])):
-        #    if (mu[i, 1] < -4):
-        #        num_outliers+=1
-        #        file_path = model.folder_name + '/pose_outliers/' + str(act) + '_' + 'poses_xz_'+str(num_outliers)
-        #        model.plot_poses(inputs[i], inputs[i], num_images=1, azim=0, evl=90, save_as=file_path)
+        val_mse_accum.append(model.accum_loss['val_mse_loss'].avg)
 
-print(embeddings['walking'].shape)
+    print("Validation, degraded by {} occlutions, reconstruction (to gt) MSE:{} +- {}".format(num_occlusions, np.mean(val_mse_accum), np.std(val_mse_accum)))
+
+    head = ['num_occlusions', 'MSE', 'STD']
+    ret_log = [num_occlusions, np.mean(val_mse_accum), np.std(val_mse_accum)]
+    df = pd.DataFrame(np.expand_dims(ret_log, axis=0))
+    if first_loop:
+        df.to_csv(model.folder_name + '/occlusions.csv', header=head, index=False)
+        first_loop=False
+    else:
+        with open(model.folder_name + '/occlusions.csv', 'a') as f:
+            df.to_csv(f, header=False, index=False)
 
 
-alpha = 1.0
-scale = 3
+embedding_experiment = False
+if embedding_experiment:
+    embeddings = dict()
+    num_outliers=0
+    for act in data.acts_train:
+        embeddings[act] = np.array([0,0]).reshape((1,2))
+        for i, (all_seq) in enumerate(train_loader[act]):
+            cur_batch_size = len(all_seq)
 
-fig = plt.figure()
-fig = plt.figure(figsize=(20, 20))
+            inputs = all_seq.to(model.device).float()
 
-colors = cm.rainbow(np.linspace(0, 1, 13))
-i=0
-for act in data.acts_train:
-    plt.scatter(embeddings[act][:, 0], embeddings[act][:, 1], s=scale, marker='o', alpha=alpha, color=colors[i], label=act)
-    i+=1
-#plt.scatter(embeddings['walking'][:, 0], embeddings['walking'][:, 1], s=scale, marker='o', alpha=alpha, color='r', label='walking')
-#plt.scatter(embeddings['eating'][:, 0], embeddings['eating'][:, 1], s=scale, marker='o', alpha=alpha, color='b', label='eating')
-#plt.scatter(embeddings['smoking'][:, 0], embeddings['smoking'][:, 1], s=scale, marker='o', alpha=alpha, color='y', label='smoking')
-#plt.scatter(embeddings['discussion'][:, 0], embeddings['discussion'][:, 1], s=scale, marker='o', alpha=alpha, color='c', label='discussion')
-#plt.scatter(embeddings['directions'][:, 0], embeddings['directions'][:, 1], s=scale, marker='o', alpha=alpha, color='k', label='directions')
-#plt.scatter(embeddings['phoning'][:, 0], embeddings['phoning'][:, 1], s=scale, marker='o', alpha=alpha, color='m', label='phoning')
-#plt.scatter(embeddings['sitting'][:, 0], embeddings['sitting'][:, 1], s=scale, marker='o', alpha=alpha, color='g', label='sitting')
+            mu, z, KL = model.encoder(inputs)
 
-plt.legend()
+            #embeddings[act] = np.vstack((embeddings[act], norm.cdf(mu.detach().cpu().numpy())))
+            embeddings[act] = np.vstack((embeddings[act], mu.detach().cpu().numpy()))
 
-plt.savefig(model.folder_name + '/Embedding')
+            #for i in range(int(mu.shape[0])):
+            #    if (mu[i, 1] > 8):
+            #        num_outliers+=1
+            #        file_path = model.folder_name + '/pose_outliers/' + str(act) + '_' + 'poses_xz_'+str(num_outliers)
+            #        model.plot_poses(inputs[i], inputs[i], num_images=1, azim=0, evl=90, save_as=file_path)
+
+    print(embeddings['walking'].shape)
+
+    alpha = 0.1
+    scale = 3
+
+    fig = plt.figure()
+    fig = plt.figure(figsize=(20, 20))
+
+    colors = cm.rainbow(np.linspace(0, 1, 13))
+    i=0
+    for act in data.acts_train:
+        plt.scatter(embeddings[act][:, 0], embeddings[act][:, 1], s=scale, marker='o', alpha=alpha, color=colors[i], label=act)
+        i+=1
+    #plt.scatter(embeddings['walking'][:, 0], embeddings['walking'][:, 1], s=scale, marker='o', alpha=alpha, color='b', label='walking')
+    #plt.scatter(embeddings['walkingdog'][:, 0], embeddings['walkingdog'][:, 1], s=scale, marker='o', alpha=alpha, color='b', label='walkingdog')
+    #plt.scatter(embeddings['walkingtogether'][:, 0], embeddings['walkingtogether'][:, 1], s=scale, marker='o', alpha=alpha, color='b', label='walkingtogether')
+    #plt.scatter(embeddings['eating'][:, 0], embeddings['eating'][:, 1], s=scale, marker='o', alpha=alpha, color='g', label='eating')
+    #plt.scatter(embeddings['smoking'][:, 0], embeddings['smoking'][:, 1], s=scale, marker='o', alpha=alpha, color='y', label='smoking')
+    #plt.scatter(embeddings['discussion'][:, 0], embeddings['discussion'][:, 1], s=scale, marker='o', alpha=alpha, color='c', label='discussion')
+    #plt.scatter(embeddings['directions'][:, 0], embeddings['directions'][:, 1], s=scale, marker='o', alpha=alpha, color='k', label='directions')
+    #plt.scatter(embeddings['phoning'][:, 0], embeddings['phoning'][:, 1], s=scale, marker='o', alpha=alpha, color='m', label='phoning')
+    #plt.scatter(embeddings['sitting'][:, 0], embeddings['sitting'][:, 1], s=scale, marker='o', alpha=alpha, color='r', label='sitting')
+    #plt.scatter(embeddings['sittingdown'][:, 0], embeddings['sittingdown'][:, 1], s=scale, marker='o', alpha=alpha, color='m', label='sittingdown')
+
+    plt.legend()
+
+    plt.savefig(model.folder_name + '/Embedding')

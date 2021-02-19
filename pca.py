@@ -3,9 +3,12 @@ from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import numpy as np
+import pandas as pd
 from utils.h36motion3d import H36motion3D_pose
 
 import utils.viz_3d as viz_3d
+
+import utils.utils as utils
 
 acts = data_utils.define_actions("all")
 
@@ -17,63 +20,61 @@ X_val = val_dataset.all_seqs
 
 print(X.shape)
 
-for n_z in [2, 3, 5, 10, 20, 48]:
-    pca = PCA(n_components=n_z)
-    z = pca.fit_transform(X)
 
-    z_val = pca.transform(X_val)
+multi_dim_experiment = False
+if multi_dim_experiment:
+    for n_z in [2, 3, 5, 10, 20, 48]:
+        pca = PCA(n_components=n_z)
+        z = pca.fit_transform(X)
 
-    X_recon = pca.inverse_transform(z)
-    X_recon_val = pca.inverse_transform(z_val)
+        z_val = pca.transform(X_val)
 
-    train_mse = np.mean(np.sum((X_recon - X)**2, axis=-1))
-    val_mse = np.mean(np.sum((X_recon_val - X_val)**2, axis=-1))
+        X_recon = pca.inverse_transform(z)
+        X_recon_val = pca.inverse_transform(z_val)
 
-    print("Train reconstruction MSE:{}".format(train_mse))
-    print("Validation reconstruction MSE:{}".format(val_mse))
+        train_mse = np.mean(np.sum((X_recon - X)**2, axis=-1))
+        val_mse = np.mean(np.sum((X_recon_val - X_val)**2, axis=-1))
+
+        print("Train reconstruction MSE:{}".format(train_mse))
+        print("Validation reconstruction MSE:{}".format(val_mse))
+
+    avg_pose = np.mean(X, axis=0)
+    avg_pose_repeated = np.repeat(avg_pose.reshape(1, -1), X_val.shape[0], axis=0)
+
+    val_mse_avg = np.mean(np.sum((avg_pose_repeated - X_val) ** 2, axis=-1))
+    print("Validation average to gt MSE:{}".format(val_mse_avg))
+
+first_loop=True
+for num_occlusions in range(0, 97, 3):
+    val_mse_accum = []
+    for i in range(100):
+        pca = PCA(n_components=2)
+        z = pca.fit_transform(X)
+
+        X_val_degraded = np.copy(X_val)
+        X_val_degraded = utils.simulate_occlusions(X_val_degraded, num_occlusions=num_occlusions, folder_name="")
+
+        z_val_degraded = pca.transform(X_val_degraded)
+
+        X_recon_val_degraded = pca.inverse_transform(z_val_degraded)
+
+        val_mse = np.mean(np.sum((X_recon_val_degraded - X_val) ** 2, axis=-1))
+
+        val_mse_accum.append(val_mse)
+
+    print("Validation, degraded by {} occlutions, reconstruction (to gt) MSE:{} +- {}".format(num_occlusions, np.mean(val_mse_accum), np.std(val_mse_accum)))
+
+    head = ['num_occlusions', 'MSE', 'STD']
+    ret_log = [num_occlusions, np.mean(val_mse_accum), np.std(val_mse_accum)]
+    df = pd.DataFrame(np.expand_dims(ret_log, axis=0))
+    if first_loop:
+        df.to_csv('pca_occlusions.csv', header=head, index=False)
+        first_loop=False
+    else:
+        with open('pca_occlusions.csv', 'a') as f:
+            df.to_csv(f, header=False, index=False)
 
 
-def plot_poses(xyz_gt, xyz_pred, num_images=25, azim=0, evl=0, save_as=None):
-    '''
-    Function for visualizing poses: saves grid of poses.
-    Assumes poses are normalised between 0 and 1
-    :param xyz_gt: set of ground truth 3D joint positions (batch_size, 96)
-    :param xyz_pred: set of predicted 3D joint positions (batch_size, 96)
-    :param num_images: number of poses to plotted from given set (int)
-    :param azim: azimuthal angle for viewing (int)
-    :param evl: angle of elevation for viewing (int)
-    :param save_as: path and name to save (str)
-    '''
-    xyz_gt = xyz_gt.reshape(-1, 96)
-    xyz_pred = xyz_pred.reshape(-1, 96)
-
-    xyz_gt = xyz_gt[:num_images].reshape(num_images, 32, 3)
-    xyz_pred = xyz_pred[:num_images].reshape(num_images, 32, 3)
-
-    fig = plt.figure()
-    if num_images > 4:
-        fig = plt.figure(figsize=(20, 20))
-    if num_images > 40:
-        fig = plt.figure(figsize=(50, 50))
-
-    grid_dim_size = np.ceil(np.sqrt(num_images))
-    for i in range(num_images):
-        ax = fig.add_subplot(grid_dim_size, grid_dim_size, i + 1, projection='3d')
-        ax.set_xlim3d([0, 1])
-        ax.set_ylim3d([0, 1])
-        ax.set_zlim3d([0, 1])
-
-        ob = viz_3d.Ax3DPose(ax)
-        ob.update(xyz_gt[i], xyz_pred[i])
-
-        ob.ax.set_axis_off()
-        ob.ax.view_init(azim, evl)
-
-    fig.subplots_adjust(hspace=0)
-    fig.subplots_adjust(wspace=0)
-
-    plt.savefig(save_as)
-    plt.close()
 
 
 
@@ -81,11 +82,11 @@ plot = False
 if plot:
     val_idx = np.random.randint(val_dataset.all_seqs.shape[0], size=25)
     file_path = 'pca_poses_yz'
-    plot_poses(X[val_idx], X_recon[val_idx], num_images=25, azim=0, evl=-0, save_as=file_path)
+    utils.plot_poses(X[val_idx], X_recon[val_idx], num_images=25, azim=0, evl=-0, save_as=file_path)
     file_path = 'pca_poses_xz'
-    plot_poses(X[val_idx], X_recon[val_idx], num_images=25, azim=0, evl=90, save_as=file_path)
+    utils.plot_poses(X[val_idx], X_recon[val_idx], num_images=25, azim=0, evl=90, save_as=file_path)
     file_path = 'pca_poses_xy'
-    plot_poses(X[val_idx], X_recon[val_idx], num_images=25, azim=90, evl=90, save_as=file_path)
+    utils.plot_poses(X[val_idx], X_recon[val_idx], num_images=25, azim=90, evl=90, save_as=file_path)
 
     alpha = 1.0
     scale = 3
