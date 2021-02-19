@@ -5,35 +5,38 @@ import numpy as np
 
 name = sys.argv[0]
 
-def plot_losses(path_to_file, label, y='val_loss', x='Epoch'):
-  data = pd.read_csv("plot_data/"+str(path_to_file)+".csv")
+def plot_losses(path_to_file, label, y='val_loss', x='Epoch', errorbar=None, need_thermalisation=False, color='b', linestyle='-'):
+  #data = pd.read_csv("plot_data/"+str(path_to_file)+".csv")
+  data = pd.read_csv(str(path_to_file))
 
-  epoch = np.array(data[x])
-  reconstruction = np.array(data[y])
-  #KL = np.array(data['val_KL'])
+  x_plot = np.array(data[x])
+  y_plot = np.array(data[y])
 
-  thermalised_history = 10
-  print("{} thermalised mean: {}".format(label, np.mean(reconstruction[-thermalised_history:])))
-  print("{} thermalised STD: {}".format(label, np.std(reconstruction[-thermalised_history:])))
+  if need_thermalisation:
+    thermalised_history = 10
+    print("{} thermalised mean: {}".format(label, np.mean(reconstruction[-thermalised_history:])))
+    print("{} thermalised STD: {}".format(label, np.std(reconstruction[-thermalised_history:])))
 
-  if label[:2] == "ae":
-    plt.plot(epoch, reconstruction, label=label, linestyle='--')
+  if errorbar is None:
+    plt.plot(x_plot, y_plot, label=label, linestyle=linestyle)
   else:
-    plt.plot(epoch, reconstruction, label=label)
-    #plt.plot(epoch, KL, label=label+"_KL")
-
-print("Number of datasets: ", len(sys.argv)-1)
-#for i in range(1, len(sys.argv)):
-  #dataset = sys.argv[i]
-  #plot_losses(path_to_file=dataset, label=dataset)
-#plot_losses(path_to_file="losses", label="train MSE", y='train_reconstruction')
-plot_losses(path_to_file="losses", label="val MSE", y='val_reconstruction')
+    yerr = np.array(data[errorbar])
+    plt.errorbar(x_plot, y_plot, yerr=yerr, label=label, color=color, linestyle=linestyle)
 
 
-#x = np.linspace(0, 50, 10)
-#plt.plot(x, x*0+3.5, label="Threshold for optimum reconstruction", linestyle='--')
-plt.xlabel("Epochs")
-plt.ylabel("Loss")
+plot_losses(path_to_file="plot_data/pca_occlusions_2.csv", label="PCA", y='MSE', x='num_occlusions', errorbar='STD', color='y')
+plot_losses(path_to_file="deep_2_wd_AE/occlusions.csv", label="AE", y='MSE', x='num_occlusions', errorbar='STD', color='b')
+plot_losses(path_to_file="deep_2_beta0.01_avg_VAE/occlusions.csv", label="VAE ($\sigma^2_{recon}=[1]$)", y='MSE', x='num_occlusions', errorbar='STD', color='r')
+#plot_losses(path_to_file="deep_2_var_avg_VAE/occlusions.csv", label="VAE", y='MSE', x='num_occlusions', errorbar='STD', color='g')
+
+
+x = np.linspace(0, 96, 10)
+plt.plot(x, x*0+0.55882453918457, label="", linestyle='--', color='y')
+plt.plot(x, x*0+0.427002441354359, label="", linestyle='--', color='b')
+plt.plot(x, x*0+0.406370745100563, label="", linestyle='--', color='r')
+#plt.plot(x, x*0+0.527691416260059, label="", linestyle='--', color='g')
+plt.xlabel("Number of Occlusions")
+plt.ylabel("MSE reconstruction")
 plt.title("Validation Curves")
-plt.legend()
+plt.legend(prop={'size': 15})
 plt.savefig('training_curves.png')
