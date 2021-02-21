@@ -48,7 +48,7 @@ if multi_dim_experiment:
 first_loop=True
 for num_occlusions in range(0, 97, 3):
     val_mse_accum = []
-    for i in range(10):
+    for i in range(1):
         mapper = umap.UMAP(random_state=42, n_components=2)
         # pca = PCA(n_components=n_z)
         z = mapper.fit_transform(X)
