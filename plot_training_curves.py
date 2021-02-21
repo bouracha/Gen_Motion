@@ -23,17 +23,17 @@ def plot_losses(path_to_file, label, y='val_loss', x='Epoch', errorbar=None, nee
     yerr = np.array(data[errorbar])
     plt.errorbar(x_plot, y_plot, yerr=yerr, label=label, color=color, linestyle=linestyle)
 
-
-plot_losses(path_to_file="plot_data/pca_occlusions_2.csv", label="PCA", y='MSE', x='num_occlusions', errorbar='STD', color='y')
-plot_losses(path_to_file="deep_2_wd_AE/occlusions.csv", label="AE", y='MSE', x='num_occlusions', errorbar='STD', color='b')
-plot_losses(path_to_file="deep_2_beta0.01_avg_VAE/occlusions.csv", label="VAE ($\sigma^2_{recon}=[1]$)", y='MSE', x='num_occlusions', errorbar='STD', color='r')
-#plot_losses(path_to_file="deep_2_var_avg_VAE/occlusions.csv", label="VAE", y='MSE', x='num_occlusions', errorbar='STD', color='g')
+file_name="perturbations"
+plot_losses(path_to_file="pca/perturbations_2.csv", label="PCA", y='MSE', x='num_occlusions', errorbar='STD', color='y')
+plot_losses(path_to_file="deep_2_wd_AE/"+str(file_name)+".csv", label="AE", y='MSE', x='num_occlusions', errorbar='STD', color='b')
+plot_losses(path_to_file="deep_2_beta0.01_avg_VAE/"+str(file_name)+".csv", label="VAE ($\sigma^2_{recon}=[1]$)", y='MSE', x='num_occlusions', errorbar='STD', color='r')
+plot_losses(path_to_file="deep_2_VAE/"+str(file_name)+".csv", label="VAE", y='MSE', x='num_occlusions', errorbar='STD', color='g')
 
 
 x = np.linspace(0, 96, 10)
-plt.plot(x, x*0+0.55882453918457, label="", linestyle='--', color='y')
-plt.plot(x, x*0+0.427002441354359, label="", linestyle='--', color='b')
-plt.plot(x, x*0+0.406370745100563, label="", linestyle='--', color='r')
+#plt.plot(x, x*0+0.55882453918457, label="", linestyle='--', color='y')
+#plt.plot(x, x*0+0.427002441354359, label="", linestyle='--', color='b')
+#plt.plot(x, x*0+0.406370745100563, label="", linestyle='--', color='r')
 #plt.plot(x, x*0+0.527691416260059, label="", linestyle='--', color='g')
 plt.xlabel("Number of Occlusions")
 plt.ylabel("MSE reconstruction")

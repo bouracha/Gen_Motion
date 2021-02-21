@@ -134,11 +134,12 @@ for num_occlusions in range(0, 97, 3):
     head = ['num_occlusions', 'MSE', 'STD']
     ret_log = [num_occlusions, np.mean(val_mse_accum), np.std(val_mse_accum)]
     df = pd.DataFrame(np.expand_dims(ret_log, axis=0))
+    file_name = "imputed_noise_2.csv"
     if first_loop:
-        df.to_csv(model.folder_name + '/occlusions.csv', header=head, index=False)
+        df.to_csv(model.folder_name+'/'+str(file_name), header=head, index=False)
         first_loop=False
     else:
-        with open(model.folder_name + '/occlusions.csv', 'a') as f:
+        with open(model.folder_name+'/'+str(file_name), 'a') as f:
             df.to_csv(f, header=False, index=False)
 
 

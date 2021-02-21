@@ -110,6 +110,6 @@ def simulate_occlusions(X, num_occlusions=10, folder_name=""):
   avg_features_repeated = np.repeat(avg_features.reshape(1, -1), m, axis=0)
   assert(avg_features_repeated.shape == X.shape)
 
-  X[occlude_mask] = avg_features_repeated[occlude_mask]
+  X[occlude_mask] = np.random.uniform(0, 1, (m, n))[occlude_mask]#0.5#avg_features_repeated[occlude_mask]
 
   return X
