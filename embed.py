@@ -107,43 +107,50 @@ if start_epoch != 1:
 
 model.eval()
 
-first_loop=True
-for num_occlusions in range(0, 97, 3):
-    val_mse_accum = []
-    for i in range(10):
-        for act in data.acts_train:
-            for i, (all_seq) in enumerate(val_loader[act]):
-                cur_batch_size = len(all_seq)
+degradation_experiment = False
+if degradation_experiment:
+    noise_scale_range = [0.0] + [1.5**i for i in range(-10,5)]
+    num_occlusions=0
+    alpha=0
+    first_loop=True
+    #for num_occlusions in range(0, 97, 3):
+    for alpha in noise_scale_range:
+        val_mse_accum = []
+        for i in range(10):
+            for act in data.acts_train:
+                for i, (all_seq) in enumerate(val_loader[act]):
+                    cur_batch_size = len(all_seq)
 
-                inputs = all_seq
-                inputs_degraded = np.copy(inputs)
-                inputs_degraded = utils.simulate_occlusions(inputs_degraded, num_occlusions=num_occlusions, folder_name="")
-                inputs_degraded = torch.from_numpy(inputs_degraded)
-                inputs_degraded = inputs_degraded.to(model.device).float()
+                    inputs = all_seq
+                    inputs_degraded = utils.simulate_occlusions(inputs, num_occlusions=num_occlusions, folder_name="")
+                    inputs_degraded_noise = utils.add_noise(inputs_degraded, alpha=alpha)
+                    inputs_degraded_noise = torch.from_numpy(inputs_degraded_noise).to(model.device).float()
 
-                mu = model(inputs_degraded.float())
-                loss = model.loss_VLB(inputs_degraded)
+                    mu = model(inputs_degraded_noise.float())
+                    loss = model.loss_VLB(inputs_degraded_noise)
 
-                model.accum_update('val_loss', loss)
-                model.accum_update('val_mse_loss', model.recon_loss)
+                    model.accum_update('val_loss', loss)
+                    model.accum_update('val_mse_loss', model.recon_loss)
 
-        val_mse_accum.append(model.accum_loss['val_mse_loss'].avg)
+            val_mse_accum.append(model.accum_loss['val_mse_loss'].avg)
 
-    print("Validation, degraded by {} occlutions, reconstruction (to gt) MSE:{} +- {}".format(num_occlusions, np.mean(val_mse_accum), np.std(val_mse_accum)))
+        #print("Validation, degraded by {} occlutions, reconstruction (to gt) MSE:{} +- {}".format(num_occlusions, np.mean(val_mse_accum), np.std(val_mse_accum)))
+        print("Validation, degraded by noise of scale {}, reconstruction (to gt) MSE:{} +- {}".format(alpha, np.mean(val_mse_accum), np.std(val_mse_accum)))
 
-    head = ['num_occlusions', 'MSE', 'STD']
-    ret_log = [num_occlusions, np.mean(val_mse_accum), np.std(val_mse_accum)]
-    df = pd.DataFrame(np.expand_dims(ret_log, axis=0))
-    file_name = "imputed_noise_2.csv"
-    if first_loop:
-        df.to_csv(model.folder_name+'/'+str(file_name), header=head, index=False)
-        first_loop=False
-    else:
-        with open(model.folder_name+'/'+str(file_name), 'a') as f:
-            df.to_csv(f, header=False, index=False)
+        head = ['num_occlusions', 'MSE', 'STD']
+        #ret_log = [num_occlusions, np.mean(val_mse_accum), np.std(val_mse_accum)]
+        ret_log = [alpha, np.mean(val_mse_accum), np.std(val_mse_accum)]
+        df = pd.DataFrame(np.expand_dims(ret_log, axis=0))
+        file_name = "added_noise.csv"
+        if first_loop:
+            df.to_csv(model.folder_name+'/'+str(file_name), header=head, index=False)
+            first_loop=False
+        else:
+            with open(model.folder_name+'/'+str(file_name), 'a') as f:
+                df.to_csv(f, header=False, index=False)
 
 
-embedding_experiment = False
+embedding_experiment = True
 if embedding_experiment:
     embeddings = dict()
     num_outliers=0

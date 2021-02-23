@@ -92,10 +92,11 @@ def simulate_occlusions(X, num_occlusions=10, folder_name=""):
   :param X: set of ground truth 3D joint positions (batch_size, 96)
   :param num_occlusions: number of occlusions per pose (int)
   :param folder_name: model_path (str)
-  :return: set of fround truth 3D joint positions each with num_occlusions replaced (batch_size, 96)
+  :return: set of ground truth 3D joint positions each with num_occlusions replaced (batch_size, 96)
   '''
   m, n = X.shape
   assert(n == 96)
+  X_occluded = np.copy(X)
 
   rng = np.random.default_rng()
   occlude_mask = np.zeros((m, n))
@@ -110,6 +111,22 @@ def simulate_occlusions(X, num_occlusions=10, folder_name=""):
   avg_features_repeated = np.repeat(avg_features.reshape(1, -1), m, axis=0)
   assert(avg_features_repeated.shape == X.shape)
 
-  X[occlude_mask] = np.random.uniform(0, 1, (m, n))[occlude_mask]#0.5#avg_features_repeated[occlude_mask]
+  #X_occluded[occlude_mask] = np.random.uniform(0, 1, (m, n))[occlude_mask]#0.5#avg_features_repeated[occlude_mask]
+  X_occluded[occlude_mask] = avg_features_repeated[occlude_mask]
 
-  return X
+  return X_occluded
+
+def add_noise(X, alpha=1.0):
+  '''
+  Function to add gaussian noise scaled by alpha
+  :param X: set of ground truth 3D joint positions (batch_size, 96)
+  :param alpha: scalinng factor for amount of noise (float)
+  :return: set of ground truth 3D joint positions each with added noise (batch_size, 96)
+  '''
+  m, n = X.shape
+  assert(n == 96)
+  X_added_noise = np.copy(X)
+
+  X_added_noise = X_added_noise + alpha*np.random.uniform(0, 1, (m, n))
+
+  return X_added_noise
