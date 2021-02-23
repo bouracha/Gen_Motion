@@ -9,7 +9,7 @@ from utils.h36motion3d import H36motion3D_pose
 
 import utils.viz_3d as viz_3d
 
-import utils.utils as utils
+import models.utils as utils
 
 import argparse
 parser = argparse.ArgumentParser()

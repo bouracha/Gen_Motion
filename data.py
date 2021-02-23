@@ -185,8 +185,6 @@ class DATA():
         elif self.dataset == 'h3.6m_3d':
             self.cartesian = False
             self.node_n=96
-            self.train_dataset = H36motion3D_pose(path_to_data=self.data_dir, actions=self.acts_train, input_n=input_n, output_n=output_n,
-                                          split=0, sample_rate=sample_rate, dct_used=dct_n)
             if val_categorise:
                 self.train_dataset = dict()
                 self.val_dataset = dict()

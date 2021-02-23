@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from scipy.stats import norm
 
-import utils.utils as utils
+import models.utils as utils
 
 import pandas as pd
 

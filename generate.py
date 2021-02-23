@@ -83,7 +83,7 @@ if start_epoch != 1:
 
 num_grid_points = opt.grid_size
 
-z = torch.randn(num_grid_points**2, 2)
+z = np.random.randn(num_grid_points**2, 2)
 linspace = np.linspace(0.01, 0.99, num=num_grid_points)
 count=0
 for i in linspace:
@@ -92,13 +92,13 @@ for i in linspace:
       z[count, 1] = i
       count += 1
 
-inputs = z.to(device).float()
+z = norm.ppf(z)
+inputs = torch.from_numpy(z).to(device)
 mu = model.generate(inputs.float())
 
-
-file_path = folder_name + '_VAE/'+str(start_epoch) + '_' + 'poses_xz'
+file_path = model.folder_name + '/' + str(start_epoch) + '_' + 'poses_xz'
 model.plot_poses(mu, mu, num_images=num_grid_points**2, azim=0, evl=90, save_as=file_path)
-file_path = folder_name + '_VAE/' + str(start_epoch) + '_' + 'poses_yz'
+file_path = model.folder_name + '/' + str(start_epoch) + '_' + 'poses_yz'
 model.plot_poses(mu, mu, num_images=num_grid_points**2, azim=0, evl=-0, save_as=file_path)
-file_path = folder_name + '_VAE/' + str(start_epoch) + '_' + 'poses_xy'
+file_path = model.folder_name + '/' + str(start_epoch) + '_' + 'poses_xy'
 model.plot_poses(mu, mu, num_images=num_grid_points**2, azim=90, evl=90, save_as=file_path)
