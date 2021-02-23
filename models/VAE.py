@@ -20,39 +20,39 @@ import numpy as np
 import pandas as pd
 
 class VAE(nn.Module):
-    def __init__(self, encoder_layers=[48, 100, 50, 2],  decoder_layers = [2, 50, 100, 48], lr=0.001, train_batch_size=100, variational=False, output_variance=False, device="cuda", batch_norm=False, weight_decay=0.0, p_dropout=0.0, beta=1.0, start_epoch=1, folder_name=""):
+    def __init__(self, input_n=96, encoder_hidden_layers=[100, 50], n_z=2, act_fn=nn.LeakyReLU(0.1), variational=False, output_variance=False, device="cuda", batch_norm=False, p_dropout=0.0):
         """
-
-        :param input_feature: num of input feature
-        :param hidden_feature: num of hidden feature
+        :param input_n: num of input feature
+        :param encoder_hidden_layers: num of hidden feature, decoder is made symmetric
+        :param n_z: latent variable size
         :param p_dropout: drop out prob.
         :param num_stage: number of residual blocks
         :param node_n: number of nodes in graph
         """
         super(VAE, self).__init__()
-        self.n_x = encoder_layers[0]
-        self.n_z = encoder_layers[-1]
-        assert(self.n_x == decoder_layers[-1])
-        assert(self.n_z == decoder_layers[0])
+        print(">>> creating model")
+        self.define_layers(input_n=input_n, encoder_hidden_layers=encoder_hidden_layers, n_z=n_z)
+
+        self.activation = act_fn
         self.variational = variational
-        self.device = device
-        self.beta = beta
         self.output_variance = output_variance
-        self.folder_name= folder_name
-        self.activation = nn.LeakyReLU(0.1)
-        self.figs_checkpoints_save_freq = 10
+        self.device = device
+        self.batch_norm = batch_norm
+        self.p_dropout = p_dropout
 
-        self.encoder_layers = encoder_layers
-        self.decoder_layers = decoder_layers
+        self.encoder = VAE_Encoder(layers=self.encoder_layers, activation=self.activation, variational=variational, device=device, batch_norm=batch_norm, p_dropout=p_dropout)
+        self.decoder = VAE_Decoder(layers=self.decoder_layers, activation=self.activation, output_variance=output_variance, device=device, batch_norm=batch_norm, p_dropout=p_dropout)
 
-        self.encoder = VAE_Encoder(layers=encoder_layers, activation=self.activation, variational=variational, device=device, batch_norm=batch_norm, p_dropout=p_dropout)
-        self.decoder = VAE_Decoder(layers=decoder_layers, activation=self.activation, output_variance=output_variance, device=device, batch_norm=batch_norm, p_dropout=p_dropout)
+        print(self)
+        num_parameters = sum(p.numel() for p in self.parameters())
+        print(">>> total params: {:.2f}M".format(num_parameters/1000000.0))
 
-        if start_epoch==1:
-            self.losses_file_exists = False
-            self.book_keeping(encoder_layers, decoder_layers, start_epoch=start_epoch, lr=lr, train_batch_size=train_batch_size, batch_norm=batch_norm, weight_decay=weight_decay, p_dropout=p_dropout)
+        if device == "cuda":
+            print("Moving model to GPU")
+            self.cuda()
         else:
-            self.losses_file_exists = True
+            print("Using CPU")
+
 
     def forward(self, x):
         """
@@ -70,9 +70,42 @@ class VAE(nn.Module):
 
         return self.reconstructions_mu
 
+    def define_layers(self, input_n=96, encoder_hidden_layers=[100, 50], n_z=2):
+        encoder_layers = []
+        decoder_layers = []
+        encoder_layers.append(input_n)
+        decoder_layers.append(n_z)
+        n_hidden = len(encoder_hidden_layers)
+        for i in range(n_hidden):
+            encoder_layers.append(encoder_hidden_layers[i])
+            decoder_layers.append(encoder_hidden_layers[n_hidden - 1 - i])
+        encoder_layers.append(n_z)
+        decoder_layers.append(input_n)
+        self.n_x = encoder_layers[0]
+        self.n_z = encoder_layers[-1]
+        self.encoder_layers = encoder_layers
+        self.decoder_layers = decoder_layers
+
+    def initialise(self, start_epoch=1, folder_name="", lr=0.001, beta=1.0, l2_reg=False, train_batch_size=100, figs_checkpoints_save_freq=10):
+        self.optimizer = torch.optim.Adam(self.parameters(), lr=lr, weight_decay=l2_reg)
+        self.folder_name = folder_name
+        self.lr = lr
+        self.beta = beta
+        self.clipping_value = 1
+        self.figs_checkpoints_save_freq = figs_checkpoints_save_freq
+        if start_epoch==1:
+            self.losses_file_exists = False
+            self.book_keeping(start_epoch=start_epoch, train_batch_size=train_batch_size, l2_reg=l2_reg)
+        else:
+            self.losses_file_exists = True
+            self.book_keeping(start_epoch=start_epoch, train_batch_size=train_batch_size, l2_reg=l2_reg)
+            ckpt_path = self.folder_name + '/checkpoints/' + 'ckpt_' + str(start_epoch - 1) + '_weights.path.tar'
+            ckpt = torch.load(ckpt_path, map_location=torch.device(self.device))
+            self.load_state_dict(ckpt['state_dict'])
+
+
     def generate(self, z):
         """
-
         :param z: batch of random variables
         :return: batch of generated samples
         """
@@ -133,7 +166,7 @@ class VAE(nn.Module):
         for key in self.accum_loss.keys():
             self.accum_loss[key].reset()
 
-    def train_epoch(self, epoch, train_loader, optimizer):
+    def train_epoch(self, epoch, train_loader):
         self.train()
         bar = Bar('>>>', fill='>', max=len(train_loader))
         st = time.time()
@@ -145,9 +178,10 @@ class VAE(nn.Module):
             mu = self(inputs.float())
             loss = self.loss_VLB(inputs)
 
-            optimizer.zero_grad()
+            self.optimizer.zero_grad()
             loss.backward()
-            optimizer.step()
+            torch.nn.utils.clip_grad_norm_(self.parameters(), self.clipping_value)
+            self.optimizer.step()
 
             bar.suffix = '{}/{}|batch time {:.4f}s|total time{:.2f}s'.format(i + 1, len(train_loader), time.time() - bt,
                                                                                   time.time() - st)
@@ -160,7 +194,7 @@ class VAE(nn.Module):
 
         bar.finish()
 
-    def train_epoch_mnist(self, epoch, train_loader, optimizer, use_bernoulli_loss=False):
+    def train_epoch_mnist(self, epoch, train_loader, use_bernoulli_loss=False):
         self.train()
         i=0
         for image, labels in tqdm(train_loader):
@@ -176,9 +210,9 @@ class VAE(nn.Module):
             else:
                 loss = self.loss_VLB(image_flattened)
 
-            optimizer.zero_grad()
+            self.optimizer.zero_grad()
             loss.backward()
-            optimizer.step()
+            self.optimizer.step()
 
         head = ['Epoch']
         ret_log = [epoch]
@@ -275,7 +309,7 @@ class VAE(nn.Module):
             file_path = self.folder_name + '/poses/' + str(dataset_name) + '_' + str(epoch) + '_' + 'poses_xy'
             utils.plot_poses(inputs.detach().cpu().numpy(), mu.detach().cpu().numpy(), max_num_images=25, azim=90, evl=90, save_as=file_path)
 
-    def book_keeping(self, encoder_layers, decoder_layers, start_epoch=1, lr=0.001, train_batch_size=100, batch_norm=False, weight_decay=0.0, p_dropout=0.0):
+    def book_keeping(self, start_epoch=1, train_batch_size=100, l2_reg=0.0):
         self.accum_loss = dict()
 
         if self.variational:
@@ -296,11 +330,11 @@ class VAE(nn.Module):
             if start_epoch==1:
                 print(self)
             print("Start epoch:{}".format(start_epoch))
-            print("Learning rate:{}".format(lr))
+            print("Learning rate:{}".format(self.lr))
             print("Training batch size:{}".format(train_batch_size))
-            print("BN:{}".format(batch_norm))
-            print("Weight Decay (1e-4):{}".format(weight_decay))
-            print("p_dropout:{}".format(p_dropout))
+            print("BN:{}".format(self.batch_norm))
+            print("l2 Reg (1e-4):{}".format(l2_reg))
+            print("p_dropout:{}".format(self.p_dropout))
             print("Output variance:{}".format(self.output_variance))
             print("Beta(downweight of KL):{}".format(self.beta))
             print("Activation function:{}".format(self.activation))
@@ -309,7 +343,7 @@ class VAE(nn.Module):
         self.head = []
         self.ret_log = []
 
-    def save_checkpoint_and_csv(self, epoch, lr, optimizer):
+    def save_checkpoint_and_csv(self, epoch):
         df = pd.DataFrame(np.expand_dims(self.ret_log, axis=0))
         if self.losses_file_exists:
             with open(self.folder_name+'/'+'losses.csv', 'a') as f:
@@ -318,10 +352,8 @@ class VAE(nn.Module):
             df.to_csv(self.folder_name+'/'+'losses.csv', header=self.head, index=False)
             self.losses_file_exists = True
         state = {'epoch': epoch + 1,
-                         'lr': lr,
                          'err':  self.accum_loss['train_loss'].avg,
-                         'state_dict': self.state_dict(),
-                         'optimizer': optimizer.state_dict()}
+                         'state_dict': self.state_dict()}
         if epoch % self.figs_checkpoints_save_freq == 0:
             print("Saving checkpoint....")
             file_path = self.folder_name + '/checkpoints/' + 'ckpt_' + str(epoch) + '_weights.path.tar'

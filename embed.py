@@ -71,40 +71,11 @@ print(">>> validation data {}".format(data.val_dataset.__len__()))
 input_n = 96 #data.node_n
 n_z = opt.n_z
 n_epochs = opt.n_epochs
-encoder_hidden_layers = opt.encoder_hidden_layers
 start_epoch = opt.start_epoch
 batch_norm = opt.batch_norm
 
-encoder_layers = []
-decoder_layers = []
-encoder_layers.append(input_n)
-decoder_layers.append(n_z)
-n_hidden = len(encoder_hidden_layers)
-for i in range(n_hidden):
-    encoder_layers.append(encoder_hidden_layers[i])
-    decoder_layers.append(encoder_hidden_layers[n_hidden-1-i])
-encoder_layers.append(n_z)
-decoder_layers.append(input_n)
-
-print(">>> creating model")
-model = nnmodel.VAE(encoder_layers=encoder_layers,  decoder_layers=decoder_layers, variational=opt.variational, output_variance=opt.output_variance, device=device, batch_norm=batch_norm, p_dropout=0.0, beta=opt.beta, start_epoch=start_epoch, folder_name=folder_name)
-clipping_value = 1
-torch.nn.utils.clip_grad_norm_(model.parameters(), clipping_value)
-if is_cuda:
-    model.cuda()
-print(model)
-
-print(">>> total params: {:.2f}M".format(sum(p.numel() for p in model.parameters()) / 1000000.0))
-
-optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
-if start_epoch != 1:
-    model.book_keeping(model.encoder_layers, model.decoder_layers, start_epoch=start_epoch, batch_norm=batch_norm, p_dropout=0.0)
-    ckpt_path = model.folder_name + '/checkpoints/' + 'ckpt_' + str(start_epoch-1) + '_weights.path.tar'
-    ckpt = torch.load(ckpt_path, map_location=torch.device(device))
-    model.load_state_dict(ckpt['state_dict'])
-    optimizer.load_state_dict(ckpt['optimizer'])
-
-
+model = nnmodel.VAE(input_n=input_n, encoder_hidden_layers=opt.encoder_hidden_layers, n_z=opt.n_z, variational=opt.variational, output_variance=opt.output_variance, device=device, batch_norm=batch_norm, p_dropout=0.0)
+model.initialise(start_epoch=start_epoch, folder_name=folder_name, lr=0.0001, beta=opt.beta, l2_reg=opt.weight_decay, train_batch_size=100)
 model.eval()
 
 degradation_experiment = False

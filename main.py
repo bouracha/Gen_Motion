@@ -93,48 +93,26 @@ encoder_hidden_layers = opt.encoder_hidden_layers
 start_epoch = opt.start_epoch
 batch_norm = opt.batch_norm
 
-encoder_layers = []
-decoder_layers = []
-encoder_layers.append(input_n)
-decoder_layers.append(n_z)
-n_hidden = len(encoder_hidden_layers)
-for i in range(n_hidden):
-    encoder_layers.append(encoder_hidden_layers[i])
-    decoder_layers.append(encoder_hidden_layers[n_hidden-1-i])
-encoder_layers.append(n_z)
-decoder_layers.append(input_n)
+model = nnmodel.VAE(input_n=data.node_n, encoder_hidden_layers=opt.encoder_hidden_layers,  n_z=opt.n_z, variational=opt.variational, output_variance=opt.output_variance, device=device, batch_norm=batch_norm, p_dropout=0.0)
+model.initialise(start_epoch=start_epoch, folder_name=folder_name, lr=lr, beta=opt.beta, l2_reg=weight_decay, train_batch_size=train_batch_size)
 
-print(">>> creating model")
-model = nnmodel.VAE(encoder_layers=encoder_layers,  decoder_layers=decoder_layers, lr=lr, train_batch_size=train_batch_size, variational=opt.variational, output_variance=opt.output_variance, device=device, batch_norm=batch_norm, weight_decay=weight_decay, p_dropout=0.0, beta=opt.beta, start_epoch=start_epoch, folder_name=folder_name)
-clipping_value = 1
-torch.nn.utils.clip_grad_norm_(model.parameters(), clipping_value)
+
 if is_cuda:
     model.cuda()
-print(model)
-
-print(">>> total params: {:.2f}M".format(sum(p.numel() for p in model.parameters()) / 1000000.0))
-
-optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
-if start_epoch != 1:
-    model.book_keeping(model.encoder_layers, model.decoder_layers, start_epoch=start_epoch, lr=lr, train_batch_size=train_batch_size, batch_norm=batch_norm, weight_decay=weight_decay, p_dropout=0.0)
-    ckpt_path = model.folder_name + '/checkpoints/' + 'ckpt_' + str(start_epoch-1) + '_weights.path.tar'
-    ckpt = torch.load(ckpt_path, map_location=torch.device(device))
-    model.load_state_dict(ckpt['state_dict'])
-    optimizer.load_state_dict(ckpt['optimizer'])
 
 for epoch in range(start_epoch, n_epochs+1):
     print("Epoch: ", epoch)
 
     if opt.use_MNIST:
-        model.train_epoch_mnist(epoch, train_loader, optimizer, opt.use_bernoulli_loss)
+        model.train_epoch_mnist(epoch, train_loader, opt.use_bernoulli_loss)
         model.eval_full_batch_mnist(train_loader, epoch, 'train', opt.use_bernoulli_loss)
         model.eval_full_batch_mnist(val_loader, epoch, 'val', opt.use_bernoulli_loss)
     else:
-        model.train_epoch(epoch, train_loader, optimizer)
+        model.train_epoch(epoch, train_loader)
         model.eval_full_batch(train_loader, epoch, 'train')
         model.eval_full_batch(val_loader, epoch, 'val')
 
-    model.save_checkpoint_and_csv(epoch, lr, optimizer)
+    model.save_checkpoint_and_csv(epoch)
 
 
 

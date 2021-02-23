@@ -7,8 +7,6 @@ import numpy as np
 import pandas as pd
 from utils.h36motion3d import H36motion3D_pose
 
-import utils.viz_3d as viz_3d
-
 import models.utils as utils
 
 import argparse
