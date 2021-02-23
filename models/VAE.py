@@ -10,8 +10,6 @@ import models.utils as utils
 from models.encoders import VAE_Encoder
 from models.decoders import VAE_Decoder
 
-import utils.viz_3d as viz_3d
-
 from progress.bar import Bar
 import time
 from torch.autograd import Variable
@@ -224,9 +222,9 @@ class VAE(nn.Module):
         if epoch % self.figs_checkpoints_save_freq == 0:
             reconstructions = reconstructions.reshape(cur_batch_size, 1, 28, 28)
             file_path = self.folder_name + '/images/' + str(dataset_name) + '_' + str(epoch) + '_' + 'reals'
-            self.plot_tensor_images(image, num_images=25, nrow=5, show=False, save_as=file_path)
+            self.plot_tensor_images(image, max_num_images=25, nrow=5, show=False, save_as=file_path)
             file_path = self.folder_name + '/images/' + str(dataset_name) + '_' + str(epoch) + '_' + 'reconstructions'
-            self.plot_tensor_images(reconstructions, num_images=25, nrow=5, show=False, save_as=file_path)
+            self.plot_tensor_images(reconstructions, max_num_images=25, nrow=5, show=False, save_as=file_path)
 
     def eval_full_batch(self, loader, epoch, dataset_name='val'):
         self.eval()
@@ -265,17 +263,17 @@ class VAE(nn.Module):
 
         if epoch % self.figs_checkpoints_save_freq == 0:
             file_path = self.folder_name + '/images/' + str(dataset_name) + '_' + str(epoch) + '_' + 'reals'
-            utils.plot_tensor_images(inputs_reshaped.detach().cpu(), num_images=25, nrow=5, show=False, save_as=file_path)
+            utils.plot_tensor_images(inputs_reshaped.detach().cpu(), max_num_images=25, nrow=5, show=False, save_as=file_path)
             file_path = self.folder_name + '/images/' + str(dataset_name) + '_' + str(epoch) + '_' + 'reconstructions'
-            utils.plot_tensor_images(reconstructions.detach().cpu(), num_images=25, nrow=5, show=False, save_as=file_path)
+            utils.plot_tensor_images(reconstructions.detach().cpu(), max_num_images=25, nrow=5, show=False, save_as=file_path)
             file_path = self.folder_name + '/images/' + str(dataset_name) + '_' + str(epoch) + '_' + 'diffs'
-            utils.plot_tensor_images(diffs.detach().cpu(), num_images=25, nrow=5, show=False, save_as=file_path)
+            utils.plot_tensor_images(diffs.detach().cpu(), max_num_images=25, nrow=5, show=False, save_as=file_path)
             file_path = self.folder_name + '/poses/' + str(dataset_name) + '_' + str(epoch) + '_' + 'poses_xz'
-            utils.plot_poses(inputs.detach().cpu().numpy(), mu.detach().cpu().numpy(), num_images=25, azim=0, evl=90, save_as=file_path)
+            utils.plot_poses(inputs.detach().cpu().numpy(), mu.detach().cpu().numpy(), max_num_images=25, azim=0, evl=90, save_as=file_path)
             file_path = self.folder_name + '/poses/' + str(dataset_name) + '_' + str(epoch) + '_' + 'poses_yz'
-            utils.plot_poses(inputs.detach().cpu().numpy(), mu.detach().cpu().numpy(), num_images=25, azim=0, evl=-0, save_as=file_path)
+            utils.plot_poses(inputs.detach().cpu().numpy(), mu.detach().cpu().numpy(), max_num_images=25, azim=0, evl=-0, save_as=file_path)
             file_path = self.folder_name + '/poses/' + str(dataset_name) + '_' + str(epoch) + '_' + 'poses_xy'
-            utils.plot_poses(inputs.detach().cpu().numpy(), mu.detach().cpu().numpy(), num_images=25, azim=90, evl=90, save_as=file_path)
+            utils.plot_poses(inputs.detach().cpu().numpy(), mu.detach().cpu().numpy(), max_num_images=25, azim=90, evl=90, save_as=file_path)
 
     def book_keeping(self, encoder_layers, decoder_layers, start_epoch=1, lr=0.001, train_batch_size=100, batch_norm=False, weight_decay=0.0, p_dropout=0.0):
         self.accum_loss = dict()

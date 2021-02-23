@@ -6,6 +6,8 @@ import matplotlib
 matplotlib.use('Agg')
 from matplotlib import pyplot as plt
 
+import utils.viz_3d as viz_3d
+
 
 class AccumLoss(object):
     def __init__(self):
@@ -24,13 +26,13 @@ class AccumLoss(object):
         self.count = 0
 
 
-def plot_tensor_images(image_tensor, num_images=25, nrow=5, show=False, save_as=None):
+def plot_tensor_images(image_tensor, max_num_images=25, nrow=5, show=False, save_as=None):
     '''
     Function for visualizing images: Given a tensor of images, number of images, and
     size per image, plots and prints the images in an uniform grid.
     '''
     image_unflat = image_tensor.detach().cpu()
-    image_grid = make_grid(image_unflat[:num_images], nrow=nrow)
+    image_grid = make_grid(image_unflat[:max_num_images], nrow=nrow)
     plt.imshow(image_grid.permute(1, 2, 0).squeeze())
     if show:
         plt.show()
@@ -39,22 +41,23 @@ def plot_tensor_images(image_tensor, num_images=25, nrow=5, show=False, save_as=
     plt.close()
 
 
-def plot_poses(xyz_gt, xyz_pred, num_images=25, azim=0, evl=0, save_as=None):
+def plot_poses(xyz_gt, xyz_pred, max_num_images=25, azim=0, evl=0, save_as=None):
     '''
     Function for visualizing poses: saves grid of poses.
     Assumes poses are normalised between 0 and 1
     :param xyz_gt: set of ground truth 3D joint positions (batch_size, 96)
     :param xyz_pred: set of predicted 3D joint positions (batch_size, 96)
-    :param num_images: number of poses to plotted from given set (int)
+    :param max_num_images: number of poses to plotted from given set (int)
     :param azim: azimuthal angle for viewing (int)
     :param evl: angle of elevation for viewing (int)
     :param save_as: path and name to save (str)
     '''
-    xyz_gt = xyz_gt.reshape(-1, 96)
-    xyz_pred = xyz_pred.reshape(-1, 96)
+    xyz_gt = xyz_gt.reshape(-1, 32, 3)
+    xyz_pred = xyz_pred.reshape(-1, 32, 3)
 
-    xyz_gt = xyz_gt[:num_images].reshape(num_images, 32, 3)
-    xyz_pred = xyz_pred[:num_images].reshape(num_images, 32, 3)
+    xyz_gt = xyz_gt[:max_num_images]
+    xyz_pred = xyz_pred[:max_num_images]
+    num_images = xyz_gt.shape[0]
 
     fig = plt.figure()
     if num_images > 4:
