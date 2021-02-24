@@ -41,7 +41,7 @@ def plot_tensor_images(image_tensor, max_num_images=25, nrow=5, show=False, save
     plt.close()
 
 
-def plot_poses(xyz_gt, xyz_pred, max_num_images=25, azim=0, evl=0, save_as=None):
+def plot_poses(xyz_gt, xyz_pred, max_num_images=25, azim=0, evl=0, save_as=None, one_dim_grid=False):
     '''
     Function for visualizing poses: saves grid of poses.
     Assumes poses are normalised between 0 and 1
@@ -62,12 +62,19 @@ def plot_poses(xyz_gt, xyz_pred, max_num_images=25, azim=0, evl=0, save_as=None)
     fig = plt.figure()
     if num_images > 4:
         fig = plt.figure(figsize=(20, 20))
-    if num_images > 40:
+    elif num_images > 40:
         fig = plt.figure(figsize=(50, 50))
 
-    grid_dim_size = np.ceil(np.sqrt(num_images))
+    if one_dim_grid:
+        fig = plt.figure(figsize=(20, 4))
+        grid_dim_y = 1
+        grid_dim_x = num_images
+    else:
+        grid_dim_y = np.ceil(np.sqrt(num_images))
+        grid_dim_x = grid_dim_y
+
     for i in range(num_images):
-        ax = fig.add_subplot(grid_dim_size, grid_dim_size, i + 1, projection='3d')
+        ax = fig.add_subplot(grid_dim_y, grid_dim_x, i + 1, projection='3d')
         ax.set_xlim3d([0, 1])
         ax.set_ylim3d([0, 1])
         ax.set_zlim3d([0, 1])

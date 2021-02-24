@@ -8,6 +8,9 @@ import matplotlib.cm as cm
 
 from scipy.stats import norm
 
+# ===============================================================
+#                     Degradations
+# ===============================================================
 def degradation_experiments(model, acts, val_loader):
     noise_scale_range = [0.0] + [1.5**i for i in range(-10,5)]
     num_occlusions=0
@@ -49,38 +52,39 @@ def degradation_experiments(model, acts, val_loader):
             with open(model.folder_name+'/'+str(file_name), 'a') as f:
                 df.to_csv(f, header=False, index=False)
 
+# ===============================================================
+#                     Embeddings
+# ===============================================================
 def embed(model, acts, data_loader):
     embeddings = dict()
-    num_outliers=0
     for act in acts:
-        embeddings[act] = np.array([0,0]).reshape((1,2))
+        embeddings[act] = []
         for i, (all_seq) in enumerate(data_loader[act]):
 
             inputs = all_seq.to(model.device).float()
 
             mu, z, KL = model.encoder(inputs)
 
-            #embeddings[act] = np.vstack((embeddings[act], norm.cdf(mu.detach().cpu().numpy())))
-            embeddings[act] = np.vstack((embeddings[act], mu.detach().cpu().numpy()))
+            if embeddings[act] == []:
+                embeddings[act] = mu.detach().cpu().numpy()
+            else:
+                embeddings[act] = np.vstack((embeddings[act], mu.detach().cpu().numpy()))
 
-            #for i in range(int(mu.shape[0])):
-            #    if (mu[i, 1] > 8):
-            #        num_outliers+=1
-            #        file_path = model.folder_name + '/pose_outliers/' + str(act) + '_' + 'poses_xz_'+str(num_outliers)
-            #        model.plot_poses(inputs[i], inputs[i], num_images=1, azim=0, evl=90, save_as=file_path)
+    return embeddings
 
-    print(embeddings['walking'].shape)
-
-    alpha = 0.1
-    scale = 3
+def plot_embedding_rainbow(folder_name, embeddings, acts, cdf_plot=False):
+    if cdf_plot:
+        embeddings = norm.cdf(embeddings)
 
     fig = plt.figure()
-    fig = plt.figure(figsize=(20, 20))
+    fig = plt.figure(figsize=(40, 40))
 
     colors = cm.rainbow(np.linspace(0, 1, 13))
     i=0
     for act in acts:
-        plt.scatter(embeddings[act][:, 0], embeddings[act][:, 1], s=scale, marker='o', alpha=alpha, color=colors[i], label=act)
+        plt.scatter(embeddings[act][:, 0], embeddings[act][:, 1], s=2, marker='o', alpha=0.1, color=colors[i])
+        embedding_act_avg = np.mean(embeddings[act], axis=0)
+        plt.scatter(embedding_act_avg[0], embedding_act_avg[1], s=500, marker='x', alpha=1.0, color=colors[i], label=act)
         i+=1
     #plt.scatter(embeddings['walking'][:, 0], embeddings['walking'][:, 1], s=scale, marker='o', alpha=alpha, color='b', label='walking')
     #plt.scatter(embeddings['walkingdog'][:, 0], embeddings['walkingdog'][:, 1], s=scale, marker='o', alpha=alpha, color='b', label='walkingdog')
@@ -92,12 +96,36 @@ def embed(model, acts, data_loader):
     #plt.scatter(embeddings['phoning'][:, 0], embeddings['phoning'][:, 1], s=scale, marker='o', alpha=alpha, color='m', label='phoning')
     #plt.scatter(embeddings['sitting'][:, 0], embeddings['sitting'][:, 1], s=scale, marker='o', alpha=alpha, color='r', label='sitting')
     #plt.scatter(embeddings['sittingdown'][:, 0], embeddings['sittingdown'][:, 1], s=scale, marker='o', alpha=alpha, color='m', label='sittingdown')
+    leg = plt.legend(prop={'size': 30})
+    for lh in leg.legendHandles:
+        lh.set_alpha(1.0)
+    plt.savefig(folder_name + '/embedding_rainbow')
 
-    plt.legend()
+def interpolate_acts(model, embeddings, act1, act2):
+    embedding_act1_avg = np.mean(embeddings[act1], axis=0)
+    embedding_act2_avg = np.mean(embeddings[act2], axis=0)
 
-    plt.savefig(model.folder_name + '/Embedding')
+    vec1to2 = embedding_act2_avg - embedding_act1_avg
+
+    inter_points = embedding_act1_avg
+    points = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+    for step_length in points:
+        inter_points = np.vstack((inter_points, embedding_act1_avg + step_length*vec1to2))
+
+    inputs = torch.from_numpy(inter_points).to(model.device)
+    mu = model.generate(inputs.float())
+
+    file_path = model.folder_name + '/' + 'interposations_xz'
+    utils.plot_poses(mu.detach().cpu().numpy(), mu.detach().cpu().numpy(), max_num_images=25, azim=0, evl=90, save_as=file_path, one_dim_grid=True)
+    file_path = model.folder_name + '/' + 'interposations_yz'
+    utils.plot_poses(mu.detach().cpu().numpy(), mu.detach().cpu().numpy(), max_num_images=25, azim=0, evl=-0, save_as=file_path, one_dim_grid=True)
+    file_path = model.folder_name + '/' + 'interposations_xy'
+    utils.plot_poses(mu.detach().cpu().numpy(), mu.detach().cpu().numpy(), max_num_images=25, azim=90, evl=90, save_as=file_path, one_dim_grid=True)
 
 
+# ===============================================================
+#                     ICDF
+# ===============================================================
 def gnerate_icdf(model, num_grid_points=20):
     z = np.random.randn(num_grid_points ** 2, 2)
     linspace = np.linspace(0.01, 0.99, num=num_grid_points)
