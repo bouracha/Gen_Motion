@@ -79,12 +79,12 @@ def plot_embedding_rainbow(folder_name, embeddings, acts, cdf_plot=False):
     fig = plt.figure()
     fig = plt.figure(figsize=(40, 40))
 
-    colors = cm.rainbow(np.linspace(0, 1, 13))
+    colors = cm.rainbow(np.linspace(0, 1, len(acts)))
     i=0
     for act in acts:
         plt.scatter(embeddings[act][:, 0], embeddings[act][:, 1], s=2, marker='o', alpha=0.1, color=colors[i])
         embedding_act_avg = np.mean(embeddings[act], axis=0)
-        plt.scatter(embedding_act_avg[0], embedding_act_avg[1], s=500, marker='x', alpha=1.0, color=colors[i], label=act)
+        plt.scatter(embedding_act_avg[0], embedding_act_avg[1], s=2000, marker='x', alpha=1.0, color=colors[i], label=act)
         i+=1
     #plt.scatter(embeddings['walking'][:, 0], embeddings['walking'][:, 1], s=scale, marker='o', alpha=alpha, color='b', label='walking')
     #plt.scatter(embeddings['walkingdog'][:, 0], embeddings['walkingdog'][:, 1], s=scale, marker='o', alpha=alpha, color='b', label='walkingdog')

@@ -183,8 +183,7 @@ class VAE(nn.Module):
             torch.nn.utils.clip_grad_norm_(self.parameters(), self.clipping_value)
             self.optimizer.step()
 
-            bar.suffix = '{}/{}|batch time {:.4f}s|total time{:.2f}s'.format(i + 1, len(train_loader), time.time() - bt,
-                                                                                  time.time() - st)
+            bar.suffix = '{}/{}|batch time {:.4f}s|total time{:.2f}s'.format(i + 1, len(train_loader), time.time() - bt, time.time() - st)
             bar.next()
 
         head = ['Epoch']
@@ -256,9 +255,9 @@ class VAE(nn.Module):
         if epoch % self.figs_checkpoints_save_freq == 0:
             reconstructions = reconstructions.reshape(cur_batch_size, 1, 28, 28)
             file_path = self.folder_name + '/images/' + str(dataset_name) + '_' + str(epoch) + '_' + 'reals'
-            self.plot_tensor_images(image, max_num_images=25, nrow=5, show=False, save_as=file_path)
+            utils.plot_tensor_images(image, max_num_images=25, nrow=5, show=False, save_as=file_path)
             file_path = self.folder_name + '/images/' + str(dataset_name) + '_' + str(epoch) + '_' + 'reconstructions'
-            self.plot_tensor_images(reconstructions, max_num_images=25, nrow=5, show=False, save_as=file_path)
+            utils.plot_tensor_images(reconstructions, max_num_images=25, nrow=5, show=False, save_as=file_path)
 
     def eval_full_batch(self, loader, epoch, dataset_name='val'):
         self.eval()
