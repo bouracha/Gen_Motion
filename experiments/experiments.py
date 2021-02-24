@@ -1,61 +1,14 @@
-from __future__ import print_function, absolute_import, division
-
+import models.utils as utils
 import torch.optim
-
-from data import DATA
-
+import pandas as pd
 import numpy as np
-
-import models.VAE as nnmodel
-
-import argparse
 
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
+
 from scipy.stats import norm
 
-import models.utils as utils
-
-import pandas as pd
-
-from opt import Options
-opt = Options().parse()
-
-folder_name=opt.name
-is_cuda = torch.cuda.is_available()
-if is_cuda:
-    device = "cuda"
-    job = 10 #Can change this to multi-process dataloading
-else:
-    device = "cpu"
-    job = 0
-
-##################################################################
-# Load Data
-##################################################################
-train_batch_size=opt.train_batch_size
-test_batch_size=opt.test_batch_size
-data = DATA("h3.6m_3d", "h3.6m/dataset/")
-out_of_distribution = data.get_poses(input_n=1, output_n=1, sample_rate=2, dct_n=2, out_of_distribution_action=None, val_categorise=True)
-train_loader, val_loader, OoD_val_loader, test_loader = data.get_dataloaders(train_batch=train_batch_size, test_batch=test_batch_size, job=job, val_categorise=True)
-print(">>> train data {}".format(data.train_dataset.__len__()))
-print(">>> validation data {}".format(data.val_dataset.__len__()))
-
-##################################################################
-# Instantiate model, and methods used fro training and valdation
-##################################################################
-input_n = 96 #data.node_n
-n_z = opt.n_z
-n_epochs = opt.n_epochs
-start_epoch = opt.start_epoch
-batch_norm = opt.batch_norm
-
-model = nnmodel.VAE(input_n=input_n, encoder_hidden_layers=opt.encoder_hidden_layers, n_z=opt.n_z, variational=opt.variational, output_variance=opt.output_variance, device=device, batch_norm=batch_norm, p_dropout=0.0)
-model.initialise(start_epoch=start_epoch, folder_name=folder_name, lr=0.0001, beta=opt.beta, l2_reg=opt.weight_decay, train_batch_size=100)
-model.eval()
-
-degradation_experiment = False
-if degradation_experiment:
+def degradation_experiments(model, acts, val_loader):
     noise_scale_range = [0.0] + [1.5**i for i in range(-10,5)]
     num_occlusions=0
     alpha=0
@@ -64,7 +17,7 @@ if degradation_experiment:
     for alpha in noise_scale_range:
         val_mse_accum = []
         for i in range(10):
-            for act in data.acts_train:
+            for act in acts:
                 for i, (all_seq) in enumerate(val_loader[act]):
                     cur_batch_size = len(all_seq)
 
@@ -96,15 +49,12 @@ if degradation_experiment:
             with open(model.folder_name+'/'+str(file_name), 'a') as f:
                 df.to_csv(f, header=False, index=False)
 
-
-embedding_experiment = True
-if embedding_experiment:
+def embed(model, acts, data_loader):
     embeddings = dict()
     num_outliers=0
-    for act in data.acts_train:
+    for act in acts:
         embeddings[act] = np.array([0,0]).reshape((1,2))
-        for i, (all_seq) in enumerate(train_loader[act]):
-            cur_batch_size = len(all_seq)
+        for i, (all_seq) in enumerate(data_loader[act]):
 
             inputs = all_seq.to(model.device).float()
 
@@ -129,7 +79,7 @@ if embedding_experiment:
 
     colors = cm.rainbow(np.linspace(0, 1, 13))
     i=0
-    for act in data.acts_train:
+    for act in acts:
         plt.scatter(embeddings[act][:, 0], embeddings[act][:, 1], s=scale, marker='o', alpha=alpha, color=colors[i], label=act)
         i+=1
     #plt.scatter(embeddings['walking'][:, 0], embeddings['walking'][:, 1], s=scale, marker='o', alpha=alpha, color='b', label='walking')
@@ -146,3 +96,25 @@ if embedding_experiment:
     plt.legend()
 
     plt.savefig(model.folder_name + '/Embedding')
+
+
+def gnerate_icdf(model, num_grid_points=20):
+    z = np.random.randn(num_grid_points ** 2, 2)
+    linspace = np.linspace(0.01, 0.99, num=num_grid_points)
+    count = 0
+    for i in linspace:
+        for j in linspace:
+            z[count, 0] = j
+            z[count, 1] = i
+            count += 1
+
+    z = norm.ppf(z)
+    inputs = torch.from_numpy(z).to(model.device)
+    mu = model.generate(inputs.float())
+
+    file_path = model.folder_name + '/' + 'poses_xz'
+    utils.plot_poses(mu.detach().cpu().numpy(), mu.detach().cpu().numpy(), max_num_images=num_grid_points ** 2, azim=0, evl=90, save_as=file_path)
+    file_path = model.folder_name + '/' + 'poses_yz'
+    utils.plot_poses(mu.detach().cpu().numpy(), mu.detach().cpu().numpy(), max_num_images=num_grid_points ** 2, azim=0, evl=-0, save_as=file_path)
+    file_path = model.folder_name + '/' + 'poses_xy'
+    utils.plot_poses(mu.detach().cpu().numpy(), mu.detach().cpu().numpy(), max_num_images=num_grid_points ** 2, azim=90, evl=90, save_as=file_path)

@@ -116,6 +116,8 @@ class DATA():
                 shuffle=False,
                 num_workers=job,
                 pin_memory=True)
+        print(">>> train data {}".format(self.train_dataset.__len__()))
+        print(">>> validation data {}".format(self.val_dataset.__len__()))
         return train_loader, val_loader, OoD_val_loader, test_loaders
 
     def get_poses(self, input_n, output_n, sample_rate, dct_n, out_of_distribution_action=None, val_categorise=False):

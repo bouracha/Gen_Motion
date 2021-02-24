@@ -49,13 +49,20 @@ class Options:
         self.parser.add_argument('--use_bernoulli_loss', dest='use_bernoulli_loss', action='store_true', help='toggle to bernoulli of gauss loss')
         self.parser.set_defaults(use_bernoulli_loss=False)
         # ===============================================================
-        #                     Embed experiments options
+        #                     Experiments
         # ===============================================================
-
+        self.parser.add_argument('--degradation_experiment', dest='degradation_experiment', action='store_true', help='toggle run degradation experiments')
+        self.parser.set_defaults(degradation_experiment=False)
+        self.parser.add_argument('--embedding_experiment', dest='embedding_experiment', action='store_true', help='toggle run embedding experiments')
+        self.parser.set_defaults(embedding_experiment=False)
+        self.parser.add_argument('--icdf', dest='icdf', action='store_true', help='toggle run ICDF generation')
+        self.parser.set_defaults(icdf=False)
+        self.parser.add_argument('--interpolate', dest='interpolate', action='store_true', help='toggle run interpolate experiment')
+        self.parser.set_defaults(interpolate=False)
         # ===============================================================
-        #                     Generate experiments options
+        #                     Experiment options
         # ===============================================================
-        self.parser.add_argument('--grid_size', type=int, default=10, help='Size of grid in each dimension')
+        self.parser.add_argument('--grid_size', type=int, default=20, help='Size of grid in each dimension')
 
 
     def _print(self):

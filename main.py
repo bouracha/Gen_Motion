@@ -51,8 +51,6 @@ else:
     data = DATA("h3.6m_3d", "h3.6m/dataset/")
     out_of_distribution = data.get_poses(input_n=1, output_n=1, sample_rate=2, dct_n=2, out_of_distribution_action=None)
     train_loader, val_loader, OoD_val_loader, test_loader = data.get_dataloaders(train_batch=train_batch_size, test_batch=test_batch_size, job=job)
-    print(">>> train data {}".format(data.train_dataset.__len__()))
-    print(">>> validation data {}".format(data.val_dataset.__len__()))
 
 print(">>> data loaded !")
 ##################################################################
