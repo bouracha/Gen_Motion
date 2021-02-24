@@ -6,39 +6,12 @@ from data import DATA
 
 import models.VAE as nnmodel
 
-import argparse
-
-parser = argparse.ArgumentParser()
-
-parser.add_argument('--variational', dest='variational', action='store_true', help='toggle VAE or AE')
-parser.add_argument('--batch_norm', dest='batch_norm', action='store_true', help='toggle use batch_norm or not')
-parser.add_argument('--weight_decay', dest='weight_decay', action='store_true', help='toggle use weight decay or not')
-parser.add_argument('--output_variance', dest='output_variance', action='store_true', help='toggle model output variance or use as constant')
-parser.add_argument('--use_MNIST', dest='use_MNIST', action='store_true', help='toggle to use MNIST data instead')
-parser.add_argument('--use_bernoulli_loss', dest='use_bernoulli_loss', action='store_true', help='toggle to bernoulli of gauss loss')
-parser.add_argument('--beta', type=float, default=1.0, help='Downweighting of the KL divergence')
-parser.add_argument('--lr', type=float, default=0.001, help='Learning rate')
-parser.add_argument('--n_z', type=int, default=2, help='Number of latent variables')
-parser.add_argument('--n_epochs', type=int, default=50, help='Number of epochs to train for')
-parser.add_argument('--start_epoch', type=int, default=1, help='If not 1, load checkpoint at this epoch')
-parser.add_argument('--train_batch_size', type=int, default=100, help='Number of epochs to train for')
-parser.add_argument('--test_batch_size', type=int, default=100, help='If not 1, load checkpoint at this epoch')
-parser.add_argument('--name', type=str, default="", help='Name of master folder containing model')
-parser.add_argument('--encoder_hidden_layers', nargs='+', type=int, default=[500, 200, 100, 50], help='input the out of distribution action')
-parser.set_defaults(variational=False)
-parser.set_defaults(batch_norm=False)
-parser.set_defaults(weight_decay=False)
-parser.set_defaults(output_variance=False)
-parser.set_defaults(use_MNIST=False)
-parser.set_defaults(use_bernoulli_loss=False)
-
-opt = parser.parse_args()
+from opt import Options
+opt = Options().parse()
 
 weight_decay = 0.0
 if opt.weight_decay:
     weight_decay = 1e-4
-
-
 
 folder_name=opt.name
 is_cuda = torch.cuda.is_available()
@@ -85,22 +58,11 @@ print(">>> data loaded !")
 ##################################################################
 # Instantiate model, and methods used fro training and valdation
 ##################################################################
-input_n = data.node_n
-n_z = opt.n_z
-n_epochs = opt.n_epochs
-lr=opt.lr
-encoder_hidden_layers = opt.encoder_hidden_layers
-start_epoch = opt.start_epoch
-batch_norm = opt.batch_norm
 
-model = nnmodel.VAE(input_n=data.node_n, encoder_hidden_layers=opt.encoder_hidden_layers,  n_z=opt.n_z, variational=opt.variational, output_variance=opt.output_variance, device=device, batch_norm=batch_norm, p_dropout=0.0)
-model.initialise(start_epoch=start_epoch, folder_name=folder_name, lr=lr, beta=opt.beta, l2_reg=weight_decay, train_batch_size=train_batch_size)
+model = nnmodel.VAE(input_n=data.node_n, encoder_hidden_layers=opt.encoder_hidden_layers,  n_z=opt.n_z, variational=opt.variational, output_variance=opt.output_variance, device=device, batch_norm=opt.batch_norm, p_dropout=opt.p_drop)
+model.initialise(start_epoch=opt.start_epoch, folder_name=folder_name, lr=opt.lr, beta=opt.beta, l2_reg=weight_decay, train_batch_size=train_batch_size)
 
-
-if is_cuda:
-    model.cuda()
-
-for epoch in range(start_epoch, n_epochs+1):
+for epoch in range(opt.start_epoch, opt.n_epochs+1):
     print("Epoch: ", epoch)
 
     if opt.use_MNIST:

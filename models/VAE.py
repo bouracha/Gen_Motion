@@ -86,7 +86,7 @@ class VAE(nn.Module):
         self.encoder_layers = encoder_layers
         self.decoder_layers = decoder_layers
 
-    def initialise(self, start_epoch=1, folder_name="", lr=0.001, beta=1.0, l2_reg=False, train_batch_size=100, figs_checkpoints_save_freq=10):
+    def initialise(self, start_epoch=1, folder_name="", lr=0.0001, beta=1.0, l2_reg=False, train_batch_size=100, figs_checkpoints_save_freq=10):
         self.optimizer = torch.optim.Adam(self.parameters(), lr=lr, weight_decay=l2_reg)
         self.folder_name = folder_name
         self.lr = lr

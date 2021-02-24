@@ -1,13 +1,8 @@
 from torch.utils.data import DataLoader
 
-from utils.h36motion import H36motion, H36motion_pose
 from utils.h36motion3d import H36motion3D, H36motion3D_pose
-from utils.cmu_motion import CMU_Motion
-from utils.cmu_motion_3d import CMU_Motion3D
 
 import utils.data_utils as data_utils
-
-
 
 class DATA():
     def __init__(self, dataset, data_dir):
@@ -61,36 +56,8 @@ class DATA():
             for act in self.acts_test:
                 self.test_dataset[act] = H36motion3D(path_to_data=self.data_dir, actions=act, input_n=input_n, output_n=output_n,
                                          split=1, sample_rate=sample_rate, dct_used=dct_n)
-        elif self.dataset == 'cmu_mocap':
-            self.cartesian = False
-            self.node_n = 64
-            self.train_dataset = CMU_Motion(path_to_data=self.data_dir, actions=acts_train, input_n=input_n, output_n=output_n,
-                                        split=0, dct_n=dct_n)
-            self.data_std = self.train_dataset.data_std
-            self.data_mean = self.train_dataset.data_mean
-            self.dim_used = self.train_dataset.dim_used
-            self.val_dataset = None
-            self.OoD_val_dataset = None
-            self.test_dataset = dict()
-            for act in self.acts_test:
-                self.test_dataset[act] = CMU_Motion(path_to_data=self.data_dir, actions=[act], input_n=input_n, output_n=output_n,
-                                          split=1, data_mean=self.data_mean, data_std=self.data_std, dim_used=self.dim_used, dct_n=dct_n)
-        elif self.dataset == 'cmu_mocap_3d':
-            self.cartesian = True
-            self.node_n=75
-            self.train_dataset = CMU_Motion3D(path_to_data=self.data_dir, actions=acts_train, input_n=input_n, output_n=output_n,
-                                        split=0, dct_n=dct_n)
-            self.data_std = self.train_dataset.data_std
-            self.data_mean = self.train_dataset.data_mean
-            self.dim_used = self.train_dataset.dim_used
-            self.val_dataset = None
-            self.OoD_val_dataset = None
-            self.test_dataset = dict()
-            for act in self.acts_test:
-                self.test_dataset[act] = CMU_Motion3D(path_to_data=self.data_dir, actions=[act], input_n=input_n,
-                                            output_n=output_n, split=1, data_mean=self.data_mean, data_std=self.data_std, dim_used=self.dim_used, dct_n=dct_n)
         else:
-            raise Exception("Dataset name ({}) is not valid!".format(dataset))
+            raise Exception("Dataset name ({}) is not valid!".format(self.dataset))
         return self.out_of_distribution
 
     def get_dataloaders(self, train_batch, test_batch, job, val_categorise=False):
@@ -203,34 +170,6 @@ class DATA():
             for act in self.acts_test:
                 self.test_dataset[act] = H36motion3D_pose(path_to_data=self.data_dir, actions=act, input_n=input_n, output_n=output_n,
                                          split=1, sample_rate=sample_rate, dct_used=dct_n)
-        elif self.dataset == 'cmu_mocap':
-            self.cartesian = False
-            self.node_n = 64
-            self.train_dataset = CMU_Motion(path_to_data=self.data_dir, actions=self.acts_train, input_n=input_n, output_n=output_n,
-                                        split=0, dct_n=dct_n)
-            self.data_std = self.train_dataset.data_std
-            self.data_mean = self.train_dataset.data_mean
-            self.dim_used = self.train_dataset.dim_used
-            self.val_dataset = None
-            self.OoD_val_dataset = None
-            self.test_dataset = dict()
-            for act in self.acts_test:
-                self.test_dataset[act] = CMU_Motion(path_to_data=self.data_dir, actions=[act], input_n=input_n, output_n=output_n,
-                                          split=1, data_mean=self.data_mean, data_std=self.data_std, dim_used=self.dim_used, dct_n=dct_n)
-        elif self.dataset == 'cmu_mocap_3d':
-            self.cartesian = True
-            self.node_n=75
-            self.train_dataset = CMU_Motion3D(path_to_data=self.data_dir, actions=self.acts_train, input_n=input_n, output_n=output_n,
-                                        split=0, dct_n=dct_n)
-            self.data_std = self.train_dataset.data_std
-            self.data_mean = self.train_dataset.data_mean
-            self.dim_used = self.train_dataset.dim_used
-            self.val_dataset = None
-            self.OoD_val_dataset = None
-            self.test_dataset = dict()
-            for act in self.acts_test:
-                self.test_dataset[act] = CMU_Motion3D(path_to_data=self.data_dir, actions=[act], input_n=input_n,
-                                            output_n=output_n, split=1, data_mean=self.data_mean, data_std=self.data_std, dim_used=self.dim_used, dct_n=dct_n)
         else:
             raise Exception("Dataset name ({}) is not valid!".format(dataset))
         return self.out_of_distribution
