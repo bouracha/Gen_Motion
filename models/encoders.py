@@ -42,16 +42,10 @@ class VAE_Encoder(nn.Module):
         if self.variational:
             log_var = self.z_log_var_fc(y)
             log_var = torch.clamp(log_var, min=-20.0, max=3.0)
-            noise = torch.normal(mean=0, std=1.0, size=log_var.shape).to(torch.device(self.device))
-            z = mu + torch.mul(torch.exp(log_var / 2.0), noise)
-
-            KL_per_sample = 0.5 * torch.sum(torch.exp(log_var) + torch.pow(mu, 2) - 1 - log_var, axis=1)
-            KL = torch.mean(KL_per_sample)
         else:
-            z = mu
-            KL = None
+            log_var = None
 
-        return mu, z, KL
+        return mu, log_var
 
 
 class VGAE_Encoder(nn.Module):
@@ -137,12 +131,7 @@ class VGAE_Encoder(nn.Module):
         noise = torch.normal(mean=0, std=1.0, size=gamma.shape).to(torch.device("cuda"))
         z_latent = mu + torch.mul(torch.exp(gamma / 2.0), noise)
 
-        # if self.hybrid:
-        #    assert(z_latent.shape == (b, self.n_z))
         KL_per_sample = 0.5 * torch.sum(torch.exp(gamma) + torch.pow(mu, 2) - 1 - gamma, axis=1)
-        # else:
-        # assert(z_latent.shape == (b, n, self.n_z))
-        # KL_per_sample = 0.5 * torch.sum(torch.exp(gamma) + torch.pow(mu, 2) - 1 - gamma, axis=(1, 2))
 
         KL = torch.mean(KL_per_sample)
 

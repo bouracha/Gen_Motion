@@ -7,6 +7,7 @@ import torch.nn as nn
 import torch
 
 import models.utils as utils
+import experiments.utils as experiment_utils
 from models.encoders import VAE_Encoder
 from models.decoders import VAE_Decoder
 
@@ -54,17 +55,36 @@ class VAE(nn.Module):
             print("Using CPU")
 
 
-    def forward(self, x):
+    def forward(self, x, num_samples=1):
         """
         :param x: batch of samples
         :return: reconstructions and latent value
         """
-        self.mu, self.z, self.KL = self.encoder(x)
-        if self.output_variance:
-            self.reconstructions_mu, self.reconstructions_log_var = self.decoder(self.z)
-        else:
-            self.reconstructions_mu = self.decoder(self.z)
-            self.reconstructions_log_var = torch.zeros_like(self.reconstructions_mu)
+        self.z_mu, self.z_log_var = self.encoder(x)
+        #print(self.z_mu.shape)
+        #batch_n, n_z = self.z_mu.shape
+        #self.z_mu = self.z_mu.expand(num_samples, batch_n, n_z)
+        #print(self.z_mu.shape)
+        KL_per_datapoint = 0.5 * torch.sum(torch.exp(self.z_log_var) + torch.pow(self.z_mu, 2) - 1 - self.z_log_var, axis=1)
+        self.KL = torch.mean(KL_per_datapoint)
+        for i in range(num_samples):
+            # Reparametisation trick
+            noise = torch.normal(mean=0, std=1.0, size=self.z_log_var.shape).to(torch.device(self.device))
+            self.z = self.z_mu + torch.mul(torch.exp(self.z_log_var / 2.0), noise)
+            if self.output_variance:
+                reconstructions_mu, reconstructions_log_var = self.decoder(self.z)
+            else:
+                reconstructions_mu = self.decoder(self.z)
+                reconstructions_log_var = torch.zeros_like(reconstructions_mu)
+            if i==0:
+                recon_mu_accum = reconstructions_mu
+                recon_log_var_accum = reconstructions_log_var
+            else:
+                recon_mu_accum += reconstructions_mu
+                recon_log_var_accum += reconstructions_log_var
+        self.reconstructions_mu = recon_mu_accum/(1.0*num_samples)
+        self.reconstructions_log_var = recon_log_var_accum/(1.0*num_samples)
+
         sig = nn.Sigmoid()
         self.bernoulli_output = sig(self.reconstructions_mu)
 
@@ -255,9 +275,9 @@ class VAE(nn.Module):
         if epoch % self.figs_checkpoints_save_freq == 0:
             reconstructions = reconstructions.reshape(cur_batch_size, 1, 28, 28)
             file_path = self.folder_name + '/images/' + str(dataset_name) + '_' + str(epoch) + '_' + 'reals'
-            utils.plot_tensor_images(image, max_num_images=25, nrow=5, show=False, save_as=file_path)
+            experiment_utils.plot_tensor_images(image, max_num_images=25, nrow=5, show=False, save_as=file_path)
             file_path = self.folder_name + '/images/' + str(dataset_name) + '_' + str(epoch) + '_' + 'reconstructions'
-            utils.plot_tensor_images(reconstructions, max_num_images=25, nrow=5, show=False, save_as=file_path)
+            experiment_utils.plot_tensor_images(reconstructions, max_num_images=25, nrow=5, show=False, save_as=file_path)
 
     def eval_full_batch(self, loader, epoch, dataset_name='val'):
         self.eval()
@@ -296,17 +316,17 @@ class VAE(nn.Module):
 
         if epoch % self.figs_checkpoints_save_freq == 0:
             file_path = self.folder_name + '/images/' + str(dataset_name) + '_' + str(epoch) + '_' + 'reals'
-            utils.plot_tensor_images(inputs_reshaped.detach().cpu(), max_num_images=25, nrow=5, show=False, save_as=file_path)
+            experiment_utils.plot_tensor_images(inputs_reshaped.detach().cpu(), max_num_images=25, nrow=5, show=False, save_as=file_path)
             file_path = self.folder_name + '/images/' + str(dataset_name) + '_' + str(epoch) + '_' + 'reconstructions'
-            utils.plot_tensor_images(reconstructions.detach().cpu(), max_num_images=25, nrow=5, show=False, save_as=file_path)
+            experiment_utils.plot_tensor_images(reconstructions.detach().cpu(), max_num_images=25, nrow=5, show=False, save_as=file_path)
             file_path = self.folder_name + '/images/' + str(dataset_name) + '_' + str(epoch) + '_' + 'diffs'
-            utils.plot_tensor_images(diffs.detach().cpu(), max_num_images=25, nrow=5, show=False, save_as=file_path)
+            experiment_utils.plot_tensor_images(diffs.detach().cpu(), max_num_images=25, nrow=5, show=False, save_as=file_path)
             file_path = self.folder_name + '/poses/' + str(dataset_name) + '_' + str(epoch) + '_' + 'poses_xz'
-            utils.plot_poses(inputs.detach().cpu().numpy(), mu.detach().cpu().numpy(), max_num_images=25, azim=0, evl=90, save_as=file_path)
+            experiment_utils.plot_poses(inputs.detach().cpu().numpy(), mu.detach().cpu().numpy(), max_num_images=25, azim=0, evl=90, save_as=file_path)
             file_path = self.folder_name + '/poses/' + str(dataset_name) + '_' + str(epoch) + '_' + 'poses_yz'
-            utils.plot_poses(inputs.detach().cpu().numpy(), mu.detach().cpu().numpy(), max_num_images=25, azim=0, evl=-0, save_as=file_path)
+            experiment_utils.plot_poses(inputs.detach().cpu().numpy(), mu.detach().cpu().numpy(), max_num_images=25, azim=0, evl=-0, save_as=file_path)
             file_path = self.folder_name + '/poses/' + str(dataset_name) + '_' + str(epoch) + '_' + 'poses_xy'
-            utils.plot_poses(inputs.detach().cpu().numpy(), mu.detach().cpu().numpy(), max_num_images=25, azim=90, evl=90, save_as=file_path)
+            experiment_utils.plot_poses(inputs.detach().cpu().numpy(), mu.detach().cpu().numpy(), max_num_images=25, azim=90, evl=90, save_as=file_path)
 
     def book_keeping(self, start_epoch=1, train_batch_size=100, l2_reg=0.0):
         self.accum_loss = dict()

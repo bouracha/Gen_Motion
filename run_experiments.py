@@ -39,12 +39,14 @@ model.initialise(start_epoch=opt.start_epoch, folder_name=folder_name)
 model.eval()
 
 if opt.degradation_experiment:
-    experiments.degradation_experiments(model, data.acts_train, val_loader)
+    #experiments.degradation_experiments_occlude(model, data.acts_train, val_loader, alpha=0, num_samples=10)
+    experiments.degradation_experiments_noise(model, data.acts_train, val_loader, num_occlusions=0, num_samples=10)
+    #experiments.degradation_experiments_nsamples(model, data.acts_train, val_loader, alpha=0, num_occlusions=0)
 
 if opt.embedding_experiment:
     embeddings = experiments.embed(model, data.acts_train, train_loader)
-    #experiments.plot_embedding_rainbow(model.folder_name, embeddings, data.acts_train, cdf_plot=False)
-    experiments.plot_embedding_rainbow(model.folder_name, embeddings, ['walking', 'walkingtogether'], cdf_plot=False)
+    experiments.plot_embedding_rainbow(model.folder_name, embeddings, data.acts_train, cdf_plot=False)
+    #experiments.plot_embedding_rainbow(model.folder_name, embeddings, ['walking', 'walkingtogether'], cdf_plot=False)
     experiments.interpolate_acts(model, embeddings, 'walking', 'walkingtogether')
 
 if opt.icdf:
