@@ -2,7 +2,7 @@ from __future__ import print_function, absolute_import, division
 
 import torch.optim
 
-from data import DATA
+import data as data
 
 import models.VAE as nnmodel
 
@@ -22,9 +22,9 @@ else:
     device = "cpu"
     job = 0
 
-#####################################################
+# ===============================================================
 # Load data
-#####################################################
+# ===============================================================
 train_batch_size=opt.train_batch_size
 test_batch_size=opt.test_batch_size
 if opt.use_MNIST:
@@ -49,20 +49,20 @@ if opt.use_MNIST:
     input_n=784
 else:
     ### Human Motion Data
-    data = DATA("h3.6m_3d", "h3.6m/dataset/")
+    data = data.DATA("h3.6m_3d", "h3.6m/dataset/")
     out_of_distribution = data.get_poses(input_n=1, output_n=1, sample_rate=2, dct_n=2, out_of_distribution_action=None)
     train_loader, val_loader, OoD_val_loader, test_loader = data.get_dataloaders(train_batch=train_batch_size, test_batch=test_batch_size, job=job)
     input_n=data.node_n
 print(">>> data loaded !")
-##################################################################
+# ===============================================================
 # Instantiate model, and methods used fro training and valdation
-##################################################################
+# ===============================================================
 
-model = nnmodel.VAE(input_n=input_n, encoder_hidden_layers=opt.encoder_hidden_layers,  n_z=opt.n_z, variational=opt.variational, output_variance=opt.output_variance, device=device, batch_norm=opt.batch_norm, p_dropout=opt.p_drop)
-model.initialise(start_epoch=opt.start_epoch, folder_name=folder_name, lr=opt.lr, beta=opt.beta, l2_reg=weight_decay, train_batch_size=train_batch_size)
+model = nnmodel.VAE(input_n=input_n, hidden_layers=opt.hidden_layers,  n_z=opt.n_z, variational=opt.variational, output_variance=opt.output_variance, device=device, batch_norm=opt.batch_norm, p_dropout=opt.p_drop)
+model._initialise(start_epoch=opt.start_epoch, folder_name=folder_name, lr=opt.lr, beta=opt.beta, l2_reg=weight_decay, train_batch_size=train_batch_size)
 
 for epoch in range(opt.start_epoch, opt.n_epochs+1):
-    print("Epoch: ", epoch)
+    print("Epoch:{}/{}".format(epoch, opt.n_epochs))
 
     if opt.use_MNIST:
         model.train_epoch_mnist(epoch, train_loader, opt.use_bernoulli_loss)

@@ -21,10 +21,10 @@ import numpy as np
 import pandas as pd
 
 class VAE(nn.Module):
-    def __init__(self, input_n=96, encoder_hidden_layers=[100, 50], n_z=2, act_fn=nn.LeakyReLU(0.1), variational=False, output_variance=False, device="cuda", batch_norm=False, p_dropout=0.0):
+    def __init__(self, input_n=96, hidden_layers=[100, 50], n_z=2, act_fn=nn.LeakyReLU(0.1), variational=False, output_variance=False, device="cuda", batch_norm=False, p_dropout=0.0):
         """
         :param input_n: num of input feature
-        :param encoder_hidden_layers: num of hidden feature, decoder is made symmetric
+        :param hidden_layers: num of hidden feature, decoder is made symmetric
         :param n_z: latent variable size
         :param p_dropout: drop out prob.
         :param num_stage: number of residual blocks
@@ -32,7 +32,7 @@ class VAE(nn.Module):
         """
         super(VAE, self).__init__()
         print(">>> creating model")
-        self.define_layers(input_n=input_n, encoder_hidden_layers=encoder_hidden_layers, n_z=n_z)
+        self.encoder_layers, self.decoder_layers = self.define_layers(input_n=input_n, hidden_layers=hidden_layers, n_z=n_z)
 
         self.activation = act_fn
         self.variational = variational
@@ -44,33 +44,27 @@ class VAE(nn.Module):
         self.encoder = VAE_Encoder(layers=self.encoder_layers, activation=self.activation, variational=variational, device=device, batch_norm=batch_norm, p_dropout=p_dropout)
         self.decoder = VAE_Decoder(layers=self.decoder_layers, activation=self.activation, output_variance=output_variance, device=device, batch_norm=batch_norm, p_dropout=p_dropout)
 
-        print(self)
-        num_parameters = sum(p.numel() for p in self.parameters())
-        print(">>> total params: {:.2f}M".format(num_parameters/1000000.0))
-
-        if device == "cuda":
-            print("Moving model to GPU")
-            self.cuda()
-        else:
-            print("Using CPU")
-
+        self.num_parameters = utils.num_parameters_and_place_on_device(self)
 
     def forward(self, x, num_samples=1):
         """
         :param x: batch of samples
         :return: reconstructions and latent value
         """
-        self.z_mu, self.z_log_var = self.encoder(x)
+        if self.variational:
+            self.z_mu, self.z_log_var = self.encoder(x)
+            self.KL = utils.kullback_leibler_divergence(self.z_mu, self.z_log_var)
+        else:
+            self.z_mu, _ = self.encoder(x)
         #print(self.z_mu.shape)
         #batch_n, n_z = self.z_mu.shape
         #self.z_mu = self.z_mu.expand(num_samples, batch_n, n_z)
         #print(self.z_mu.shape)
-        KL_per_datapoint = 0.5 * torch.sum(torch.exp(self.z_log_var) + torch.pow(self.z_mu, 2) - 1 - self.z_log_var, axis=1)
-        self.KL = torch.mean(KL_per_datapoint)
         for i in range(num_samples):
-            # Reparametisation trick
-            noise = torch.normal(mean=0, std=1.0, size=self.z_log_var.shape).to(torch.device(self.device))
-            self.z = self.z_mu + torch.mul(torch.exp(self.z_log_var / 2.0), noise)
+            if self.variational:
+                self.z = utils.reparametisation_trick(self.z_mu, self.z_log_var, self.device)
+            else:
+                self.z = self.z_mu
             if self.output_variance:
                 reconstructions_mu, reconstructions_log_var = self.decoder(self.z)
             else:
@@ -90,23 +84,23 @@ class VAE(nn.Module):
 
         return self.reconstructions_mu
 
-    def define_layers(self, input_n=96, encoder_hidden_layers=[100, 50], n_z=2):
+    def define_layers(self, input_n=96, hidden_layers=[100, 50], n_z=2):
         encoder_layers = []
         decoder_layers = []
         encoder_layers.append(input_n)
         decoder_layers.append(n_z)
-        n_hidden = len(encoder_hidden_layers)
+        n_hidden = len(hidden_layers)
         for i in range(n_hidden):
-            encoder_layers.append(encoder_hidden_layers[i])
-            decoder_layers.append(encoder_hidden_layers[n_hidden - 1 - i])
+            encoder_layers.append(hidden_layers[i])
+            decoder_layers.append(hidden_layers[n_hidden - 1 - i])
         encoder_layers.append(n_z)
         decoder_layers.append(input_n)
         self.n_x = encoder_layers[0]
         self.n_z = encoder_layers[-1]
-        self.encoder_layers = encoder_layers
-        self.decoder_layers = decoder_layers
 
-    def initialise(self, start_epoch=1, folder_name="", lr=0.0001, beta=1.0, l2_reg=False, train_batch_size=100, figs_checkpoints_save_freq=10):
+        return encoder_layers, decoder_layers
+
+    def _initialise(self, start_epoch=1, folder_name="", lr=0.0001, beta=1.0, l2_reg=False, train_batch_size=100, figs_checkpoints_save_freq=10):
         self.optimizer = torch.optim.Adam(self.parameters(), lr=lr, weight_decay=l2_reg)
         self.folder_name = folder_name
         self.lr = lr
@@ -122,7 +116,6 @@ class VAE(nn.Module):
             ckpt_path = self.folder_name + '/checkpoints/' + 'ckpt_' + str(start_epoch - 1) + '_weights.path.tar'
             ckpt = torch.load(ckpt_path, map_location=torch.device(self.device))
             self.load_state_dict(ckpt['state_dict'])
-
 
     def generate(self, z):
         """
@@ -143,9 +136,10 @@ class VAE(nn.Module):
         b_n, n_x = x.shape
         assert (n_x == self.n_x)
 
-        loss_fn = nn.BCELoss()
-        self.loss = loss_fn(self.bernoulli_output, x)
-        BCE = torch.maximum(self.reconstructions_mu, torch.zeros_like(self.reconstructions_mu)) - torch.multiply(self.reconstructions_mu, x) + torch.log(1 + torch.exp(-torch.abs(self.reconstructions_mu)))
+        logits = self.reconstructions_mu
+        #loss_fn = nn.BCELoss()
+        #self.loss = loss_fn(self.bernoulli_output, x)
+        BCE = torch.maximum(logits, torch.zeros_like(logits)) - torch.multiply(logits, x) + torch.log(1 + torch.exp(-torch.abs(logits)))
         BCE_per_sample = torch.sum(BCE, axis=1)
         self.recon_loss = torch.mean(BCE_per_sample)
         if self.variational:
@@ -195,7 +189,7 @@ class VAE(nn.Module):
 
             inputs = all_seq.to(self.device).float()
 
-            mu = self(inputs.float())
+            _ = self(inputs.float())
             loss = self.loss_VLB(inputs)
 
             self.optimizer.zero_grad()
@@ -223,7 +217,7 @@ class VAE(nn.Module):
             image.to(self.device)
             image_flattened = image.reshape(cur_batch_size, -1)
 
-            mu = self(image_flattened.float())
+            _ = self(image_flattened.float())
             if use_bernoulli_loss:
                 loss = self.loss_bernoulli(image_flattened)
             else:
@@ -239,94 +233,96 @@ class VAE(nn.Module):
         self.ret_log = np.append(self.ret_log, ret_log)
 
     def eval_full_batch_mnist(self, loader, epoch, dataset_name='val', use_bernoulli_loss=False):
-        self.eval()
-        i=0
-        for image, labels in tqdm(loader):
-            i+=1
-            cur_batch_size = len(image)
+        with torch.no_grad():
+            self.eval()
+            i=0
+            for image, labels in tqdm(loader):
+                i+=1
+                cur_batch_size = len(image)
 
-            image.to(self.device)
-            image_flattened = image.reshape(cur_batch_size, -1)
+                image.to(self.device)
+                image_flattened = image.reshape(cur_batch_size, -1)
 
-            reconstructions = self(image_flattened.float())
-            if use_bernoulli_loss:
-                loss = self.loss_bernoulli(image_flattened)
-                sig = nn.Sigmoid()
-                reconstructions = sig(reconstructions)
-            else:
-                loss = self.loss_VLB(image_flattened)
+                reconstructions = self(image_flattened.float())
+                if use_bernoulli_loss:
+                    loss = self.loss_bernoulli(image_flattened)
+                    sig = nn.Sigmoid()
+                    reconstructions = sig(reconstructions)
+                else:
+                    loss = self.loss_VLB(image_flattened)
 
-            self.accum_update(str(dataset_name)+'_loss', loss)
-            self.accum_update(str(dataset_name)+'_recon', self.recon_loss)
+                self.accum_update(str(dataset_name)+'_loss', loss)
+                self.accum_update(str(dataset_name)+'_recon', self.recon_loss)
+                if self.variational:
+                    self.accum_update(str(dataset_name)+'_VLB', self.VLB)
+                    self.accum_update(str(dataset_name)+'_KL', self.KL)
+
+            head = [dataset_name+'_loss', dataset_name+'_reconstruction']
+            ret_log = [self.accum_loss[str(dataset_name)+'_loss'].avg, self.accum_loss[str(dataset_name)+'_recon'].avg]
             if self.variational:
-                self.accum_update(str(dataset_name)+'_VLB', self.VLB)
-                self.accum_update(str(dataset_name)+'_KL', self.KL)
+                head.append(str(dataset_name)+'_VLB')
+                head.append(str(dataset_name)+'_KL')
+                ret_log.append(self.accum_loss[str(dataset_name)+'_VLB'].avg)
+                ret_log.append(self.accum_loss[str(dataset_name)+'_KL'].avg)
+            self.head = np.append(self.head, head)
+            self.ret_log = np.append(self.ret_log, ret_log)
 
-        head = [dataset_name+'_loss', dataset_name+'_reconstruction']
-        ret_log = [self.accum_loss[str(dataset_name)+'_loss'].avg, self.accum_loss[str(dataset_name)+'_recon'].avg]
-        if self.variational:
-            head.append(str(dataset_name)+'_VLB')
-            head.append(str(dataset_name)+'_KL')
-            ret_log.append(self.accum_loss[str(dataset_name)+'_VLB'].avg)
-            ret_log.append(self.accum_loss[str(dataset_name)+'_KL'].avg)
-        self.head = np.append(self.head, head)
-        self.ret_log = np.append(self.ret_log, ret_log)
-
-        if epoch % self.figs_checkpoints_save_freq == 0:
-            reconstructions = reconstructions.reshape(cur_batch_size, 1, 28, 28)
-            file_path = self.folder_name + '/images/' + str(dataset_name) + '_' + str(epoch) + '_' + 'reals'
-            experiment_utils.plot_tensor_images(image, max_num_images=25, nrow=5, show=False, save_as=file_path)
-            file_path = self.folder_name + '/images/' + str(dataset_name) + '_' + str(epoch) + '_' + 'reconstructions'
-            experiment_utils.plot_tensor_images(reconstructions, max_num_images=25, nrow=5, show=False, save_as=file_path)
+            if epoch % self.figs_checkpoints_save_freq == 0:
+                reconstructions = reconstructions.reshape(cur_batch_size, 1, 28, 28)
+                file_path = self.folder_name + '/images/' + str(dataset_name) + '_' + str(epoch) + '_' + 'reals'
+                experiment_utils.plot_tensor_images(image, max_num_images=25, nrow=5, show=False, save_as=file_path)
+                file_path = self.folder_name + '/images/' + str(dataset_name) + '_' + str(epoch) + '_' + 'reconstructions'
+                experiment_utils.plot_tensor_images(reconstructions, max_num_images=25, nrow=5, show=False, save_as=file_path)
 
     def eval_full_batch(self, loader, epoch, dataset_name='val'):
-        self.eval()
-        bar = Bar('>>>', fill='>', max=len(loader))
-        st = time.time()
-        for i, (all_seq) in enumerate(loader):
-            bt = time.time()
-            cur_batch_size = len(all_seq)
+        with torch.no_grad():
+            self.eval()
+            bar = Bar('>>>', fill='>', max=len(loader))
+            st = time.time()
+            for i, (all_seq) in enumerate(loader):
+                bt = time.time()
+                cur_batch_size = len(all_seq)
 
-            inputs = all_seq.to(self.device).float()
+                inputs = all_seq.to(self.device).float()
 
-            mu = self(inputs.float())
-            loss = self.loss_VLB(inputs)
+                mu = self(inputs.float())
+                loss = self.loss_VLB(inputs)
 
-            self.accum_update(str(dataset_name)+'_loss', loss)
-            self.accum_update(str(dataset_name)+'_recon_loss', self.recon_loss)
+                self.accum_update(str(dataset_name)+'_loss', loss)
+                self.accum_update(str(dataset_name)+'_recon_loss', self.recon_loss)
+                if self.variational:
+                    self.accum_update(str(dataset_name)+'_KL', self.KL)
+
+                bar.suffix = '{}/{}|batch time {:.4f}s|total time{:.2f}s'.format(i + 1, len(loader), time.time() - bt,
+                                                                                      time.time() - st)
+                bar.next()
+            bar.finish()
+
+            head = [dataset_name+'_loss', dataset_name+'_reconstruction']
+            ret_log = [self.accum_loss[str(dataset_name)+'_loss'].avg, self.accum_loss[str(dataset_name)+'_recon_loss'].avg]
             if self.variational:
-                self.accum_update(str(dataset_name)+'_KL', self.KL)
+                head.append(str(dataset_name)+'_KL')
+                ret_log.append(self.accum_loss[str(dataset_name)+'_KL'].avg)
+            self.head = np.append(self.head, head)
+            self.ret_log = np.append(self.ret_log, ret_log)
 
-            bar.suffix = '{}/{}|batch time {:.4f}s|total time{:.2f}s'.format(i + 1, len(loader), time.time() - bt,
-                                                                                  time.time() - st)
-            bar.next()
-        bar.finish()
+            inputs_reshaped = inputs.reshape(cur_batch_size, 1, 12, 8)
+            reconstructions = mu.reshape(cur_batch_size, 1, 12, 8)
+            diffs = inputs_reshaped - reconstructions
 
-        head = [dataset_name+'_loss', dataset_name+'_reconstruction']
-        ret_log = [self.accum_loss[str(dataset_name)+'_loss'].avg, self.accum_loss[str(dataset_name)+'_recon_loss'].avg]
-        if self.variational:
-            head.append(str(dataset_name)+'_KL')
-            ret_log.append(self.accum_loss[str(dataset_name)+'_KL'].avg)
-        self.head = np.append(self.head, head)
-        self.ret_log = np.append(self.ret_log, ret_log)
-
-        inputs_reshaped = inputs.reshape(cur_batch_size, 1, 12, 8)
-        reconstructions = mu.reshape(cur_batch_size, 1, 12, 8)
-        diffs = inputs_reshaped - reconstructions
-
-        if epoch % self.figs_checkpoints_save_freq == 0:
-            file_path = self.folder_name + '/images/' + str(dataset_name) + '_' + str(epoch) + '_' + 'reals'
-            experiment_utils.plot_tensor_images(inputs_reshaped.detach().cpu(), max_num_images=25, nrow=5, show=False, save_as=file_path)
-            file_path = self.folder_name + '/images/' + str(dataset_name) + '_' + str(epoch) + '_' + 'reconstructions'
-            experiment_utils.plot_tensor_images(reconstructions.detach().cpu(), max_num_images=25, nrow=5, show=False, save_as=file_path)
-            file_path = self.folder_name + '/images/' + str(dataset_name) + '_' + str(epoch) + '_' + 'diffs'
-            experiment_utils.plot_tensor_images(diffs.detach().cpu(), max_num_images=25, nrow=5, show=False, save_as=file_path)
-            file_path = self.folder_name + '/poses/' + str(dataset_name) + '_' + str(epoch) + '_' + 'poses_xz'
-            experiment_utils.plot_poses(inputs.detach().cpu().numpy(), mu.detach().cpu().numpy(), max_num_images=25, azim=0, evl=90, save_as=file_path)
-            file_path = self.folder_name + '/poses/' + str(dataset_name) + '_' + str(epoch) + '_' + 'poses_yz'
-            experiment_utils.plot_poses(inputs.detach().cpu().numpy(), mu.detach().cpu().numpy(), max_num_images=25, azim=0, evl=-0, save_as=file_path)
-            file_path = self.folder_name + '/poses/' + str(dataset_name) + '_' + str(epoch) + '_' + 'poses_xy'
-            experiment_utils.plot_poses(inputs.detach().cpu().numpy(), mu.detach().cpu().numpy(), max_num_images=25, azim=90, evl=90, save_as=file_path)
+            if epoch % self.figs_checkpoints_save_freq == 0:
+                file_path = self.folder_name + '/images/' + str(dataset_name) + '_' + str(epoch) + '_' + 'reals'
+                experiment_utils.plot_tensor_images(inputs_reshaped.detach().cpu(), max_num_images=25, nrow=5, show=False, save_as=file_path)
+                file_path = self.folder_name + '/images/' + str(dataset_name) + '_' + str(epoch) + '_' + 'reconstructions'
+                experiment_utils.plot_tensor_images(reconstructions.detach().cpu(), max_num_images=25, nrow=5, show=False, save_as=file_path)
+                file_path = self.folder_name + '/images/' + str(dataset_name) + '_' + str(epoch) + '_' + 'diffs'
+                experiment_utils.plot_tensor_images(diffs.detach().cpu(), max_num_images=25, nrow=5, show=False, save_as=file_path)
+                file_path = self.folder_name + '/poses/' + str(dataset_name) + '_' + str(epoch) + '_' + 'poses_xz'
+                experiment_utils.plot_poses(inputs.detach().cpu().numpy(), mu.detach().cpu().numpy(), max_num_images=25, azim=0, evl=90, save_as=file_path)
+                file_path = self.folder_name + '/poses/' + str(dataset_name) + '_' + str(epoch) + '_' + 'poses_yz'
+                experiment_utils.plot_poses(inputs.detach().cpu().numpy(), mu.detach().cpu().numpy(), max_num_images=25, azim=0, evl=-0, save_as=file_path)
+                file_path = self.folder_name + '/poses/' + str(dataset_name) + '_' + str(epoch) + '_' + 'poses_xy'
+                experiment_utils.plot_poses(inputs.detach().cpu().numpy(), mu.detach().cpu().numpy(), max_num_images=25, azim=90, evl=90, save_as=file_path)
 
     def book_keeping(self, start_epoch=1, train_batch_size=100, l2_reg=0.0):
         self.accum_loss = dict()

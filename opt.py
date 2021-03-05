@@ -12,12 +12,13 @@ class Options:
         # ===============================================================
         #                     General options
         # ===============================================================
-
+        self.parser.add_argument('--inference', dest='inference', action='store_true', help='include to run inference (classifier only)')
+        self.parser.set_defaults(inference=False)
 
         # ===============================================================
         #                     Architecture options
         # ===============================================================
-        self.parser.add_argument('--encoder_hidden_layers', nargs='+', type=int, default=[500, 200, 100, 50], help='input the out of distribution action')
+        self.parser.add_argument('--hidden_layers', nargs='+', type=int, default=[500, 200, 100, 50], help='input the out of distribution action')
         self.parser.add_argument('--n_z', type=int, default=2, help='Number of latent variables')
         self.parser.add_argument('--variational', dest='variational', action='store_true', help='toggle VAE or AE')
         self.parser.set_defaults(variational=False)

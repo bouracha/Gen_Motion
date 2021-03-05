@@ -1,6 +1,3 @@
-import torch.nn as nn
-import torch
-
 from models.layers import *
 
 import numpy as np

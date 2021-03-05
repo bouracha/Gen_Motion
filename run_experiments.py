@@ -34,7 +34,7 @@ if not opt.icdf:
 # Instantiate model, and methods used fro training and valdation
 ##################################################################
 
-model = nnmodel.VAE(input_n=96, encoder_hidden_layers=opt.encoder_hidden_layers, n_z=opt.n_z, variational=opt.variational, output_variance=opt.output_variance, device=device, batch_norm=opt.batch_norm, p_dropout=opt.p_drop)
+model = nnmodel.VAE(input_n=96, hidden_layers=opt.hidden_layers, n_z=opt.n_z, variational=opt.variational, output_variance=opt.output_variance, device=device, batch_norm=opt.batch_norm, p_dropout=opt.p_drop)
 model.initialise(start_epoch=opt.start_epoch, folder_name=folder_name)
 model.eval()
 
