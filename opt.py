@@ -14,7 +14,7 @@ class Options:
         # ===============================================================
         self.parser.add_argument('--inference', dest='inference', action='store_true', help='include to run inference (classifier only)')
         self.parser.set_defaults(inference=False)
-
+        self.parser.add_argument('--data_path', type=str, default="deep_2_wd_AE/embeddings/", help='Path to data- if applicable')
         # ===============================================================
         #                     Architecture options
         # ===============================================================
@@ -37,7 +37,7 @@ class Options:
         # ===============================================================
         self.parser.add_argument('--lr', type=float, default=0.001, help='learning rate')
         self.parser.add_argument('--beta', type=float, default=1.0, help='Downweighting of the KL divergence')
-        self.parser.add_argument('--weight_decay', dest='weight_decay', action='store_true', help='toggle use weight decay or not')
+        self.parser.add_argument('--l2_reg', dest='l2_reg', action='store_true', help='toggle use l2 regularisation or not')
         self.parser.set_defaults(weight_decay=False)
         self.parser.add_argument('--n_epochs', type=int, default=50, help='Number of epochs to train for')
         self.parser.add_argument('--train_batch_size', type=int, default=100, help='Number of epochs to train for')
@@ -60,6 +60,12 @@ class Options:
         self.parser.set_defaults(icdf=False)
         self.parser.add_argument('--interpolate', dest='interpolate', action='store_true', help='toggle run interpolate experiment')
         self.parser.set_defaults(interpolate=False)
+        self.parser.add_argument('--noise_to_inputs', dest='noise_to_inputs', action='store_true', help='add noise to inputs and save dataframes')
+        self.parser.set_defaults(noise_to_inputs=False)
+        self.parser.add_argument('--noise_to_embeddings', dest='noise_to_embeddings', action='store_true', help='add noise to inputs and save dataframes of embeddings')
+        self.parser.set_defaults(noise_to_embeddings=False)
+        self.parser.add_argument('--de_noise', dest='de_noise', action='store_true', help='add noise to inputs and save dataframes of embeddings')
+        self.parser.set_defaults(de_noise=False)
         # ===============================================================
         #                     Experiment options
         # ===============================================================

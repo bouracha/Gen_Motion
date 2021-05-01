@@ -6,9 +6,9 @@ import pandas as pd
 
 
 class ClassifierDataset(Dataset):
-    def __init__(self, path="debug_inputs/all_train.csv"):
+    def __init__(self, path="inputs/train.csv"):
         print("Initialising data from '{}'...".format(path))
-        self.class2idx, self.indx2class, self.num_classes = self._initialise_class_and_index_map()
+        self.class2idx, self.idx2class, self.num_classes = self._initialise_class_and_index_map()
 
         df = pd.read_csv(path, header=None)
 

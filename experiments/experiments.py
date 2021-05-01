@@ -108,22 +108,90 @@ def degradation_experiments_noise(model, acts, val_loader, num_occlusions=0, num
 # ===============================================================
 #                     Embeddings
 # ===============================================================
-def embed(model, acts, data_loader):
+def de_noise(model, acts, data_loader, num_occlusions=0, alpha=0):
+    recons = dict()
+    df_recons = pd.DataFrame()
+    for act in acts:
+        recons[act] = []
+        for i, (all_seq) in enumerate(data_loader[act]):
+            inputs = all_seq
+            inputs_degraded = utils.simulate_occlusions(inputs, num_occlusions=num_occlusions, folder_name="")
+            inputs_degraded_noise = utils.add_noise(inputs_degraded, alpha=alpha)
+            inputs_degraded_noise = torch.from_numpy(inputs_degraded_noise).to(model.device).float()
+
+            recons = model(inputs_degraded_noise)
+
+            if recons[act] == []:
+                recons[act] = mu.detach().cpu().numpy()
+            else:
+                recons[act] = np.vstack((recons[act], mu.detach().cpu().numpy()))
+            if df_recons.empty:
+                df = pd.DataFrame(mu.detach().cpu().numpy())
+                df['action'] = act
+                df_recons = df
+            else:
+                df = pd.DataFrame(mu.detach().cpu().numpy())
+                df['action'] = act
+                df_recons = df_recons.append(df)
+
+    return recons, df_recons
+
+def embed(model, acts, data_loader, num_occlusions=0, alpha=0):
     embeddings = dict()
+    df_embeddings = pd.DataFrame()
     for act in acts:
         embeddings[act] = []
         for i, (all_seq) in enumerate(data_loader[act]):
+            inputs = all_seq
+            inputs_degraded = utils.simulate_occlusions(inputs, num_occlusions=num_occlusions, folder_name="")
+            inputs_degraded_noise = utils.add_noise(inputs_degraded, alpha=alpha)
+            inputs_degraded_noise = torch.from_numpy(inputs_degraded_noise).to(model.device).float()
 
-            inputs = all_seq.to(model.device).float()
-
-            mu, z, KL = model.encoder(inputs)
+            mu, _ = model.encoder(inputs_degraded_noise)
 
             if embeddings[act] == []:
                 embeddings[act] = mu.detach().cpu().numpy()
             else:
                 embeddings[act] = np.vstack((embeddings[act], mu.detach().cpu().numpy()))
+            if df_embeddings.empty:
+                df = pd.DataFrame(mu.detach().cpu().numpy())
+                df['action'] = act
+                df_embeddings = df
+            else:
+                df = pd.DataFrame(mu.detach().cpu().numpy())
+                df['action'] = act
+                df_embeddings = df_embeddings.append(df)
 
-    return embeddings
+    return embeddings, df_embeddings
+
+def inputs(acts, data_loader, num_occlusions=0, alpha=0):
+    """
+
+    :param data_loader: torch dataloader object
+    :param num_occlusions: number of occlusions to make per datapoint (int)
+    :param alpha: scale of gaussian noise to add (float)
+    :return: pandas dataframe of the inputs, labelled with added noise and occlusions (num_datapoints, num_features + label)
+    """
+    df_inputs = pd.DataFrame()
+    for act in acts:
+        for i, (all_seq) in enumerate(data_loader[act]):
+            inputs = all_seq
+
+            inputs_degraded = utils.simulate_occlusions(inputs, num_occlusions=num_occlusions, folder_name="")
+            inputs_degraded_noise = utils.add_noise(inputs_degraded, alpha=alpha)
+            inputs_degraded_noise = torch.from_numpy(inputs_degraded_noise)
+
+            if df_inputs.empty:
+                df = pd.DataFrame(inputs_degraded_noise.detach().cpu().numpy())
+                df['action'] = act
+                df_inputs = df
+            else:
+                df = pd.DataFrame(inputs_degraded_noise.detach().cpu().numpy())
+                df['action'] = act
+                df_inputs = df_inputs.append(df)
+
+    return df_inputs
+
 
 def plot_embedding_rainbow(folder_name, embeddings, acts, cdf_plot=False):
     if cdf_plot:

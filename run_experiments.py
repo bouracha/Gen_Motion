@@ -35,7 +35,7 @@ if not opt.icdf:
 ##################################################################
 
 model = nnmodel.VAE(input_n=96, hidden_layers=opt.hidden_layers, n_z=opt.n_z, variational=opt.variational, output_variance=opt.output_variance, device=device, batch_norm=opt.batch_norm, p_dropout=opt.p_drop)
-model.initialise(start_epoch=opt.start_epoch, folder_name=folder_name)
+model._initialise(start_epoch=opt.start_epoch, folder_name=folder_name)
 model.eval()
 
 if opt.degradation_experiment:
@@ -44,10 +44,41 @@ if opt.degradation_experiment:
     #experiments.degradation_experiments_nsamples(model, data.acts_train, val_loader, alpha=0, num_occlusions=0)
 
 if opt.embedding_experiment:
-    embeddings = experiments.embed(model, data.acts_train, train_loader)
-    experiments.plot_embedding_rainbow(model.folder_name, embeddings, data.acts_train, cdf_plot=False)
+    embeddings, df_embeddings = experiments.embed(model, data.acts_train, train_loader)
+
+    #experiments.plot_embedding_rainbow(model.folder_name, embeddings, data.acts_train, cdf_plot=False)
     #experiments.plot_embedding_rainbow(model.folder_name, embeddings, ['walking', 'walkingtogether'], cdf_plot=False)
-    experiments.interpolate_acts(model, embeddings, 'walking', 'walkingtogether')
+    #experiments.interpolate_acts(model, embeddings, 'walking', 'walkingtogether')
+
+if opt.de_noise:
+    alphas = [0.0, 0.1, 0.3, 1.0]
+    for alpha in alphas:
+        recons, df_recons = experiments.embed(model, data.acts_train, train_loader, num_occlusions=0, alpha=alpha)
+        df_recons.to_csv(model.folder_name + '/recons/' + 'noise_' + str(alpha) + '/' + 'train.csv', header=False, index=False)
+        recons, df_recons = experiments.embed(model, data.acts_train, val_loader, num_occlusions=0, alpha=alpha)
+        df_recons.to_csv(model.folder_name + '/recons/' + 'noise_' + str(alpha) + '/' + 'val.csv', header=False, index=False)
+        recons, df_recons = experiments.embed(model, data.acts_train, test_loader, num_occlusions=0, alpha=alpha)
+        df_recons.to_csv(model.folder_name + '/recons/' + 'noise_' + str(alpha) + '/' + 'test.csv', header=False, index=False)
+
+if opt.noise_to_embeddings:
+    alphas = [0.0, 0.1, 0.3, 1.0]
+    for alpha in alphas:
+        embeddings, df_embeddings = experiments.embed(model, data.acts_train, train_loader, num_occlusions=0, alpha=alpha)
+        df_embeddings.to_csv(model.folder_name + '/embeddings/' + 'noise_' + str(alpha) + '/' + 'train.csv', header=False, index=False)
+        embeddings, df_embeddings = experiments.embed(model, data.acts_train, val_loader, num_occlusions=0, alpha=alpha)
+        df_embeddings.to_csv(model.folder_name + '/embeddings/' + 'noise_' + str(alpha) + '/' + 'val.csv', header=False, index=False)
+        embeddings, df_embeddings = experiments.embed(model, data.acts_train, test_loader, num_occlusions=0, alpha=alpha)
+        df_embeddings.to_csv(model.folder_name + '/embeddings/' + 'noise_' + str(alpha) + '/' + 'test.csv', header=False, index=False)
+
+if opt.noise_to_inputs:
+    alphas = [0.0, 0.1, 0.3, 1.0]
+    for alpha in alphas:
+        df_inputs = experiments.inputs(data.acts_train, train_loader, num_occlusions=0, alpha=alpha)
+        df_inputs.to_csv('inputs' + '/' + 'noise_' + str(alpha) + '/' + 'train.csv', header=False, index=False)
+        df_inputs = experiments.inputs(data.acts_train, val_loader, num_occlusions=0, alpha=alpha)
+        df_inputs.to_csv('inputs' + '/' + 'noise_' + str(alpha) + '/' + 'val.csv', header=False, index=False)
+        df_inputs = experiments.inputs(data.acts_train, test_loader, num_occlusions=0, alpha=alpha)
+        df_inputs.to_csv('inputs' + '/' + 'noise_' + str(alpha) + '/' + 'test.csv', header=False, index=False)
 
 if opt.icdf:
     experiments.gnerate_icdf(model, opt.grid_size)

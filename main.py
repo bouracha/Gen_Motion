@@ -9,9 +9,9 @@ import models.VAE as nnmodel
 from opt import Options
 opt = Options().parse()
 
-weight_decay = 0.0
-if opt.weight_decay:
-    weight_decay = 1e-4
+l2_reg = 0.0
+if opt.l2_reg:
+    l2_reg = 1e-4
 
 folder_name=opt.name
 is_cuda = torch.cuda.is_available()
@@ -59,7 +59,7 @@ print(">>> data loaded !")
 # ===============================================================
 
 model = nnmodel.VAE(input_n=input_n, hidden_layers=opt.hidden_layers,  n_z=opt.n_z, variational=opt.variational, output_variance=opt.output_variance, device=device, batch_norm=opt.batch_norm, p_dropout=opt.p_drop)
-model._initialise(start_epoch=opt.start_epoch, folder_name=folder_name, lr=opt.lr, beta=opt.beta, l2_reg=weight_decay, train_batch_size=train_batch_size)
+model._initialise(start_epoch=opt.start_epoch, folder_name=folder_name, lr=opt.lr, beta=opt.beta, l2_reg=l2_reg, train_batch_size=train_batch_size)
 
 for epoch in range(opt.start_epoch, opt.n_epochs+1):
     print("Epoch:{}/{}".format(epoch, opt.n_epochs))

@@ -21,24 +21,34 @@ def plot_losses(path_to_file, label, y='val_loss', x='Epoch', errorbar=None, nee
     plt.plot(x_plot, y_plot, label=label, linestyle=linestyle)
   else:
     yerr = np.array(data[errorbar])
-    plt.errorbar(x_plot[:-4], y_plot[:-4], yerr=yerr[:-4], label=label, color=color, linestyle=linestyle)
+    plt.errorbar(x_plot, y_plot, yerr=yerr, label=label, color=color, linestyle=linestyle)
 
-n_z = 2
+n_z = 10
 file_name="added_noise"
-plot_losses(path_to_file="pca/"+str(file_name)+'_'+str(n_z)+".csv", label="PCA", y='MSE', x='num_occlusions', errorbar='STD', color='y')
-plot_losses(path_to_file="deep_"+str(n_z)+"_wd_AE/"+str(file_name)+".csv", label="AE", y='MSE', x='num_occlusions', errorbar='STD', color='b')
-plot_losses(path_to_file="deep_"+str(n_z)+"_beta_VAE/"+str(file_name)+".csv", label="VAE ($\sigma^2_{recon}=[1]$)", y='MSE', x='num_occlusions', errorbar='STD', color='r')
-plot_losses(path_to_file="deep_"+str(n_z)+"_VAE/"+str(file_name)+".csv", label="VAE", y='MSE', x='num_occlusions', errorbar='STD', color='g')
+#plot_losses(path_to_file="pca/"+str(file_name)+'_'+str(n_z)+".csv", label="PCA", y='MSE', x='num_occlusions', errorbar='STD', color='y')
+#plot_losses(path_to_file="deep_"+str(n_z)+"_wd_AE/"+str(file_name)+".csv", label="AE", y='MSE', x='num_occlusions', errorbar='STD', color='b')
+#plot_losses(path_to_file="deep_"+str(n_z)+"_beta_VAE/"+str(file_name)+".csv", label="VAE ($\sigma^2_{recon}=[1]$)", y='MSE', x='num_occlusions', errorbar='STD', color='r')
+#plot_losses(path_to_file="deep_"+str(n_z)+"_VAE/"+str(file_name)+".csv", label="VAE (1 sample)", y='MSE', x='alpha_noise', errorbar='STD', color='g')
+#plot_losses(path_to_file="deep_"+str(n_z)+"_VAE/"+str(file_name)+"_nsamp10.csv", label="VAE (10 samples)", y='MSE', x='alpha_noise', errorbar='STD', color='m')
+plot_losses(path_to_file="classify_noisey_embeddings.csv", label="Inputs", y='inputs', x='noise_level', errorbar='inputs_std', color='m')
+plot_losses(path_to_file="classify_noisey_embeddings.csv", label="AE recons", y='AE_recons', x='noise_level', errorbar='AE_recons_std', color='b')
+plot_losses(path_to_file="classify_noisey_embeddings.csv", label="VAE ($\sigma^2_{recon}=[1]$) recons", y='beta_VAE_recons', x='noise_level', errorbar='beta_VAE_recons_std', color='r')
+plot_losses(path_to_file="classify_noisey_embeddings.csv", label="VAE recons", y='VAE_recons', x='noise_level', errorbar='VAE_recons_std', color='g')
+#plot_losses(path_to_file="classify_noisey_embeddings.csv", label="VAE embedding", y='VAE', x='noise_level', errorbar='VAE_std', color='y')
 
-plt.yscale('log')
+#plot_losses(path_to_file="deep_"+str(n_z)+"_beta_VAE/"+str(file_name)+".csv", label="VAE", y='MSE', x='num_samples', errorbar='STD', color='m')
+
+fontsize=10
+#plt.yscale('log')
 plt.xscale('log')
 x = np.linspace(0, 96, 10)
 #plt.plot(x, x*0+0.55882453918457, label="", linestyle='--', color='y')
 #plt.plot(x, x*0+0.427002441354359, label="", linestyle='--', color='b')
 #plt.plot(x, x*0+0.406370745100563, label="", linestyle='--', color='r')
 #plt.plot(x, x*0+0.527691416260059, label="", linestyle='--', color='g')
-plt.xlabel("Scale of Gaussian Noise Added")
-plt.ylabel("MSE reconstruction")
-plt.title("Validation Curves")
-plt.legend(prop={'size': 15})
-plt.savefig('training_curves.png')
+plt.xlabel("Scale of Gaussian noise added", fontsize=fontsize)
+#plt.xlabel("Scale of Gaussian Noise Added", fontsize=fontsize)
+plt.ylabel("Accuracy", fontsize=fontsize)
+plt.title("", fontsize=fontsize)
+plt.legend(prop={'size': 12})
+plt.savefig('plot.png')
