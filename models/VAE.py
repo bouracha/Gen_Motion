@@ -105,7 +105,7 @@ class VAE(nn.Module):
         self.folder_name = folder_name
         self.lr = lr
         self.beta = beta
-        self.clipping_value = 1
+        self.clipping_value = 1.0
         self.figs_checkpoints_save_freq = figs_checkpoints_save_freq
         if start_epoch==1:
             self.losses_file_exists = False
@@ -347,6 +347,7 @@ class VAE(nn.Module):
             print("Start epoch:{}".format(start_epoch))
             print("Learning rate:{}".format(self.lr))
             print("Training batch size:{}".format(train_batch_size))
+            print("Clipping value:{}".format(self.clipping_value))
             print("BN:{}".format(self.batch_norm))
             print("l2 Reg (1e-4):{}".format(l2_reg))
             print("p_dropout:{}".format(self.p_dropout))
