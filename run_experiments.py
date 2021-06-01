@@ -51,7 +51,7 @@ if opt.embedding_experiment:
     #experiments.interpolate_acts(model, embeddings, 'walking', 'walkingtogether')
 
 if opt.de_noise:
-    alphas = [0.0, 0.1, 0.3, 1.0]
+    alphas = [3.0]
     for alpha in alphas:
         recons, df_recons = experiments.embed(model, data.acts_train, train_loader, num_occlusions=0, alpha=alpha)
         df_recons.to_csv(model.folder_name + '/recons/' + 'noise_' + str(alpha) + '/' + 'train.csv', header=False, index=False)
@@ -61,7 +61,7 @@ if opt.de_noise:
         df_recons.to_csv(model.folder_name + '/recons/' + 'noise_' + str(alpha) + '/' + 'test.csv', header=False, index=False)
 
 if opt.noise_to_embeddings:
-    alphas = [0.0, 0.1, 0.3, 1.0]
+    alphas = [0.0, 0.1, 0.3, 1.0, 3.0]
     for alpha in alphas:
         embeddings, df_embeddings = experiments.embed(model, data.acts_train, train_loader, num_occlusions=0, alpha=alpha)
         df_embeddings.to_csv(model.folder_name + '/embeddings/' + 'noise_' + str(alpha) + '/' + 'train.csv', header=False, index=False)
@@ -71,7 +71,7 @@ if opt.noise_to_embeddings:
         df_embeddings.to_csv(model.folder_name + '/embeddings/' + 'noise_' + str(alpha) + '/' + 'test.csv', header=False, index=False)
 
 if opt.noise_to_inputs:
-    alphas = [0.0, 0.1, 0.3, 1.0]
+    alphas = [3.0]
     for alpha in alphas:
         df_inputs = experiments.inputs(data.acts_train, train_loader, num_occlusions=0, alpha=alpha)
         df_inputs.to_csv('inputs' + '/' + 'noise_' + str(alpha) + '/' + 'train.csv', header=False, index=False)
