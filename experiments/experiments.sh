@@ -103,23 +103,23 @@ cd ..
 #python3 classify.py --hidden_layers 100 --data_path "deep_10_wd_AE/recons/noise_1.0/" --name "AE_recons_1.0" --l2_reg
 
 #n_z = 2
-python3 classify.py --hidden_layers 100 --data_path "deep_2_VAE/embeddings/noise_0.0/" --name "2_VAE_0.0" --l2_reg
-python3 classify.py --hidden_layers 100 --data_path "deep_2_VAE/embeddings/noise_0.1/" --name "2_VAE_0.1" --l2_reg
-python3 classify.py --hidden_layers 100 --data_path "deep_2_VAE/embeddings/noise_0.3/" --name "2_VAE_0.3" --l2_reg
-python3 classify.py --hidden_layers 100 --data_path "deep_2_VAE/embeddings/noise_1.0/" --name "2_VAE_1.0" --l2_reg
-python3 classify.py --hidden_layers 100 --data_path "deep_2_VAE/embeddings/noise_3.0/" --name "2_VAE_3.0" --l2_reg
+#python3 classify.py --hidden_layers 100 --data_path "deep_2_VAE/embeddings/noise_0.0/" --name "2_VAE_0.0" --l2_reg
+#python3 classify.py --hidden_layers 100 --data_path "deep_2_VAE/embeddings/noise_0.1/" --name "2_VAE_0.1" --l2_reg
+#python3 classify.py --hidden_layers 100 --data_path "deep_2_VAE/embeddings/noise_0.3/" --name "2_VAE_0.3" --l2_reg
+#python3 classify.py --hidden_layers 100 --data_path "deep_2_VAE/embeddings/noise_1.0/" --name "2_VAE_1.0" --l2_reg
+#python3 classify.py --hidden_layers 100 --data_path "deep_2_VAE/embeddings/noise_3.0/" --name "2_VAE_3.0" --l2_reg
 
-python3 classify.py --hidden_layers 100 --data_path "deep_2_wd_AE/embeddings/noise_0.0/" --name "2_AE_0.0" --l2_reg
-python3 classify.py --hidden_layers 100 --data_path "deep_2_wd_AE/embeddings/noise_0.1/" --name "2_AE_0.1" --l2_reg
-python3 classify.py --hidden_layers 100 --data_path "deep_2_wd_AE/embeddings/noise_0.3/" --name "2_AE_0.3" --l2_reg
-python3 classify.py --hidden_layers 100 --data_path "deep_2_wd_AE/embeddings/noise_1.0/" --name "2_AE_1.0" --l2_reg
-python3 classify.py --hidden_layers 100 --data_path "deep_2_wd_AE/embeddings/noise_3.0/" --name "2_AE_3.0" --l2_reg
+#python3 classify.py --hidden_layers 100 --data_path "deep_2_wd_AE/embeddings/noise_0.0/" --name "2_AE_0.0" --l2_reg
+#python3 classify.py --hidden_layers 100 --data_path "deep_2_wd_AE/embeddings/noise_0.1/" --name "2_AE_0.1" --l2_reg
+#python3 classify.py --hidden_layers 100 --data_path "deep_2_wd_AE/embeddings/noise_0.3/" --name "2_AE_0.3" --l2_reg
+#python3 classify.py --hidden_layers 100 --data_path "deep_2_wd_AE/embeddings/noise_1.0/" --name "2_AE_1.0" --l2_reg
+#python3 classify.py --hidden_layers 100 --data_path "deep_2_wd_AE/embeddings/noise_3.0/" --name "2_AE_3.0" --l2_reg
 
-python3 classify.py --hidden_layers 100 --data_path "deep_2_beta_VAE/embeddings/noise_0.0/" --name "2_beta_VAE_0.0" --l2_reg
-python3 classify.py --hidden_layers 100 --data_path "deep_2_beta_VAE/embeddings/noise_0.1/" --name "2_beta_VAE_0.1" --l2_reg
-python3 classify.py --hidden_layers 100 --data_path "deep_2_beta_VAE/embeddings/noise_0.3/" --name "2_beta_VAE_0.3" --l2_reg
-python3 classify.py --hidden_layers 100 --data_path "deep_2_beta_VAE/embeddings/noise_1.0/" --name "2_beta_VAE_1.0" --l2_reg
-python3 classify.py --hidden_layers 100 --data_path "deep_2_beta_VAE/embeddings/noise_3.0/" --name "2_beta_VAE_3.0" --l2_reg
+#python3 classify.py --hidden_layers 100 --data_path "deep_2_beta_VAE/embeddings/noise_0.0/" --name "2_beta_VAE_0.0" --l2_reg
+#python3 classify.py --hidden_layers 100 --data_path "deep_2_beta_VAE/embeddings/noise_0.1/" --name "2_beta_VAE_0.1" --l2_reg
+#python3 classify.py --hidden_layers 100 --data_path "deep_2_beta_VAE/embeddings/noise_0.3/" --name "2_beta_VAE_0.3" --l2_reg
+#python3 classify.py --hidden_layers 100 --data_path "deep_2_beta_VAE/embeddings/noise_1.0/" --name "2_beta_VAE_1.0" --l2_reg
+#python3 classify.py --hidden_layers 100 --data_path "deep_2_beta_VAE/embeddings/noise_3.0/" --name "2_beta_VAE_3.0" --l2_reg
 
 # ===============================================================
 #                     Classifier inference
@@ -130,4 +130,10 @@ python3 classify.py --hidden_layers 100 --data_path "deep_2_beta_VAE/embeddings/
 #python3 classify.py --hidden_layers 100 --start_epoch 21 --inference
 #python3 classify.py --hidden_layers 100 --use_MNIST --n_epochs 100 --name "" --start_epoch 11 --inference
 
+# ===============================================================
+#                     Test runs
+# ===============================================================
 
+#python3 main.py --use_MNIST --use_bernoulli_loss --batch_norm --hidden_layers 500 400 300 200 100 50 --variational --name "test_" --n_z 20 --lr 0.0001 --train_batch_size 1000
+
+python3 main.py --batch_norm --hidden_layers 500 400 300 200 100 50 --variational --name "test_" --n_z 2 --lr 0.0001 --train_batch_size 1000 --beta 0.1

@@ -6,6 +6,8 @@ import data as data
 
 import models.VAE as nnmodel
 
+import train as train
+
 from opt import Options
 opt = Options().parse()
 
@@ -65,13 +67,13 @@ for epoch in range(opt.start_epoch, opt.n_epochs+1):
     print("Epoch:{}/{}".format(epoch, opt.n_epochs))
 
     if opt.use_MNIST:
-        model.train_epoch_mnist(epoch, train_loader, opt.use_bernoulli_loss)
-        model.eval_full_batch_mnist(train_loader, epoch, 'train', opt.use_bernoulli_loss)
-        model.eval_full_batch_mnist(val_loader, epoch, 'val', opt.use_bernoulli_loss)
+        train.train_epoch_mnist(model, epoch, train_loader, opt.use_bernoulli_loss)
+        train.eval_full_batch_mnist(model, train_loader, epoch, 'train', opt.use_bernoulli_loss)
+        train.eval_full_batch_mnist(model, val_loader, epoch, 'val', opt.use_bernoulli_loss)
     else:
-        model.train_epoch(epoch, train_loader)
-        model.eval_full_batch(train_loader, epoch, 'train')
-        model.eval_full_batch(val_loader, epoch, 'val')
+        train.train_epoch(model, epoch, train_loader)
+        train.eval_full_batch(model, train_loader, epoch, 'train')
+        train.eval_full_batch(model, val_loader, epoch, 'val')
 
     model.save_checkpoint_and_csv(epoch)
 

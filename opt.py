@@ -38,7 +38,6 @@ class Options:
         self.parser.add_argument('--lr', type=float, default=0.001, help='learning rate')
         self.parser.add_argument('--beta', type=float, default=1.0, help='Downweighting of the KL divergence')
         self.parser.add_argument('--l2_reg', dest='l2_reg', action='store_true', help='toggle use l2 regularisation or not')
-        self.parser.set_defaults(weight_decay=False)
         self.parser.add_argument('--n_epochs', type=int, default=50, help='Number of epochs to train for')
         self.parser.add_argument('--train_batch_size', type=int, default=100, help='Number of epochs to train for')
         self.parser.add_argument('--test_batch_size', type=int, default=100, help='If not 1, load checkpoint at this epoch')

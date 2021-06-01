@@ -37,6 +37,14 @@ and can enter a value for beta via:
 --beta 0.01
 ```
 
+## Simple MNIST experiments
+Train on MNIST as a bernoulli distribution
+
+'''bash
+python3 main.py --use_MNIST --use_bernoulli_loss --batch_norm --hidden_layers 500 400 300 200 100 50 --variational --name "mnist_test" --n_z 20 --lr 0.0001 --train_batch_size 1000
+'''
+
+
 # Load from checkpoint
 Enter train epoch after checkpoint (ie. to use checkpoint at 10 epochs, use start_epoch 11)
 ```bash
