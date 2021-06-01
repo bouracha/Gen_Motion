@@ -7,6 +7,7 @@ import data as data
 import models.VAE as nnmodel
 
 import train as train
+import models.utils as model_utils
 
 from opt import Options
 opt = Options().parse()
@@ -61,7 +62,7 @@ print(">>> data loaded !")
 # ===============================================================
 
 model = nnmodel.VAE(input_n=input_n, hidden_layers=opt.hidden_layers,  n_z=opt.n_z, variational=opt.variational, output_variance=opt.output_variance, device=device, batch_norm=opt.batch_norm, p_dropout=opt.p_drop)
-model._initialise(start_epoch=opt.start_epoch, folder_name=folder_name, lr=opt.lr, beta=opt.beta, l2_reg=l2_reg, train_batch_size=train_batch_size)
+train.initialise(model, start_epoch=opt.start_epoch, folder_name=folder_name, lr=opt.lr, beta=opt.beta, l2_reg=l2_reg, train_batch_size=train_batch_size)
 
 for epoch in range(opt.start_epoch, opt.n_epochs+1):
     print("Epoch:{}/{}".format(epoch, opt.n_epochs))
@@ -75,7 +76,7 @@ for epoch in range(opt.start_epoch, opt.n_epochs+1):
         train.eval_full_batch(model, train_loader, epoch, 'train')
         train.eval_full_batch(model, val_loader, epoch, 'val')
 
-    model.save_checkpoint_and_csv(epoch)
+    model_utils.save_checkpoint_and_csv(model, epoch)
 
 
 

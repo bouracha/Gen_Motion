@@ -7,18 +7,11 @@ import torch.nn as nn
 import torch
 
 import models.utils as utils
-import experiments.utils as experiment_utils
+
 from models.encoders import VAE_Encoder
 from models.decoders import VAE_Decoder
 
-from progress.bar import Bar
-import time
-from torch.autograd import Variable
-from tqdm.auto import tqdm
-import os
-import sys
 import numpy as np
-import pandas as pd
 
 class VAE(nn.Module):
     def __init__(self, input_n=96, hidden_layers=[100, 50], n_z=2, act_fn=nn.LeakyReLU(0.1), variational=False, output_variance=False, device="cuda", batch_norm=False, p_dropout=0.0):
@@ -56,10 +49,6 @@ class VAE(nn.Module):
             self.KL = utils.kullback_leibler_divergence(self.z_mu, self.z_log_var)
         else:
             self.z_mu, _ = self.encoder(x)
-        #print(self.z_mu.shape)
-        #batch_n, n_z = self.z_mu.shape
-        #self.z_mu = self.z_mu.expand(num_samples, batch_n, n_z)
-        #print(self.z_mu.shape)
         for i in range(num_samples):
             if self.variational:
                 self.z = utils.reparametisation_trick(self.z_mu, self.z_log_var, self.device)
@@ -100,23 +89,6 @@ class VAE(nn.Module):
 
         return encoder_layers, decoder_layers
 
-    def _initialise(self, start_epoch=1, folder_name="", lr=0.0001, beta=1.0, l2_reg=False, train_batch_size=100, figs_checkpoints_save_freq=10):
-        self.optimizer = torch.optim.Adam(self.parameters(), lr=lr, weight_decay=l2_reg)
-        self.folder_name = folder_name
-        self.lr = lr
-        self.beta = beta
-        self.clipping_value = 1.0
-        self.figs_checkpoints_save_freq = figs_checkpoints_save_freq
-        if start_epoch==1:
-            self.losses_file_exists = False
-            self.book_keeping(start_epoch=start_epoch, train_batch_size=train_batch_size, l2_reg=l2_reg)
-        else:
-            self.losses_file_exists = True
-            self.book_keeping(start_epoch=start_epoch, train_batch_size=train_batch_size, l2_reg=l2_reg)
-            ckpt_path = self.folder_name + '/checkpoints/' + 'ckpt_' + str(start_epoch - 1) + '_weights.path.tar'
-            ckpt = torch.load(ckpt_path, map_location=torch.device(self.device))
-            self.load_state_dict(ckpt['state_dict'])
-
     def generate(self, z):
         """
         :param z: batch of random variables
@@ -137,8 +109,6 @@ class VAE(nn.Module):
         assert (n_x == self.n_x)
 
         logits = self.reconstructions_mu
-        #loss_fn = nn.BCELoss()
-        #self.loss = loss_fn(self.bernoulli_output, x)
         BCE = torch.maximum(logits, torch.zeros_like(logits)) - torch.multiply(logits, x) + torch.log(1 + torch.exp(-torch.abs(logits)))
         BCE_per_sample = torch.sum(BCE, axis=1)
         self.recon_loss = torch.mean(BCE_per_sample)
@@ -170,71 +140,7 @@ class VAE(nn.Module):
             self.loss = -self.gauss_log_lik
         return self.loss
 
-    def accum_update(self, key, val):
-        if key not in self.accum_loss.keys():
-            self.accum_loss[key] = utils.AccumLoss()
-        val = val.cpu().data.numpy()
-        self.accum_loss[key].update(val)
 
-    def accum_reset(self):
-        for key in self.accum_loss.keys():
-            self.accum_loss[key].reset()
-
-
-
-    def book_keeping(self, start_epoch=1, train_batch_size=100, l2_reg=0.0):
-        self.accum_loss = dict()
-
-        if self.variational:
-            self.folder_name = self.folder_name+"_VAE"
-        else:
-            self.folder_name = self.folder_name+"_AE"
-        if start_epoch==1:
-            os.makedirs(os.path.join(self.folder_name, 'checkpoints'))
-            os.makedirs(os.path.join(self.folder_name, 'images'))
-            os.makedirs(os.path.join(self.folder_name, 'poses'))
-            write_type='w'
-        else:
-            write_type = 'a'
-
-        original_stdout = sys.stdout
-        with open(str(self.folder_name)+'/'+'architecture.txt', write_type) as f:
-            sys.stdout = f
-            if start_epoch==1:
-                print(self)
-            print("Start epoch:{}".format(start_epoch))
-            print("Learning rate:{}".format(self.lr))
-            print("Training batch size:{}".format(train_batch_size))
-            print("Clipping value:{}".format(self.clipping_value))
-            print("BN:{}".format(self.batch_norm))
-            print("l2 Reg (1e-4):{}".format(l2_reg))
-            print("p_dropout:{}".format(self.p_dropout))
-            print("Output variance:{}".format(self.output_variance))
-            print("Beta(downweight of KL):{}".format(self.beta))
-            print("Activation function:{}".format(self.activation))
-            sys.stdout = original_stdout
-
-        self.head = []
-        self.ret_log = []
-
-    def save_checkpoint_and_csv(self, epoch):
-        df = pd.DataFrame(np.expand_dims(self.ret_log, axis=0))
-        if self.losses_file_exists:
-            with open(self.folder_name+'/'+'losses.csv', 'a') as f:
-                df.to_csv(f, header=False, index=False)
-        else:
-            df.to_csv(self.folder_name+'/'+'losses.csv', header=self.head, index=False)
-            self.losses_file_exists = True
-        state = {'epoch': epoch + 1,
-                         'err':  self.accum_loss['train_loss'].avg,
-                         'state_dict': self.state_dict()}
-        if epoch % self.figs_checkpoints_save_freq == 0:
-            print("Saving checkpoint....")
-            file_path = self.folder_name + '/checkpoints/' + 'ckpt_' + str(epoch) + '_weights.path.tar'
-            torch.save(state, file_path)
-        self.head = []
-        self.ret_log = []
-        self.accum_reset()
 
 
 

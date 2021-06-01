@@ -6,21 +6,35 @@ from __future__ import print_function
 import torch.nn as nn
 import torch
 
-import models.utils as utils
 import experiments.utils as experiment_utils
-from models.encoders import VAE_Encoder
-from models.decoders import VAE_Decoder
 
 from progress.bar import Bar
 import time
-from torch.autograd import Variable
+
 from tqdm.auto import tqdm
-import os
-import sys
+
 import numpy as np
-import pandas as pd
+
+import models.utils as model_utils
 
 
+def initialise(model, start_epoch=1, folder_name="", lr=0.0001, beta=1.0, l2_reg=False, train_batch_size=100,
+                figs_checkpoints_save_freq=10):
+    model.optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=l2_reg)
+    model.folder_name = folder_name
+    model.lr = lr
+    model.beta = beta
+    model.clipping_value = 1.0
+    model.figs_checkpoints_save_freq = figs_checkpoints_save_freq
+    if start_epoch == 1:
+        model.losses_file_exists = False
+        model_utils.book_keeping(model, start_epoch=start_epoch, train_batch_size=train_batch_size, l2_reg=l2_reg)
+    else:
+        model.losses_file_exists = True
+        model_utils.book_keeping(model, start_epoch=start_epoch, train_batch_size=train_batch_size, l2_reg=l2_reg)
+        ckpt_path = model.folder_name + '/checkpoints/' + 'ckpt_' + str(start_epoch - 1) + '_weights.path.tar'
+        ckpt = torch.load(ckpt_path, map_location=torch.device(model.device))
+        model.load_state_dict(ckpt['state_dict'])
 
 def train_epoch_mnist(model, epoch, train_loader, use_bernoulli_loss=False):
     model.train()
@@ -65,11 +79,11 @@ def eval_full_batch_mnist(model, loader, epoch, dataset_name='val', use_bernoull
             else:
                 loss = model.loss_VLB(image_flattened)
 
-            model.accum_update(str(dataset_name) + '_loss', loss)
-            model.accum_update(str(dataset_name) + '_recon', model.recon_loss)
+            model_utils.accum_update(model, str(dataset_name) + '_loss', loss)
+            model_utils.accum_update(model, str(dataset_name) + '_recon', model.recon_loss)
             if model.variational:
-                model.accum_update(str(dataset_name) + '_VLB', model.VLB)
-                model.accum_update(str(dataset_name) + '_KL', model.KL)
+                model_utils.accum_update(model, str(dataset_name) + '_VLB', model.VLB)
+                model_utils.accum_update(model, str(dataset_name) + '_KL', model.KL)
 
         head = [dataset_name + '_loss', dataset_name + '_reconstruction']
         ret_log = [model.accum_loss[str(dataset_name) + '_loss'].avg, model.accum_loss[str(dataset_name) + '_recon'].avg]
@@ -131,10 +145,10 @@ def eval_full_batch(model, loader, epoch, dataset_name='val'):
             mu = model(inputs.float())
             loss = model.loss_VLB(inputs)
 
-            model.accum_update(str(dataset_name)+'_loss', loss)
-            model.accum_update(str(dataset_name)+'_recon_loss', model.recon_loss)
+            model_utils.accum_update(model, str(dataset_name)+'_loss', loss)
+            model_utils.accum_update(model, str(dataset_name)+'_recon_loss', model.recon_loss)
             if model.variational:
-                model.accum_update(str(dataset_name)+'_KL', model.KL)
+                model_utils.accum_update(model, str(dataset_name)+'_KL', model.KL)
 
             bar.suffix = '{}/{}|batch time {:.4f}s|total time{:.2f}s'.format(i + 1, len(loader), time.time() - bt,
                                                                                       time.time() - st)

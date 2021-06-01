@@ -1,4 +1,9 @@
 import torch
+import sys
+import os
+
+import pandas as pd
+import numpy as np
 
 class AccumLoss(object):
     def __init__(self):
@@ -15,6 +20,16 @@ class AccumLoss(object):
         self.avg = 0
         self.sum = 0
         self.count = 0
+
+def accum_update(model, key, val):
+    if key not in model.accum_loss.keys():
+        model.accum_loss[key] = AccumLoss()
+    val = val.cpu().data.numpy()
+    model.accum_loss[key].update(val)
+
+def accum_reset(model):
+    for key in model.accum_loss.keys():
+        model.accum_loss[key].reset()
 
 def num_parameters_and_place_on_device(model):
     print(model)
@@ -54,3 +69,61 @@ def kullback_leibler_divergence(mu_1, log_var_1, mu_2=None, log_var_2=None):
     KL = torch.mean(KL_per_datapoint)
 
     return KL
+
+# ===============================================================
+#                     Generic bookkeeping functions
+# ===============================================================
+
+def book_keeping(model, start_epoch=1, train_batch_size=100, l2_reg=0.0):
+    model.accum_loss = dict()
+
+    if model.variational:
+        model.folder_name = model.folder_name+"_VAE"
+    else:
+        model.folder_name = model.folder_name+"_AE"
+    if start_epoch==1:
+        os.makedirs(os.path.join(model.folder_name, 'checkpoints'))
+        os.makedirs(os.path.join(model.folder_name, 'images'))
+        os.makedirs(os.path.join(model.folder_name, 'poses'))
+        write_type='w'
+    else:
+        write_type = 'a'
+
+    original_stdout = sys.stdout
+    with open(str(model.folder_name)+'/'+'architecture.txt', write_type) as f:
+        sys.stdout = f
+        if start_epoch==1:
+            print(model)
+        print("Start epoch:{}".format(start_epoch))
+        print("Learning rate:{}".format(model.lr))
+        print("Training batch size:{}".format(train_batch_size))
+        print("Clipping value:{}".format(model.clipping_value))
+        print("BN:{}".format(model.batch_norm))
+        print("l2 Reg (1e-4):{}".format(l2_reg))
+        print("p_dropout:{}".format(model.p_dropout))
+        print("Output variance:{}".format(model.output_variance))
+        print("Beta(downweight of KL):{}".format(model.beta))
+        print("Activation function:{}".format(model.activation))
+        sys.stdout = original_stdout
+
+    model.head = []
+    model.ret_log = []
+
+def save_checkpoint_and_csv(model, epoch):
+    df = pd.DataFrame(np.expand_dims(model.ret_log, axis=0))
+    if model.losses_file_exists:
+        with open(model.folder_name + '/' + 'losses.csv', 'a') as f:
+            df.to_csv(f, header=False, index=False)
+    else:
+        df.to_csv(model.folder_name + '/' + 'losses.csv', header=model.head, index=False)
+        model.losses_file_exists = True
+    state = {'epoch': epoch + 1,
+             'err': model.accum_loss['train_loss'].avg,
+             'state_dict': model.state_dict()}
+    if epoch % model.figs_checkpoints_save_freq == 0:
+        print("Saving checkpoint....")
+        file_path = model.folder_name + '/checkpoints/' + 'ckpt_' + str(epoch) + '_weights.path.tar'
+        torch.save(state, file_path)
+    model.head = []
+    model.ret_log = []
+    accum_reset(model)
