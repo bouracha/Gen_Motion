@@ -18,7 +18,7 @@ import numpy as np
 import models.utils as model_utils
 
 
-def initialise(model, start_epoch=1, folder_name="", lr=0.0001, beta=1.0, l2_reg=False, train_batch_size=100,
+def initialise(model, start_epoch=1, folder_name="", lr=0.0001, beta=1.0, l2_reg=1e-4, train_batch_size=100,
                 figs_checkpoints_save_freq=10):
     model.optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=l2_reg)
     model.folder_name = folder_name

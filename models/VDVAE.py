@@ -9,9 +9,7 @@ import torch
 import models.utils as utils
 
 from models.encoders import EncoderBlock
-from models.layers import ReparametisationBlock
 from models.decoders import VAE_Decoder
-
 
 
 class VAE(nn.Module):
@@ -36,7 +34,6 @@ class VAE(nn.Module):
         self.p_dropout = p_dropout
 
         self.encoder = EncoderBlock(layers=self.encoder_layers, activation=self.activation, variational=variational, device=device, batch_norm=batch_norm, p_dropout=p_dropout)
-        self.reparametisation = ReparametisationBlock(self.encoder_layers[-1], n_z)
         self.decoder = VAE_Decoder(layers=self.decoder_layers, activation=self.activation, output_variance=output_variance, device=device, batch_norm=batch_norm, p_dropout=p_dropout)
 
         self.num_parameters = utils.num_parameters_and_place_on_device(self)
@@ -46,30 +43,15 @@ class VAE(nn.Module):
         :param x: batch of samples
         :return: reconstructions and latent value
         """
-        if self.variational:
-            y = self.encoder(x)
-            self.z_mu, self.z_log_var = self.reparametisation(y)
-            self.KL = utils.kullback_leibler_divergence(self.z_mu, self.z_log_var)
-        else:
-            self.z_mu = self.encoder(x)
-        for i in range(num_samples):
-            if self.variational:
-                self.z = utils.reparametisation_trick(self.z_mu, self.z_log_var, self.device)
-            else:
-                self.z = self.z_mu
-            if self.output_variance:
-                reconstructions_mu, reconstructions_log_var = self.decoder(self.z)
-            else:
-                reconstructions_mu = self.decoder(self.z)
-                reconstructions_log_var = torch.zeros_like(reconstructions_mu)
-            if i==0:
-                recon_mu_accum = reconstructions_mu
-                recon_log_var_accum = reconstructions_log_var
-            else:
-                recon_mu_accum += reconstructions_mu
-                recon_log_var_accum += reconstructions_log_var
-        self.reconstructions_mu = recon_mu_accum/(1.0*num_samples)
-        self.reconstructions_log_var = recon_log_var_accum/(1.0*num_samples)
+        y2 = self.encoder(x)
+        y1 = self.encoder(y2)
+
+        self.z_mu_1, self.z_log_var_1 = self.reparametisation(y1)
+        self.KL_1 = utils.kullback_leibler_divergence(self.z_mu_1, self.z_log_var_1, mu_2=0, log_var_2=1)
+        self.z_1 = utils.reparametisation_trick(self.z_mu_1, self.z_log_var_1, self.device)
+
+        self.reconstructions_mu = self.decoder(self.z)
+        self.reconstructions_log_var = torch.zeros_like(self.reconstructions_mu)
 
         sig = nn.Sigmoid()
         self.bernoulli_output = sig(self.reconstructions_mu)

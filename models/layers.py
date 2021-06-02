@@ -35,6 +35,29 @@ class FullyConnected(nn.Module):
                + str(self.out_features) + ')'
 
 
+class ReparametisationBlock(nn.Module):
+    def __init__(self, in_features, n_z):
+        """
+        :param input_feature: num of input feature
+        :param n_z: dim of latent variable
+        """
+        super(ReparametisationBlock, self).__init__()
+        self.n_x = in_features
+        self.n_z = n_z
+
+        self.z_mu_fc = FullyConnected(self.n_x, self.n_z)
+        self.z_log_var_fc = FullyConnected(self.n_x, self.n_z)
+
+    def forward(self, x):
+        y = x
+
+        mu = self.z_mu_fc(y)
+        log_var = self.z_log_var_fc(y)
+        log_var = torch.clamp(log_var, min=-20.0, max=3.0)
+
+        return mu, log_var
+
+
 class GraphConvolution(nn.Module):
     """
     adapted from : https://github.com/tkipf/gcn/blob/92600c39797c2bfb61a508e52b88fb554df30177/gcn/layers.py#L132
