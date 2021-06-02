@@ -98,8 +98,9 @@ def cal_bernoulli_log_lik(x, logits):
     BCE = torch.maximum(logits, torch.zeros_like(logits)) - torch.multiply(logits, x) + torch.log(1 + torch.exp(-torch.abs(logits)))
     BCE_per_sample = torch.sum(BCE, axis=1)
     BCE_avg_for_batch = torch.mean(BCE_per_sample)
+    bernoulli_log_lik = -BCE_avg_for_batch
 
-    return BCE_avg_for_batch
+    return bernoulli_log_lik
 
 
 def cal_VLB(p_log_x, KL, beta=1.0):
