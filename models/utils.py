@@ -41,6 +41,10 @@ def num_parameters_and_place_on_device(model):
     else:
         print("Using CPU")
 
+# ===============================================================
+#                     VAE specific functions
+# ===============================================================
+
 def reparametisation_trick(mu, log_var, device):
     """
 
@@ -69,6 +73,43 @@ def kullback_leibler_divergence(mu_1, log_var_1, mu_2=None, log_var_2=None):
     KL = torch.mean(KL_per_datapoint)
 
     return KL
+
+# ===============================================================
+#                     Probabilities
+# ===============================================================
+
+def cal_gauss_log_lik(x, mu, log_var=0.0):
+    """
+    :param x: batch of inputs (bn X fn)
+    :return: gaussian log likelihood, and the mean squared error
+    """
+    MSE = torch.pow((mu - x), 2)
+    gauss_log_lik = -0.5*(log_var + np.log(2*np.pi) + (MSE/(1e-8 + torch.exp(log_var))))
+    MSE = torch.mean(torch.sum(MSE, axis=1))
+    gauss_log_lik = torch.mean(torch.sum(gauss_log_lik, axis=1))
+
+    return gauss_log_lik, MSE
+
+def cal_bernoulli_log_lik(x, logits):
+    """
+    :param x: batch of inputs (bn X fn)
+    :return: gaussian log likelihood, and the mean squared error (scalar)
+    """
+    BCE = torch.maximum(logits, torch.zeros_like(logits)) - torch.multiply(logits, x) + torch.log(1 + torch.exp(-torch.abs(logits)))
+    BCE_per_sample = torch.sum(BCE, axis=1)
+    BCE_avg_for_batch = torch.mean(BCE_per_sample)
+
+    return BCE_avg_for_batch
+
+
+def cal_VLB(p_log_x, KL, beta=1.0):
+    """
+    :param x: batch of inputs
+    :return: Variational Lower Bound
+    """
+    VLB = p_log_x - beta*KL
+
+    return VLB
 
 # ===============================================================
 #                     Generic bookkeeping functions

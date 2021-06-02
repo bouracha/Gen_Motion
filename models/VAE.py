@@ -11,7 +11,6 @@ import models.utils as utils
 from models.encoders import VAE_Encoder
 from models.decoders import VAE_Decoder
 
-import numpy as np
 
 class VAE(nn.Module):
     def __init__(self, input_n=96, hidden_layers=[100, 50], n_z=2, act_fn=nn.LeakyReLU(0.1), variational=False, output_variance=False, device="cuda", batch_norm=False, p_dropout=0.0):
@@ -100,28 +99,8 @@ class VAE(nn.Module):
             reconstructions_mu = self.decoder(z)
         return reconstructions_mu
 
-    def loss_bernoulli(self, x):
-        """
-        :param x: batch of inputs
-        :return
-        """
-        b_n, n_x = x.shape
-        assert (n_x == self.n_x)
 
-        logits = self.reconstructions_mu
-        BCE = torch.maximum(logits, torch.zeros_like(logits)) - torch.multiply(logits, x) + torch.log(1 + torch.exp(-torch.abs(logits)))
-        BCE_per_sample = torch.sum(BCE, axis=1)
-        self.recon_loss = torch.mean(BCE_per_sample)
-        if self.variational:
-            self.loss = self.recon_loss + self.KL
-            self.VLB = -self.loss
-        else:
-            self.loss = self.recon_loss
-
-        return self.loss
-
-
-    def loss_VLB(self, x):
+    def cal_loss(self, x, distribution='gaussian'):
         """
         :param x: batch of inputs
         :return: loss of reconstructions
@@ -129,17 +108,19 @@ class VAE(nn.Module):
         b_n, n_x = x.shape
         assert(n_x == self.n_x)
 
-        self.mse = torch.pow((self.reconstructions_mu - x), 2)
-        self.recon_loss = torch.mean(torch.sum(self.mse, axis=1))
-        self.gauss_log_lik = -0.5*(self.reconstructions_log_var + np.log(2*np.pi) + (self.mse/(1e-8 + torch.exp(self.reconstructions_log_var))))
-        self.gauss_log_lik = torch.mean(torch.sum(self.gauss_log_lik, axis=1))
+        if distribution=='gaussian':
+            self.log_lik, self.mse = utils.cal_gauss_log_lik(x, self.reconstructions_mu, self.reconstructions_log_var)
+            self.recon_loss = self.mse
+        elif distribution=='bernoulli':
+            self.log_lik = utils.cal_bernoulli_log_lik(x, self.reconstructions_mu)
+            self.recon_loss = -self.log_lik
+
         if self.variational:
-            self.VLB = self.gauss_log_lik - self.beta*self.KL
+            self.VLB = utils.cal_VLB(self.log_lik, self.KL, self.beta)
             self.loss = -self.VLB
         else:
-            self.loss = -self.gauss_log_lik
+            self.loss = -self.log_lik
         return self.loss
-
 
 
 

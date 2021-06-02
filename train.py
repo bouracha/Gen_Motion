@@ -47,9 +47,9 @@ def train_epoch_mnist(model, epoch, train_loader, use_bernoulli_loss=False):
 
         _ = model(image_flattened.float())
         if use_bernoulli_loss:
-            loss = model.loss_bernoulli(image_flattened)
+            loss = model.cal_loss(image_flattened, 'bernoulli')
         else:
-            loss = model.loss_VLB(image_flattened)
+            loss = model.cal_loss(image_flattened, 'gaussian')
 
         model.optimizer.zero_grad()
         loss.backward()
@@ -73,11 +73,11 @@ def eval_full_batch_mnist(model, loader, epoch, dataset_name='val', use_bernoull
 
             reconstructions = model(image_flattened.float())
             if use_bernoulli_loss:
-                loss = model.loss_bernoulli(image_flattened)
+                loss = model.cal_loss(image_flattened, 'bernoulli')
                 sig = nn.Sigmoid()
                 reconstructions = sig(reconstructions)
             else:
-                loss = model.loss_VLB(image_flattened)
+                loss = model.cal_loss(image_flattened, 'gaussian')
 
             model_utils.accum_update(model, str(dataset_name) + '_loss', loss)
             model_utils.accum_update(model, str(dataset_name) + '_recon', model.recon_loss)
@@ -113,7 +113,7 @@ def train_epoch(model, epoch, train_loader):
         inputs = all_seq.to(model.device).float()
 
         _ = model(inputs.float())
-        loss = model.loss_VLB(inputs)
+        loss = model.cal_loss(inputs, 'gaussian')
 
         model.optimizer.zero_grad()
         loss.backward()
@@ -143,7 +143,7 @@ def eval_full_batch(model, loader, epoch, dataset_name='val'):
             inputs = all_seq.to(model.device).float()
 
             mu = model(inputs.float())
-            loss = model.loss_VLB(inputs)
+            loss = model.cal_loss(inputs, 'gaussian')
 
             model_utils.accum_update(model, str(dataset_name)+'_loss', loss)
             model_utils.accum_update(model, str(dataset_name)+'_recon_loss', model.recon_loss)
