@@ -8,8 +8,8 @@ import torch
 
 import models.utils as utils
 
-from models.encoders import EncoderBlock
-from models.layers import ReparametisationBlock
+from models.layers import NeuralNetworkBlock
+from models.layers import GaussianBlock
 from models.decoders import VAE_Decoder
 
 
@@ -35,9 +35,10 @@ class VAE(nn.Module):
         self.batch_norm = batch_norm
         self.p_dropout = p_dropout
 
-        self.encoder = EncoderBlock(layers=self.encoder_layers, activation=self.activation, variational=variational, device=device, batch_norm=batch_norm, p_dropout=p_dropout)
-        self.reparametisation = ReparametisationBlock(self.encoder_layers[-1], n_z)
-        self.decoder = VAE_Decoder(layers=self.decoder_layers, activation=self.activation, output_variance=output_variance, device=device, batch_norm=batch_norm, p_dropout=p_dropout)
+        self.encoder = NeuralNetworkBlock(layers=self.encoder_layers, activation=self.activation, batch_norm=batch_norm, p_dropout=p_dropout)
+        self.reparametisation_latent = GaussianBlock(self.encoder_layers[-1], n_z)
+        self.decoder = NeuralNetworkBlock(layers=self.decoder_layers, activation=self.activation, batch_norm=batch_norm, p_dropout=p_dropout)
+        self.reparametisation_output = GaussianBlock(self.decoder_layers[-1], input_n)
 
         self.num_parameters = utils.num_parameters_and_place_on_device(self)
 
@@ -48,7 +49,7 @@ class VAE(nn.Module):
         """
         if self.variational:
             y = self.encoder(x)
-            self.z_mu, self.z_log_var = self.reparametisation(y)
+            self.z_mu, self.z_log_var = self.reparametisation_latent(y)
             self.KL = utils.kullback_leibler_divergence(self.z_mu, self.z_log_var)
         else:
             self.z_mu = self.encoder(x)
@@ -57,11 +58,8 @@ class VAE(nn.Module):
                 self.z = utils.reparametisation_trick(self.z_mu, self.z_log_var, self.device)
             else:
                 self.z = self.z_mu
-            if self.output_variance:
-                reconstructions_mu, reconstructions_log_var = self.decoder(self.z)
-            else:
-                reconstructions_mu = self.decoder(self.z)
-                reconstructions_log_var = torch.zeros_like(reconstructions_mu)
+            decoder_output = self.decoder(self.z)
+            reconstructions_mu, reconstructions_log_var = self.reparametisation_output(decoder_output)
             if i==0:
                 recon_mu_accum = reconstructions_mu
                 recon_log_var_accum = reconstructions_log_var
@@ -85,8 +83,6 @@ class VAE(nn.Module):
         for i in range(n_hidden):
             encoder_layers.append(hidden_layers[i])
             decoder_layers.append(hidden_layers[n_hidden - 1 - i])
-        encoder_layers.append(n_z)
-        decoder_layers.append(input_n)
         self.n_x = encoder_layers[0]
         self.n_z = encoder_layers[-1]
 

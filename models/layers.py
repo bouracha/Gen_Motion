@@ -2,10 +2,18 @@ import torch.nn as nn
 import torch
 from torch.nn.parameter import Parameter
 import math
+import numpy as np
 
 class FullyConnected(nn.Module):
-
     def __init__(self, in_features, out_features, bias=True):
+        """
+        Fully connected layer of learnable weights with learnable bias
+        :param self:
+        :param in_features: number neurons in
+        :param out_features: num neurons out
+        :param bias: to use bias (boole)
+        :return:
+        """
         super(FullyConnected, self).__init__()
         self.in_features = in_features
         self.out_features = out_features
@@ -34,14 +42,40 @@ class FullyConnected(nn.Module):
                + str(self.in_features) + ' -> ' \
                + str(self.out_features) + ')'
 
+class NeuralNetworkBlock(nn.Module):
+    def __init__(self, layers=[48, 100, 50, 2], activation=nn.LeakyReLU(0.1), batch_norm=False, p_dropout=0.0):
+        """
+        :param layers: array where each entry is number of neurons at that layer
+        :param activation: activation function to use
+        :param batch_norm: to use batch norm (boole).
+        :param p_dropout: drop out prob.
+        """
+        super(NeuralNetworkBlock, self).__init__()
 
-class ReparametisationBlock(nn.Module):
+        self.n_x = layers[0]
+        self.n_z = layers[-1]
+        self.layers = np.array(layers)
+        self.n_layers = self.layers.shape[0] - 1
+
+        self.fc_blocks = []
+        for i in range(self.n_layers):
+            self.fc_blocks.append(FC_Block(self.layers[i], self.layers[i + 1], activation=activation, batch_norm=batch_norm, p_dropout=p_dropout, bias=True))
+        self.fc_blocks = nn.ModuleList(self.fc_blocks)
+
+    def forward(self, x):
+        y = x
+        for i in range(self.n_layers):
+            y = self.fc_blocks[i](y)
+
+        return y
+
+class GaussianBlock(nn.Module):
     def __init__(self, in_features, n_z):
         """
         :param input_feature: num of input feature
-        :param n_z: dim of latent variable
+        :param n_z: dim of distribution
         """
-        super(ReparametisationBlock, self).__init__()
+        super(GaussianBlock, self).__init__()
         self.n_x = in_features
         self.n_z = n_z
 
