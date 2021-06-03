@@ -109,6 +109,8 @@ class VAE(nn.Module):
         assert(n_x == self.n_x)
 
         if distribution=='gaussian':
+            if not self.output_variance:
+                self.reconstructions_log_var = torch.zeros_like(self.reconstructions_mu)
             self.log_lik, self.mse = utils.cal_gauss_log_lik(x, self.reconstructions_mu, self.reconstructions_log_var)
             self.recon_loss = self.mse
         elif distribution=='bernoulli':
