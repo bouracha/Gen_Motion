@@ -134,8 +134,8 @@ cd ..
 #                     Test runs
 # ===============================================================
 
-#python3 main.py --use_MNIST --use_bernoulli_loss --batch_norm --hidden_layers 500 400 300 200 100 50 --variational --name "test_" --n_z 20 --lr 0.0001 --train_batch_size 1000
+python3 main.py --use_MNIST --use_bernoulli_loss --batch_norm --hidden_layers 500 400 300 200 100 50 --variational --name "test_" --n_z 20 --lr 0.0001 --train_batch_size 1000
 #python3 main.py --use_MNIST --batch_norm --hidden_layers 500 400 300 200 100 50 --variational --name "test_" --n_z 20 --lr 0.0001 --train_batch_size 1000
 
-python3 main.py --batch_norm --hidden_layers 500 400 300 200 100 50 --variational --name "test_" --n_z 2 --lr 0.0001 --train_batch_size 1000 --beta 0.01
+#python3 main.py --batch_norm --hidden_layers 500 400 300 200 100 50 --variational --name "test_" --n_z 2 --lr 0.0001 --train_batch_size 1000 --beta 0.01
 #python3 main.py --batch_norm --use_bernoulli_loss --hidden_layers 500 400 300 200 100 50 --variational --name "test_" --n_z 2 --lr 0.0001 --train_batch_size 1000 --beta 0.01

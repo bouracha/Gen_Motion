@@ -4,8 +4,6 @@ import torch.optim
 
 import data as data
 
-import models.VAE as nnmodel
-
 import train as train
 import models.utils as model_utils
 
@@ -61,7 +59,10 @@ print(">>> data loaded !")
 # Instantiate model, and methods used fro training and valdation
 # ===============================================================
 
-model = nnmodel.VAE(input_n=input_n, hidden_layers=opt.hidden_layers,  n_z=opt.n_z, variational=opt.variational, output_variance=opt.output_variance, device=device, batch_norm=opt.batch_norm, p_dropout=opt.p_drop)
+#import models.VAE as nnmodel
+import models.VDVAE as nnmodel
+#model = nnmodel.VAE(input_n=input_n, hidden_layers=opt.hidden_layers,  n_z=opt.n_z, variational=opt.variational, output_variance=opt.output_variance, device=device, batch_norm=opt.batch_norm, p_dropout=opt.p_drop)
+model = nnmodel.VDVAE(input_n=input_n, hidden_layers=opt.hidden_layers,  n_z=opt.n_z, variational=opt.variational, output_variance=opt.output_variance, device=device, batch_norm=opt.batch_norm, p_dropout=opt.p_drop)
 train.initialise(model, start_epoch=opt.start_epoch, folder_name=folder_name, lr=opt.lr, beta=opt.beta, l2_reg=l2_reg, train_batch_size=train_batch_size)
 
 for epoch in range(opt.start_epoch, opt.n_epochs+1):

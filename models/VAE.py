@@ -10,8 +10,6 @@ import models.utils as utils
 
 from models.layers import NeuralNetworkBlock
 from models.layers import GaussianBlock
-from models.decoders import VAE_Decoder
-
 
 
 class VAE(nn.Module):
@@ -93,10 +91,9 @@ class VAE(nn.Module):
         :param z: batch of random variables
         :return: batch of generated samples
         """
-        if self.output_variance:
-            reconstructions_mu, _ = self.decoder(z)
-        else:
-            reconstructions_mu = self.decoder(z)
+        decoder_output = self.decoder(self.z)
+        reconstructions_mu, reconstructions_log_var = self.reparametisation_output(decoder_output)
+
         return reconstructions_mu
 
 
