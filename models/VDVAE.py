@@ -36,45 +36,66 @@ class VDVAE(nn.Module):
         #Layers hardcooded for now
         n_z_1 = 5
         n_z_0 = 2
-        encoder_block_1_layers=[input_n, 500, 400, 300, 200, 100, n_z_1]
+        self.feature_hierachies=[input_n, n_z_1, n_z_0]
+        encoder_blocks_layers=[]
+        for i in range(len(self.feature_hierachies)-1):
+            encoder_blocks_layers.append(utils.define_neurons_layers(self.feature_hierachies[i], self.feature_hierachies[i+1], 5))
+        #encoder_block_1_layers=utils.define_neurons_layers(input_n, n_z_1, 5)
+        #encoder_block_2_layers=utils.define_neurons_layers(n_z_1, n_z_0, 5)
 
-        encoder_block_2_layers=[n_z_1, 10, 5, n_z_0]
+        #decoder_block_1_layers=[n_z_0, 5, 10, n_z_1]
+        #decoder_block_1_layers=encoder_blocks_layers[1][::-1]
+        #decoder_block_2_layers=[n_z_1, 100, 200, 300, 400, 500]
+        #decoder_block_2_layers=encoder_blocks_layers[0][::-1]
 
-        decoder_block_1_layers=[n_z_0, 5, 10, n_z_1]
-        decoder_block_2_layers=[n_z_1, 100, 200, 300, 400, 500]
+        print(len(self.feature_hierachies))
+        print(self.feature_hierachies)
+        decoder_blocks_layers=[]
+        for i in range(len(self.feature_hierachies)-2, -1, -1):
+            decoder_blocks_layers.append(encoder_blocks_layers[i][::-1])
 
+        #Bottom Up
+        self.encoder_blocks = []
+        for i in range(len(self.feature_hierachies)-1):
+            self.encoder_blocks.append(NeuralNetworkBlock(layers=encoder_blocks_layers[i], activation=self.activation, batch_norm=batch_norm, p_dropout=p_dropout))
+        #self.encoder_block_1 = NeuralNetworkBlock(layers=encoder_blocks_layers[0], activation=self.activation, batch_norm=batch_norm, p_dropout=p_dropout)
+        #self.encoder_block_2 = NeuralNetworkBlock(layers=encoder_blocks_layers[1], activation=self.activation, batch_norm=batch_norm, p_dropout=p_dropout)
 
-        self.encoder_block_1 = NeuralNetworkBlock(layers=encoder_block_1_layers, activation=self.activation, batch_norm=batch_norm, p_dropout=p_dropout)
-        self.encoder_block_2 = NeuralNetworkBlock(layers=encoder_block_2_layers, activation=self.activation, batch_norm=batch_norm, p_dropout=p_dropout)
+        print(encoder_blocks_layers)
+        #Top Down
+        self.reparametisation_latent_0 = GaussianBlock(encoder_blocks_layers[-1][-1], n_z_0)
 
-        self.reparametisation_latent_0 = GaussianBlock(encoder_block_2_layers[-1], n_z_0)
+        self.decoder_block_1 = NeuralNetworkBlock(layers=decoder_blocks_layers[0], activation=self.activation, batch_norm=batch_norm, p_dropout=p_dropout)
+        self.reparametisation_latent_1 = GaussianBlock(decoder_blocks_layers[0][-1], n_z_1)
+        self.prior_decoder_block_1 = NeuralNetworkBlock(layers=decoder_blocks_layers[0], activation=self.activation, batch_norm=batch_norm, p_dropout=p_dropout)
+        self.reparametisation_latent_1_prior = GaussianBlock(decoder_blocks_layers[0][-1], n_z_1)
 
-        self.decoder_block_1 = NeuralNetworkBlock(layers=decoder_block_1_layers, activation=self.activation, batch_norm=batch_norm, p_dropout=p_dropout)
-        self.reparametisation_latent_1 = GaussianBlock(decoder_block_1_layers[-1], n_z_1)
-        self.prior_decoder_block_1 = NeuralNetworkBlock(layers=decoder_block_1_layers, activation=self.activation, batch_norm=batch_norm, p_dropout=p_dropout)
-        self.reparametisation_latent_1_prior = GaussianBlock(decoder_block_1_layers[-1], n_z_1)
-
-        self.decoder_block_2 = NeuralNetworkBlock(layers=decoder_block_2_layers, activation=self.activation, batch_norm=batch_norm, p_dropout=p_dropout)
-        self.reparametisation_output = GaussianBlock(decoder_block_2_layers[-1], input_n)
+        self.decoder_block_2 = NeuralNetworkBlock(layers=decoder_blocks_layers[1][:-1], activation=self.activation, batch_norm=batch_norm, p_dropout=p_dropout)
+        self.reparametisation_output = GaussianBlock(decoder_blocks_layers[1][:-1][-1], input_n)
 
         self.num_parameters = utils.num_parameters_and_place_on_device(self)
 
-    def forward(self, x, num_samples=1):
+    def forward(self, x):
         """
         :param x: batch of samples
         :return: reconstructions and latent value
         """
         #Bottom Up
-        encoder_block_1_output = self.encoder_block_1(x)
-        encoder_block_2_output = self.encoder_block_2(encoder_block_1_output)
+        encoder_outputs = []
+        encoder_output = x
+        for i in range(len(self.feature_hierachies)-1):
+            encoder_output = self.encoder_blocks[i](encoder_output)
+            encoder_outputs.append(encoder_output)
+        #encoder_block_1_output = self.encoder_block_1(x)
+        #encoder_block_2_output = self.encoder_block_2(encoder_block_1_output)
 
         #Top Down
-        self.z_mu_0, self.z_log_var_0 = self.reparametisation_latent_0(encoder_block_2_output)
+        self.z_mu_0, self.z_log_var_0 = self.reparametisation_latent_0(encoder_outputs[1])
         self.KL_0 = utils.kullback_leibler_divergence(self.z_mu_0, self.z_log_var_0, mu_2=torch.zeros_like(self.z_mu_0), log_var_2=torch.ones_like(self.z_log_var_0))
         self.z_0 = utils.reparametisation_trick(self.z_mu_0, self.z_log_var_0, self.device)
 
         decoder_block_1_output = self.decoder_block_1(self.z_0)
-        concat_for_latent_1 = decoder_block_1_output + encoder_block_1_output
+        concat_for_latent_1 = decoder_block_1_output + encoder_outputs[0]
 
         prior_decoder_block_1_output = self.prior_decoder_block_1(self.z_0)
         self.prior_z_mu_1, self.prior_z_log_var_1 = self.reparametisation_latent_1_prior(prior_decoder_block_1_output)

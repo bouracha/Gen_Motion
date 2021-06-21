@@ -41,6 +41,19 @@ def num_parameters_and_place_on_device(model):
     else:
         print("Using CPU")
 
+def define_neurons_layers(n_z_pre, n_z_next, num_layers):
+    """
+
+    :param n_z_pre: the layer with the higher number of neurons
+    :param n_z_next: the layer with the lower number of neurons
+    :param num_layers: number of layers desired in between
+    :return: list of layer sizes
+    """
+    nn_layers = np.linspace(n_z_pre, n_z_next, num_layers)
+    nn_layers = list(map(int, nn_layers))
+    return nn_layers
+
+
 # ===============================================================
 #                     VAE specific functions
 # ===============================================================
