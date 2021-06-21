@@ -40,6 +40,7 @@ def num_parameters_and_place_on_device(model):
         model.cuda()
     else:
         print("Using CPU")
+    return num_parameters
 
 def define_neurons_layers(n_z_pre, n_z_next, num_layers):
     """
@@ -129,7 +130,7 @@ def cal_VLB(p_log_x, KL, beta=1.0):
 #                     Generic bookkeeping functions
 # ===============================================================
 
-def book_keeping(model, start_epoch=1, train_batch_size=100, l2_reg=0.0):
+def book_keeping(model, start_epoch=1, train_batch_size=100, l2_reg=1e-4):
     model.accum_loss = dict()
 
     if model.variational:
@@ -159,6 +160,7 @@ def book_keeping(model, start_epoch=1, train_batch_size=100, l2_reg=0.0):
         print("Output variance:{}".format(model.output_variance))
         print("Beta(downweight of KL):{}".format(model.beta))
         print("Activation function:{}".format(model.activation))
+        print("Num_parameters:{}".format(model.num_parameters))
         sys.stdout = original_stdout
 
     model.head = []

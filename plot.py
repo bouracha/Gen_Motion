@@ -30,11 +30,12 @@ file_name="added_noise"
 #plot_losses(path_to_file="deep_"+str(n_z)+"_beta_VAE/"+str(file_name)+".csv", label="VAE ($\sigma^2_{recon}=[1]$)", y='MSE', x='num_occlusions', errorbar='STD', color='r')
 #plot_losses(path_to_file="deep_"+str(n_z)+"_VAE/"+str(file_name)+".csv", label="VAE (1 sample)", y='MSE', x='alpha_noise', errorbar='STD', color='g')
 #plot_losses(path_to_file="deep_"+str(n_z)+"_VAE/"+str(file_name)+"_nsamp10.csv", label="VAE (10 samples)", y='MSE', x='alpha_noise', errorbar='STD', color='m')
-plot_losses(path_to_file="classify_noisey_embeddings_no_bottleneck.csv", label="Inputs", y='inputs', x='noise_level', errorbar='inputs_std', color='m')
-plot_losses(path_to_file="classify_noisey_embeddings_no_bottleneck.csv", label="AE embeddings", y='AE', x='noise_level', errorbar='AE_std', color='b')
-plot_losses(path_to_file="classify_noisey_embeddings_no_bottleneck.csv", label="VAE ($\sigma^2_{recon}=[1]$) embeddings", y='beta_VAE', x='noise_level', errorbar='beta_VAE_std', color='r')
-plot_losses(path_to_file="classify_noisey_embeddings_no_bottleneck.csv", label="VAE embeddings", y='VAE', x='noise_level', errorbar='VAE_std', color='g')
+#plot_losses(path_to_file="classify_noisey_embeddings_no_bottleneck.csv", label="Inputs", y='inputs', x='noise_level', errorbar='inputs_std', color='m')
+#plot_losses(path_to_file="classify_noisey_embeddings_no_bottleneck.csv", label="AE embeddings", y='AE', x='noise_level', errorbar='AE_std', color='b')
+#plot_losses(path_to_file="classify_noisey_embeddings_no_bottleneck.csv", label="VAE ($\sigma^2_{recon}=[1]$) embeddings", y='beta_VAE', x='noise_level', errorbar='beta_VAE_std', color='r')
+#plot_losses(path_to_file="classify_noisey_embeddings_no_bottleneck.csv", label="VAE embeddings", y='VAE', x='noise_level', errorbar='VAE_std', color='g')
 #plot_losses(path_to_file="classify_noisey_embeddings.csv", label="VAE embedding", y='VAE', x='noise_level', errorbar='VAE_std', color='y')
+plot_losses(path_to_file="vdvae_test_MNIST_VAE/losses.csv", label="Training Curves", y="train_VLB", x="Epoch")
 
 #plot_losses(path_to_file="deep_"+str(n_z)+"_beta_VAE/"+str(file_name)+".csv", label="VAE", y='MSE', x='num_samples', errorbar='STD', color='m')
 

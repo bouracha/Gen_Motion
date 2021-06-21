@@ -131,11 +131,12 @@ cd ..
 #python3 classify.py --hidden_layers 100 --use_MNIST --n_epochs 100 --name "" --start_epoch 11 --inference
 
 # ===============================================================
-#                     Test runs
+#                     VDVAE
 # ===============================================================
 
-python3 main.py --use_MNIST --use_bernoulli_loss --batch_norm --hidden_layers 500 400 300 200 100 50 --variational --name "vdvae_test_" --n_z 20 --lr 0.0001 --train_batch_size 1000 --n_epochs 300
-#python3 main.py --use_MNIST --batch_norm --hidden_layers 500 400 300 200 100 50 --variational --name "test_" --n_z 20 --lr 0.0001 --train_batch_size 1000
+
+#python3 main.py --use_MNIST --use_bernoulli_loss --batch_norm --variational --name "vd_50_10_5_2" --n_zs 50 10 5 2 --lr 0.00001 --train_batch_size 1000 --n_epochs 300
+python3 main.py --use_MNIST --use_bernoulli_loss --batch_norm --variational --name "vd_50_10_5_2" --n_zs 50 10 5 2 --lr 0.000001 --train_batch_size 1000 --n_epochs 300
 
 #python3 main.py --batch_norm --hidden_layers 500 400 300 200 100 50 --variational --name "test_" --n_z 2 --lr 0.0001 --train_batch_size 1000 --beta 0.01
 #python3 main.py --batch_norm --use_bernoulli_loss --hidden_layers 500 400 300 200 100 50 --variational --name "test_" --n_z 2 --lr 0.0001 --train_batch_size 1000 --beta 0.01

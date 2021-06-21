@@ -10,9 +10,7 @@ import models.utils as model_utils
 from opt import Options
 opt = Options().parse()
 
-l2_reg = 0.0
-#if opt.l2_reg:
-#    l2_reg = 1e-4
+l2_reg = 1e-4
 
 folder_name=opt.name
 is_cuda = torch.cuda.is_available()

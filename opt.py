@@ -18,6 +18,7 @@ class Options:
         # ===============================================================
         #                     Architecture options
         # ===============================================================
+        self.parser.add_argument('--n_zs', nargs='+', type=int, default=[50, 10, 5, 2], help='input the out of distribution action')
         self.parser.add_argument('--hidden_layers', nargs='+', type=int, default=[500, 200, 100, 50], help='input the out of distribution action')
         self.parser.add_argument('--n_z', type=int, default=2, help='Number of latent variables')
         self.parser.add_argument('--variational', dest='variational', action='store_true', help='toggle VAE or AE')
