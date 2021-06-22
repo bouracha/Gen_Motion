@@ -82,8 +82,8 @@ def kullback_leibler_divergence(mu_1, log_var_1, mu_2=None, log_var_2=None):
     """
     if mu_2 is None and log_var_2 is None:
         mu_2 = torch.zeros_like(mu_1)
-        log_var_2 = torch.ones_like(log_var_1)
-    KL_per_datapoint = 0.5 * torch.sum(-1 + log_var_2 - log_var_1 + torch.exp(log_var_1) + torch.pow((mu_1 - mu_2), 2)/(torch.exp(log_var_2)), axis=1)
+        log_var_2 = torch.zeros_like(log_var_1)
+    KL_per_datapoint = 0.5 * torch.sum(-1 + log_var_2 - log_var_1 + (torch.exp(log_var_1) + torch.pow((mu_1 - mu_2), 2))/(torch.exp(log_var_2)), axis=1)
     KL = torch.mean(KL_per_datapoint)
 
     return KL

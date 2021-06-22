@@ -13,7 +13,7 @@ from models.layers import GaussianBlock
 
 
 class VDVAE(nn.Module):
-    def __init__(self, input_n=96, hidden_layers=[100, 50], n_z=2, act_fn=nn.LeakyReLU(0.1), variational=False, output_variance=False, device="cuda", batch_norm=False, p_dropout=0.0):
+    def __init__(self, input_n=96, act_fn=nn.LeakyReLU(0.1), variational=False, output_variance=False, device="cuda", batch_norm=False, p_dropout=0.0, n_zs=[50, 10, 5, 2]):
         """
         :param input_n: num of input feature
         :param hidden_layers: num of hidden feature, decoder is made symmetric
@@ -24,7 +24,6 @@ class VDVAE(nn.Module):
         """
         super(VDVAE, self).__init__()
         print(">>> creating model")
-        self.encoder_layers, self.decoder_layers = self.define_layers(input_n=input_n, hidden_layers=hidden_layers, n_z=n_z)
 
         self.activation = act_fn
         self.variational = variational
@@ -34,13 +33,19 @@ class VDVAE(nn.Module):
         self.p_dropout = p_dropout
 
         #Layers hardcooded for now
-        self.feature_hierachies=[input_n, 50, 10, 5, 2]
+        self.feature_hierachies=[]
+        self.feature_hierachies.append(input_n)
+        for n_z in n_zs:
+            self.feature_hierachies.append(n_z)
+        print(self.feature_hierachies)
         encoder_blocks_layers=[]
         for i in range(len(self.feature_hierachies)-1):
             encoder_blocks_layers.append(utils.define_neurons_layers(self.feature_hierachies[i], self.feature_hierachies[i+1], 5))
         decoder_blocks_layers=[]
         for i in range(len(self.feature_hierachies)-2, -1, -1):
             decoder_blocks_layers.append(encoder_blocks_layers[i][::-1])
+        print("encoder_block_layers", encoder_blocks_layers)
+        print("decoder block layers", decoder_blocks_layers)
 
         #Bottom Up
         self.encoder_blocks = []
@@ -59,7 +64,7 @@ class VDVAE(nn.Module):
         self.reparametisation_latent_0 = GaussianBlock(encoder_blocks_layers[-1][-1], self.feature_hierachies[-1])
 
         self.decoder_units = []
-        for i in range(len(decoder_blocks_layers)):
+        for i in range(len(self.feature_hierachies)-2):
             self.decoder_block = NeuralNetworkBlock(layers=decoder_blocks_layers[i], activation=self.activation, batch_norm=batch_norm, p_dropout=p_dropout)
             self.reparametisation_latent = GaussianBlock(decoder_blocks_layers[i][-1], self.feature_hierachies[-2-i])
             self.prior_decoder_block = NeuralNetworkBlock(layers=decoder_blocks_layers[i], activation=self.activation, batch_norm=batch_norm, p_dropout=p_dropout)
@@ -107,21 +112,6 @@ class VDVAE(nn.Module):
 
         return self.reconstructions_mu
 
-
-    def define_layers(self, input_n=96, hidden_layers=[100, 50], n_z=2):
-        encoder_layers = []
-        decoder_layers = []
-        encoder_layers.append(input_n)
-        decoder_layers.append(n_z)
-        n_hidden = len(hidden_layers)
-        for i in range(n_hidden):
-            encoder_layers.append(hidden_layers[i])
-            decoder_layers.append(hidden_layers[n_hidden - 1 - i])
-        self.n_x = encoder_layers[0]
-        self.n_z = encoder_layers[-1]
-
-        return encoder_layers, decoder_layers
-
     def top_down_decode(self, level):
         #decoder_block_output = self.decoder_units[level]["decoder_net"](self.zs[str(level)])
         #concat_for_latent = decoder_block_output + self.encoder_outputs[-2-level]
@@ -158,7 +148,6 @@ class VDVAE(nn.Module):
         :return: loss of reconstructions
         """
         b_n, n_x = x.shape
-        assert(n_x == self.n_x)
 
         if distribution=='gaussian':
             if not self.output_variance:

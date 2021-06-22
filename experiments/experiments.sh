@@ -135,8 +135,11 @@ cd ..
 # ===============================================================
 
 
-#python3 main.py --use_MNIST --use_bernoulli_loss --batch_norm --variational --name "vd_50_10_5_2" --n_zs 50 10 5 2 --lr 0.00001 --train_batch_size 1000 --n_epochs 300
-python3 main.py --use_MNIST --use_bernoulli_loss --batch_norm --variational --name "vd_50_10_5_2" --n_zs 50 10 5 2 --lr 0.000001 --train_batch_size 1000 --n_epochs 300
+python3 main.py --use_MNIST --use_bernoulli_loss --batch_norm --variational --name "vd_784_" --n_zs 784 500 300 200 50 10 2 --lr 0.0001 --train_batch_size 1000 --n_epochs 500
+#python3 main.py --use_MNIST --use_bernoulli_loss --batch_norm --variational --name "vd_50_10_5_2" --n_zs 50 10 5 2 --lr 0.0001 --train_batch_size 1000 --n_epochs 500
+#python3 main.py --use_MNIST --use_bernoulli_loss --batch_norm --variational --name "vd_20_vae" --n_zs 20 --lr 0.0001 --train_batch_size 1000 --n_epochs 300
 
 #python3 main.py --batch_norm --hidden_layers 500 400 300 200 100 50 --variational --name "test_" --n_z 2 --lr 0.0001 --train_batch_size 1000 --beta 0.01
 #python3 main.py --batch_norm --use_bernoulli_loss --hidden_layers 500 400 300 200 100 50 --variational --name "test_" --n_z 2 --lr 0.0001 --train_batch_size 1000 --beta 0.01
+
+#python3 main.py --use_MNIST --batch_norm --use_bernoulli_loss --hidden_layers 500 400 300 200 100 --name "effective_dim_" --n_z 100 --lr 0.0001 --train_batch_size 1000
