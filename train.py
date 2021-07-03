@@ -28,9 +28,10 @@ def initialise(model, start_epoch=1, folder_name="", lr=0.0001, beta=1.0, l2_reg
     model.figs_checkpoints_save_freq = figs_checkpoints_save_freq
     if start_epoch == 1:
         model.losses_file_exists = False
+        model.kls_file_exists = False
         model_utils.book_keeping(model, start_epoch=start_epoch, train_batch_size=train_batch_size, l2_reg=l2_reg)
     else:
-        model.losses_file_exists = True
+        model.kls_file_exists = True
         model_utils.book_keeping(model, start_epoch=start_epoch, train_batch_size=train_batch_size, l2_reg=l2_reg)
         ckpt_path = model.folder_name + '/checkpoints/' + 'ckpt_' + str(start_epoch - 1) + '_weights.path.tar'
         ckpt = torch.load(ckpt_path, map_location=torch.device(model.device))
@@ -57,8 +58,11 @@ def train_epoch_mnist(model, epoch, train_loader, use_bernoulli_loss=False):
 
     head = ['Epoch']
     ret_log = [epoch]
+    kls_log = [epoch]
     model.head = np.append(model.head, head)
     model.ret_log = np.append(model.ret_log, ret_log)
+    model.kls_head = np.append(model.kls_head, head)
+    model.kls_log = np.append(model.kls_log, kls_log)
 
 
 def eval_full_batch_mnist(model, loader, epoch, dataset_name='val', use_bernoulli_loss=False):
@@ -84,16 +88,26 @@ def eval_full_batch_mnist(model, loader, epoch, dataset_name='val', use_bernoull
             if model.variational:
                 model_utils.accum_update(model, str(dataset_name) + '_VLB', model.VLB)
                 model_utils.accum_update(model, str(dataset_name) + '_KL', model.KL)
+                for key, value in model.KLs.items():
+                    model_utils.accum_update(model, str(dataset_name) + '_KL_' + str(key), value)
+
 
         head = [dataset_name + '_loss', dataset_name + '_reconstruction']
         ret_log = [model.accum_loss[str(dataset_name) + '_loss'].avg, model.accum_loss[str(dataset_name) + '_recon'].avg]
+        kls_head = []
+        kls_log = []
         if model.variational:
             head.append(str(dataset_name) + '_VLB')
             head.append(str(dataset_name) + '_KL')
             ret_log.append(model.accum_loss[str(dataset_name) + '_VLB'].avg)
             ret_log.append(model.accum_loss[str(dataset_name) + '_KL'].avg)
+            for key, value in model.KLs.items():
+                kls_head.append(str(dataset_name)+key)
+                kls_log.append(model.accum_loss[str(dataset_name) + '_KL_' + str(key)].avg)
         model.head = np.append(model.head, head)
         model.ret_log = np.append(model.ret_log, ret_log)
+        model.kls_head = np.append(model.kls_head, kls_head)
+        model.kls_log = np.append(model.kls_log, kls_log)
 
         if epoch % model.figs_checkpoints_save_freq == 0:
             reconstructions = reconstructions.reshape(cur_batch_size, 1, 28, 28)

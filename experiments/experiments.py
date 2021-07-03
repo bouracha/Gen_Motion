@@ -247,7 +247,12 @@ def interpolate_acts(model, embeddings, act1, act2):
 # ===============================================================
 #                     ICDF
 # ===============================================================
-def gnerate_icdf(model, num_grid_points=20):
+def gnerate_icdf(model, num_grid_points=20, use_bernoulli_loss=False):
+    if use_bernoulli_loss:
+        distribution='bernoulli'
+    else:
+        distribution='gaussian'
+
     z = np.random.randn(num_grid_points ** 2, 2)
     linspace = np.linspace(0.01, 0.99, num=num_grid_points)
     count = 0
@@ -259,11 +264,17 @@ def gnerate_icdf(model, num_grid_points=20):
 
     z = norm.ppf(z)
     inputs = torch.from_numpy(z).to(model.device)
-    mu = model.generate(inputs.float())
+    mu = model.generate(inputs.float(), distribution)
 
-    file_path = model.folder_name + '/' + 'poses_xz'
-    utils.plot_poses(mu.detach().cpu().numpy(), mu.detach().cpu().numpy(), max_num_images=num_grid_points ** 2, azim=0, evl=90, save_as=file_path)
-    file_path = model.folder_name + '/' + 'poses_yz'
-    utils.plot_poses(mu.detach().cpu().numpy(), mu.detach().cpu().numpy(), max_num_images=num_grid_points ** 2, azim=0, evl=-0, save_as=file_path)
-    file_path = model.folder_name + '/' + 'poses_xy'
-    utils.plot_poses(mu.detach().cpu().numpy(), mu.detach().cpu().numpy(), max_num_images=num_grid_points ** 2, azim=90, evl=90, save_as=file_path)
+    print(mu.shape)
+    if mu.shape[-1] == 784:
+        mu = mu.reshape(num_grid_points ** 2, 1, 28, 28)
+        file_path = model.folder_name + '/icdf'
+        utils.plot_tensor_images(mu, max_num_images=400, nrow=20, show=False, save_as=file_path)
+    else:
+        file_path = model.folder_name + '/' + 'poses_xz'
+        utils.plot_poses(mu.detach().cpu().numpy(), mu.detach().cpu().numpy(), max_num_images=num_grid_points ** 2, azim=0, evl=90, save_as=file_path)
+        file_path = model.folder_name + '/' + 'poses_yz'
+        utils.plot_poses(mu.detach().cpu().numpy(), mu.detach().cpu().numpy(), max_num_images=num_grid_points ** 2, azim=0, evl=-0, save_as=file_path)
+        file_path = model.folder_name + '/' + 'poses_xy'
+        utils.plot_poses(mu.detach().cpu().numpy(), mu.detach().cpu().numpy(), max_num_images=num_grid_points ** 2, azim=90, evl=90, save_as=file_path)

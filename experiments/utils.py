@@ -13,6 +13,11 @@ def plot_tensor_images(image_tensor, max_num_images=25, nrow=5, show=False, save
     Function for visualizing images: Given a tensor of images, number of images, and
     size per image, plots and prints the images in an uniform grid.
     '''
+
+    if max_num_images >50:
+        fig = plt.figure()
+        fig = plt.figure(figsize=(50, 50))
+
     image_unflat = image_tensor.detach().cpu()
     image_grid = make_grid(image_unflat[:max_num_images], nrow=nrow)
     plt.imshow(image_grid.permute(1, 2, 0).squeeze())

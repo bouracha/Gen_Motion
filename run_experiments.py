@@ -4,9 +4,9 @@ import torch.optim
 
 from data import DATA
 
-import models.VAE as nnmodel
-
 import experiments.experiments as experiments
+
+import train as train
 
 from opt import Options
 opt = Options().parse()
@@ -23,6 +23,9 @@ else:
 ##################################################################
 # Load Data
 ##################################################################
+if opt.use_MNIST:
+    ### MNIST
+    folder_name = folder_name+"MNIST"
 if not opt.icdf:
     train_batch_size=opt.train_batch_size
     test_batch_size=opt.test_batch_size
@@ -34,8 +37,13 @@ if not opt.icdf:
 # Instantiate model, and methods used fro training and valdation
 ##################################################################
 
-model = nnmodel.VAE(input_n=96, hidden_layers=opt.hidden_layers, n_z=opt.n_z, variational=opt.variational, output_variance=opt.output_variance, device=device, batch_norm=opt.batch_norm, p_dropout=opt.p_drop)
-model._initialise(start_epoch=opt.start_epoch, folder_name=folder_name)
+#import models.VAE as nnmodel
+#model = nnmodel.VAE(input_n=96, hidden_layers=opt.hidden_layers, n_z=opt.n_z, variational=opt.variational, output_variance=opt.output_variance, device=device, batch_norm=opt.batch_norm, p_dropout=opt.p_drop)
+import models.VDVAE as nnmodel
+model = nnmodel.VDVAE(input_n=784, variational=opt.variational, output_variance=opt.output_variance, device=device, batch_norm=opt.batch_norm, p_dropout=opt.p_drop, n_zs=opt.n_zs)
+
+train.initialise(model, start_epoch=opt.start_epoch, folder_name=folder_name, lr=opt.lr, beta=opt.beta, l2_reg=1e-4, train_batch_size=opt.train_batch_size)
+
 model.eval()
 
 if opt.degradation_experiment:
@@ -81,7 +89,7 @@ if opt.noise_to_inputs:
         df_inputs.to_csv('inputs' + '/' + 'noise_' + str(alpha) + '/' + 'test.csv', header=False, index=False)
 
 if opt.icdf:
-    experiments.gnerate_icdf(model, opt.grid_size)
+    experiments.gnerate_icdf(model, opt.grid_size, use_bernoulli_loss=opt.use_bernoulli_loss)
 
 
 

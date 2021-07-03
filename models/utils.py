@@ -50,7 +50,7 @@ def define_neurons_layers(n_z_pre, n_z_next, num_layers):
     :param num_layers: number of layers desired in between
     :return: list of layer sizes
     """
-    nn_layers = np.linspace(n_z_pre, n_z_next, num_layers)
+    nn_layers = np.linspace(n_z_pre, n_z_next, num_layers+1)
     nn_layers = list(map(int, nn_layers))
     return nn_layers
 
@@ -165,15 +165,24 @@ def book_keeping(model, start_epoch=1, train_batch_size=100, l2_reg=1e-4):
 
     model.head = []
     model.ret_log = []
+    model.kls_log = []
+    model.kls_head = []
 
 def save_checkpoint_and_csv(model, epoch):
     df = pd.DataFrame(np.expand_dims(model.ret_log, axis=0))
+    df_kls = pd.DataFrame(np.expand_dims(model.kls_log, axis=0))
     if model.losses_file_exists:
         with open(model.folder_name + '/' + 'losses.csv', 'a') as f:
             df.to_csv(f, header=False, index=False)
     else:
         df.to_csv(model.folder_name + '/' + 'losses.csv', header=model.head, index=False)
         model.losses_file_exists = True
+    if model.kls_file_exists:
+        with open(model.folder_name + '/' + 'kls.csv', 'a') as f:
+            df_kls.to_csv(f, header=False, index=False)
+    else:
+        df_kls.to_csv(model.folder_name + '/' + 'kls.csv', header=model.kls_head, index=False)
+        model.kls_file_exists = True
     state = {'epoch': epoch + 1,
              'err': model.accum_loss['train_loss'].avg,
              'state_dict': model.state_dict()}
@@ -183,4 +192,5 @@ def save_checkpoint_and_csv(model, epoch):
         torch.save(state, file_path)
     model.head = []
     model.ret_log = []
+    model.kls_log = []
     accum_reset(model)
