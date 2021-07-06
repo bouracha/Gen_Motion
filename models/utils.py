@@ -140,6 +140,7 @@ def book_keeping(model, start_epoch=1, train_batch_size=100, l2_reg=1e-4):
     if start_epoch==1:
         os.makedirs(os.path.join(model.folder_name, 'checkpoints'))
         os.makedirs(os.path.join(model.folder_name, 'images'))
+        os.makedirs(os.path.join(model.folder_name, 'samples'))
         os.makedirs(os.path.join(model.folder_name, 'poses'))
         write_type='w'
     else:

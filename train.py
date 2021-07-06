@@ -17,6 +17,8 @@ import numpy as np
 
 import models.utils as model_utils
 
+from scipy.stats import norm
+
 
 def initialise(model, start_epoch=1, folder_name="", lr=0.0001, beta=1.0, l2_reg=1e-4, train_batch_size=100,
                 figs_checkpoints_save_freq=10):
@@ -24,13 +26,14 @@ def initialise(model, start_epoch=1, folder_name="", lr=0.0001, beta=1.0, l2_reg
     model.folder_name = folder_name
     model.lr = lr
     model.beta = beta
-    model.clipping_value = 1.0
+    model.clipping_value = 100.0
     model.figs_checkpoints_save_freq = figs_checkpoints_save_freq
     if start_epoch == 1:
         model.losses_file_exists = False
         model.kls_file_exists = False
         model_utils.book_keeping(model, start_epoch=start_epoch, train_batch_size=train_batch_size, l2_reg=l2_reg)
     else:
+        model.losses_file_exists = True
         model.kls_file_exists = True
         model_utils.book_keeping(model, start_epoch=start_epoch, train_batch_size=train_batch_size, l2_reg=l2_reg)
         ckpt_path = model.folder_name + '/checkpoints/' + 'ckpt_' + str(start_epoch - 1) + '_weights.path.tar'
@@ -54,6 +57,10 @@ def train_epoch_mnist(model, epoch, train_loader, use_bernoulli_loss=False):
 
         model.optimizer.zero_grad()
         loss.backward()
+        #model.optimizer.step()
+
+        total_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), model.clipping_value)
+        # if total_norm < 1500:
         model.optimizer.step()
 
     head = ['Epoch']
@@ -114,8 +121,20 @@ def eval_full_batch_mnist(model, loader, epoch, dataset_name='val', use_bernoull
             file_path = model.folder_name + '/images/' + str(dataset_name) + '_' + str(epoch) + '_' + 'reals'
             experiment_utils.plot_tensor_images(image, max_num_images=25, nrow=5, show=False, save_as=file_path)
             file_path = model.folder_name + '/images/' + str(dataset_name) + '_' + str(epoch) + '_' + 'reconstructions'
-            experiment_utils.plot_tensor_images(reconstructions, max_num_images=25, nrow=5, show=False,
-                                                save_as=file_path)
+            experiment_utils.plot_tensor_images(reconstructions, max_num_images=25, nrow=5, show=False, save_as=file_path)
+            file_path = model.folder_name + '/images/' + str(dataset_name) + '_latest_' + 'reals'
+            experiment_utils.plot_tensor_images(image, max_num_images=25, nrow=5, show=False, save_as=file_path)
+            file_path = model.folder_name + '/images/' + str(dataset_name) + '_latest_' + 'reconstructions'
+            experiment_utils.plot_tensor_images(reconstructions, max_num_images=25, nrow=5, show=False, save_as=file_path)
+
+            experiment_utils.gnerate_samples(model, epoch, num_grid_points=20, use_bernoulli_loss=True)
+            experiment_utils.gnerate_samples(model, epoch, num_grid_points=20, use_bernoulli_loss=True, latent_resolution=0)
+            experiment_utils.gnerate_samples(model, epoch, num_grid_points=20, use_bernoulli_loss=True, latent_resolution=1)
+            experiment_utils.gnerate_samples(model, epoch, num_grid_points=20, use_bernoulli_loss=True, latent_resolution=2)
+            experiment_utils.gnerate_samples(model, epoch, num_grid_points=20, use_bernoulli_loss=True, latent_resolution=3)
+            experiment_utils.gnerate_samples(model, epoch, num_grid_points=20, use_bernoulli_loss=True, latent_resolution=4)
+            experiment_utils.gnerate_samples(model, epoch, num_grid_points=20, use_bernoulli_loss=True, latent_resolution=5)
+            experiment_utils.gnerate_samples(model, epoch, num_grid_points=20, use_bernoulli_loss=True, latent_resolution=6)
 
 def train_epoch(model, epoch, train_loader):
     model.train()
@@ -131,7 +150,7 @@ def train_epoch(model, epoch, train_loader):
 
         model.optimizer.zero_grad()
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(model.parameters(), model.clipping_value)
+        total_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), model.clipping_value)
         model.optimizer.step()
 
         bar.suffix = '{}/{}|batch time {:.4f}s|total time{:.2f}s'.format(i + 1, len(train_loader), time.time() - bt, time.time() - st)

@@ -157,7 +157,7 @@ cd ..
 # ===============================================================
 
 #python3 main.py --use_MNIST --use_bernoulli_loss --batch_norm --variational --name "vdvae_20_" --n_zs 20 16 10 8 5 3 2 --lr 0.0001 --train_batch_size 1000 --n_epochs 5000 --start_epoch 501
-python3 main.py --use_MNIST --use_bernoulli_loss --batch_norm --variational --name "vdvae_2_" --n_zs 2 2 2 2 2 2 2 --lr 0.0001 --train_batch_size 1000 --n_epochs 5000
+#python3 main.py --use_MNIST --use_bernoulli_loss --batch_norm --variational --name "vdvae_2_" --n_zs 2 2 2 2 2 2 2 --lr 0.0001 --train_batch_size 1000 --n_epochs 5000
 #python3 main.py --use_MNIST --use_bernoulli_loss --batch_norm --variational --name "vdvae_all20_" --n_zs 20 20 20 20 20 20 20 --lr 0.0001 --train_batch_size 1000 --n_epochs 5000
 #python3 main.py --use_MNIST --use_bernoulli_loss --batch_norm --variational --name "vdvae_all5_" --n_zs 5 5 5 5 5 5 5 --lr 0.0001 --train_batch_size 1000 --n_epochs 5000
 
@@ -167,7 +167,15 @@ python3 main.py --use_MNIST --use_bernoulli_loss --batch_norm --variational --na
 # ===============================================================
 
 #python3 run_experiments.py --use_MNIST --use_bernoulli_loss --batch_norm --variational --name "vdvae_2_" --n_zs 2 2 2 2 2 2 2 --start_epoch 1001 --icdf
+#python3 run_experiments.py --use_MNIST --use_bernoulli_loss --batch_norm --variational --name "vdvae4_" --n_zs 2 4 6 8 10 12 14 --start_epoch 211 --icdf
 
+# ===============================================================
+#                     Residual VDVAE version 2
+# ===============================================================
 
+#python3 main.py --use_MNIST --use_bernoulli_loss --batch_norm --variational --name "vdvae3_2_" --n_zs 2 4 6 8 10 12 14 --lr 0.001 --train_batch_size 100 --n_epochs 5000
+#python3 main.py --use_MNIST --use_bernoulli_loss --batch_norm --variational --name "vdvae2_2_" --n_zs 2 4 6 8 10 12 14 --lr 0.0001 --train_batch_size 1000 --n_epochs 5000
+#python3 main.py --use_MNIST --use_bernoulli_loss --batch_norm --variational --name "vdvae4_" --n_zs 2 4 6 8 10 12 14 --lr 0.0001 --train_batch_size 1000 --n_epochs 5000
+python3 main.py --use_MNIST --use_bernoulli_loss --batch_norm --variational --name "vdvae5_" --n_zs 14 12 10 8 6 4 2 --lr 0.0001 --train_batch_size 1000 --n_epochs 5000 --start_epoch 141
 
 

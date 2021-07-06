@@ -8,6 +8,48 @@ from matplotlib import pyplot as plt
 
 import utils.viz_3d as viz_3d
 
+import torch
+
+from scipy.stats import norm
+
+def gnerate_samples(model, epoch, num_grid_points=20, use_bernoulli_loss=False, latent_resolution=999):
+    if use_bernoulli_loss:
+        distribution='bernoulli'
+    else:
+        distribution='gaussian'
+
+    z = np.random.randn(num_grid_points ** 2, 2)
+    linspace = np.linspace(0.01, 0.99, num=num_grid_points)
+    count = 0
+    for i in linspace:
+        for j in linspace:
+            z[count, 0] = j
+            z[count, 1] = i
+            count += 1
+
+    z = norm.ppf(z)
+    inputs = torch.from_numpy(z).to(model.device)
+    mu = model.generate(inputs.float(), distribution, latent_resolution=latent_resolution)
+
+    if mu.shape[-1] == 784:
+        mu = mu.reshape(num_grid_points ** 2, 1, 28, 28)
+        if latent_resolution == 999:
+            file_path = model.folder_name + '/samples/' + str(epoch) + '_icdf'
+            plot_tensor_images(mu, max_num_images=400, nrow=20, show=False, save_as=file_path)
+            file_path = model.folder_name + '/samples/latest_icdf'
+            plot_tensor_images(mu, max_num_images=400, nrow=20, show=False, save_as=file_path)
+        else:
+            file_path = model.folder_name + '/samples/latest_icdf' + '_res_' + str(latent_resolution)
+            plot_tensor_images(mu, max_num_images=400, nrow=20, show=False, save_as=file_path)
+    else:
+        file_path = model.folder_name + '/' + 'poses_xz'
+        plot_poses(mu.detach().cpu().numpy(), mu.detach().cpu().numpy(), max_num_images=num_grid_points ** 2, azim=0, evl=90, save_as=file_path)
+        file_path = model.folder_name + '/' + 'poses_yz'
+        plot_poses(mu.detach().cpu().numpy(), mu.detach().cpu().numpy(), max_num_images=num_grid_points ** 2, azim=0, evl=-0, save_as=file_path)
+        file_path = model.folder_name + '/' + 'poses_xy'
+        plot_poses(mu.detach().cpu().numpy(), mu.detach().cpu().numpy(), max_num_images=num_grid_points ** 2, azim=90, evl=90, save_as=file_path)
+
+
 def plot_tensor_images(image_tensor, max_num_images=25, nrow=5, show=False, save_as=None):
     '''
     Function for visualizing images: Given a tensor of images, number of images, and
@@ -124,3 +166,4 @@ def add_noise(X, alpha=1.0):
     X_added_noise = X_added_noise + alpha * np.random.uniform(0, 1, (m, n))
 
     return X_added_noise
+

@@ -174,7 +174,7 @@ class GC_Block(nn.Module):
 class FC_Block(nn.Module):
     def __init__(self, in_features, out_features, activation=nn.LeakyReLU(0.1), batch_norm=False, p_dropout=0.0, bias=True):
         """
-        Define a residual block of GCN
+        Define a fully connected block
         """
         super(FC_Block, self).__init__()
         self.in_features = in_features
