@@ -43,14 +43,7 @@ class VDVAE(nn.Module):
         encoder_blocks_layers=[]
         for i in range(len(self.encoder_output_sizes)-1):
             encoder_blocks_layers.append(utils.define_neurons_layers(self.encoder_output_sizes[i], self.encoder_output_sizes[i+1], 2))
-        #decoder_blocks_layers = []
         print("encoder_block_layers", encoder_blocks_layers)
-        #temp_blocks = []
-        #for i in range(len(self.feature_hierachies)-1):
-        #    temp_blocks.append(utils.define_neurons_layers(self.feature_hierachies[i], 100, 4))
-        #for i in range(len(self.feature_hierachies)-2, -1, -1):
-        #    decoder_blocks_layers.append(temp_blocks[i][::-1])
-        #print("decoder block layers", decoder_blocks_layers)
 
         #Bottom Up
         self.encoder_blocks = []
@@ -69,6 +62,7 @@ class VDVAE(nn.Module):
         self.z_prior_log_vars = {}
         self.KLs = {}
         self.zs = {}
+        self.residuals_dict = {}
 
         #Top Down
         self.reparametisation_latent_0 = GaussianBlock(encoder_blocks_layers[i][-1], self.feature_hierachies[-1])
@@ -125,7 +119,7 @@ class VDVAE(nn.Module):
         self.KLs["0"] = utils.kullback_leibler_divergence(self.z_mus["0"], self.z_log_vars["0"], mu_2=torch.zeros_like(self.z_mus["0"]), log_var_2=torch.ones_like(self.z_log_vars["0"]))
         self.zs["0"] = utils.reparametisation_trick(self.z_mus["0"], self.z_log_vars["0"], self.device)
 
-        self.residuals = self.reshape_z0_linearly(self.zs["0"])
+        self.residuals_dict["0"] = self.reshape_z0_linearly(self.zs["0"])
 
         for i in range(len(self.feature_hierachies)-2):
             self.KLs[str(i+1)], self.zs[str(i+1)] = self.top_down_decode(level=i)
@@ -141,17 +135,17 @@ class VDVAE(nn.Module):
         return self.reconstructions_mu
 
     def top_down_decode(self, level, train=True, latent_resolution=999):
-        res_block_output = self.decoder_units[level]["decoder_block"](self.residuals)
-        self.residuals = self.residuals + res_block_output
+        res_block_output = self.decoder_units[level]["decoder_block"](self.residuals_dict[str(level)])
+        self.residuals_dict[str(level+1)] = self.residuals_dict[str(level)] + res_block_output
 
         if train:
-            concat_for_posterior = torch.cat((self.residuals, self.encoder_outputs[-2-level]), dim=1)
+            concat_for_posterior = torch.cat((self.residuals_dict[str(level+1)], self.encoder_outputs[-2-level]), dim=1)
             posterior_decoder_block_output = self.decoder_units[level]["posterior_decoder_block"](concat_for_posterior)
             self.z_posterior_mus[str(level + 1)], self.z_posterior_log_vars[str(level + 1)] = self.decoder_units[level]["reparametisation_posterior"](posterior_decoder_block_output)
 
-        prior_decoder_block_output = self.decoder_units[level]["prior_decoder_block"](self.residuals)
+        prior_decoder_block_output = self.decoder_units[level]["prior_decoder_block"](self.residuals_dict[str(level+1)])
         self.z_prior_mus[str(level + 1)], self.z_prior_log_vars[str(level + 1)] = self.decoder_units[level]["reparametisation_prior"](prior_decoder_block_output)
-        self.residuals = self.residuals + prior_decoder_block_output
+        self.residuals_dict[str(level+1)] = self.residuals_dict[str(level+1)] + prior_decoder_block_output
 
         if train:
             self.z_mus[str(level + 1)] = self.z_posterior_mus[str(level+1)]
@@ -167,19 +161,20 @@ class VDVAE(nn.Module):
             self.zs[str(level + 1)] = self.z_mus[str(level+1)]
 
         reshaped_z = self.decoder_units[level]["reshape_z_linearly"](self.zs[str(level+1)])
-        self.residuals = self.residuals + reshaped_z
+        self.residuals_dict[str(level+1)] = self.residuals_dict[str(level+1)] + reshaped_z
 
         return self.KLs[str(level+1)], self.zs[str(level+1)]
 
-    def generate(self, z, distribution='gaussian', latent_resolution=999):
+    def generate(self, z, distribution='gaussian', latent_resolution=0, z_prev_level=0):
         """
         :param z: batch of random variables
         :return: batch of generated samples
         """
-        self.zs["0"] = z
-        self.residuals = self.reshape_z0_linearly(self.zs["0"])
+        if z_prev_level==0 and z!=None:
+            self.zs["0"] = z
+            self.residuals_dict["0"] = self.reshape_z0_linearly(self.zs["0"])
 
-        for i in range(len(self.feature_hierachies)-2):
+        for i in range(z_prev_level, len(self.feature_hierachies)-2):
             self.KLs[str(i+1)], self.zs[str(i+1)] = self.top_down_decode(level=i, train=False, latent_resolution=latent_resolution)
 
         decoder_output_final = self.decoder_block_final(self.zs[str(len(self.feature_hierachies)-2)])

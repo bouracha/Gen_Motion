@@ -173,9 +173,6 @@ cd ..
 #                     Residual VDVAE version 2
 # ===============================================================
 
-#python3 main.py --use_MNIST --use_bernoulli_loss --batch_norm --variational --name "vdvae3_2_" --n_zs 2 4 6 8 10 12 14 --lr 0.001 --train_batch_size 100 --n_epochs 5000
-#python3 main.py --use_MNIST --use_bernoulli_loss --batch_norm --variational --name "vdvae2_2_" --n_zs 2 4 6 8 10 12 14 --lr 0.0001 --train_batch_size 1000 --n_epochs 5000
-#python3 main.py --use_MNIST --use_bernoulli_loss --batch_norm --variational --name "vdvae4_" --n_zs 2 4 6 8 10 12 14 --lr 0.0001 --train_batch_size 1000 --n_epochs 5000
-python3 main.py --use_MNIST --use_bernoulli_loss --batch_norm --variational --name "vdvae5_" --n_zs 14 12 10 8 6 4 2 --lr 0.0001 --train_batch_size 1000 --n_epochs 5000 --start_epoch 141
+python3 main.py --use_MNIST --use_bernoulli_loss --batch_norm --variational --name "vdvae5_" --n_zs 14 12 10 8 6 4 2 --lr 0.0001 --train_batch_size 1000 --n_epochs 10000 --start_epoch 5001
 
 
