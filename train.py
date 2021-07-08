@@ -17,9 +17,6 @@ import numpy as np
 
 import models.utils as model_utils
 
-from scipy.stats import norm
-
-
 def initialise(model, start_epoch=1, folder_name="", lr=0.0001, beta=1.0, l2_reg=1e-4, train_batch_size=100,
                 figs_checkpoints_save_freq=10):
     model.optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=l2_reg)
@@ -60,7 +57,8 @@ def train_epoch_mnist(model, epoch, train_loader, use_bernoulli_loss=False):
         #model.optimizer.step()
 
         total_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), model.clipping_value)
-        # if total_norm < 1500:
+        model.writer.add_scalar("Gradients/total_gradient_norm", total_norm, epoch)
+        #if total_norm < 1500:
         model.optimizer.step()
 
     head = ['Epoch']
@@ -101,6 +99,8 @@ def eval_full_batch_mnist(model, loader, epoch, dataset_name='val', use_bernoull
 
         head = [dataset_name + '_loss', dataset_name + '_reconstruction']
         ret_log = [model.accum_loss[str(dataset_name) + '_loss'].avg, model.accum_loss[str(dataset_name) + '_recon'].avg]
+        model.writer.add_scalars(f'loss/loss', {str(dataset_name): model.accum_loss[str(dataset_name) + '_loss'].avg,}, epoch)
+        model.writer.add_scalars(f'loss/reconstructions', {str(dataset_name): model.accum_loss[str(dataset_name) + '_recon'].avg,}, epoch)
         kls_head = []
         kls_log = []
         if model.variational:
@@ -108,9 +108,11 @@ def eval_full_batch_mnist(model, loader, epoch, dataset_name='val', use_bernoull
             head.append(str(dataset_name) + '_KL')
             ret_log.append(model.accum_loss[str(dataset_name) + '_VLB'].avg)
             ret_log.append(model.accum_loss[str(dataset_name) + '_KL'].avg)
+            model.writer.add_scalars(f'KLs/total', {str(dataset_name): model.accum_loss[str(dataset_name)+'_KL_'+str(key)].avg, }, epoch)
             for key, value in model.KLs.items():
                 kls_head.append(str(dataset_name)+key)
                 kls_log.append(model.accum_loss[str(dataset_name) + '_KL_' + str(key)].avg)
+                model.writer.add_scalars(f'KLs/'+str(dataset_name), {str(key): model.accum_loss[str(dataset_name)+'_KL_'+str(key)].avg, }, epoch)
         model.head = np.append(model.head, head)
         model.ret_log = np.append(model.ret_log, ret_log)
         model.kls_head = np.append(model.kls_head, kls_head)
@@ -127,14 +129,8 @@ def eval_full_batch_mnist(model, loader, epoch, dataset_name='val', use_bernoull
             file_path = model.folder_name + '/images/' + str(dataset_name) + '_latest_' + 'reconstructions'
             experiment_utils.plot_tensor_images(reconstructions, max_num_images=25, nrow=5, show=False, save_as=file_path)
 
-            experiment_utils.gnerate_samples(model, epoch, num_grid_points=20, use_bernoulli_loss=True)
-            experiment_utils.gnerate_samples(model, epoch, num_grid_points=20, use_bernoulli_loss=True, latent_resolution=0)
-            experiment_utils.gnerate_samples(model, epoch, num_grid_points=20, use_bernoulli_loss=True, latent_resolution=1)
-            experiment_utils.gnerate_samples(model, epoch, num_grid_points=20, use_bernoulli_loss=True, latent_resolution=2)
-            experiment_utils.gnerate_samples(model, epoch, num_grid_points=20, use_bernoulli_loss=True, latent_resolution=3)
-            experiment_utils.gnerate_samples(model, epoch, num_grid_points=20, use_bernoulli_loss=True, latent_resolution=4)
-            experiment_utils.gnerate_samples(model, epoch, num_grid_points=20, use_bernoulli_loss=True, latent_resolution=5)
-            experiment_utils.gnerate_samples(model, epoch, num_grid_points=20, use_bernoulli_loss=True, latent_resolution=6)
+            for i in range(len(model.zs)):
+                experiment_utils.gnerate_samples(model, epoch, num_grid_points=20, use_bernoulli_loss=True, latent_resolution=i, z_prev_level=np.maximum(i-1, 0))
 
 def train_epoch(model, epoch, train_loader):
     model.train()

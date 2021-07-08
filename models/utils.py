@@ -5,6 +5,8 @@ import os
 import pandas as pd
 import numpy as np
 
+from torch.utils.tensorboard import SummaryWriter
+
 class AccumLoss(object):
     def __init__(self):
         self.reset()
@@ -133,10 +135,7 @@ def cal_VLB(p_log_x, KL, beta=1.0):
 def book_keeping(model, start_epoch=1, train_batch_size=100, l2_reg=1e-4):
     model.accum_loss = dict()
 
-    if model.variational:
-        model.folder_name = model.folder_name+"_VAE"
-    else:
-        model.folder_name = model.folder_name+"_AE"
+    model.writer = SummaryWriter(log_dir=model.folder_name+'/tensorboard')
     if start_epoch==1:
         os.makedirs(os.path.join(model.folder_name, 'checkpoints'))
         os.makedirs(os.path.join(model.folder_name, 'images'))

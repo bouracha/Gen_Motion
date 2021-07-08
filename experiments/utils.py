@@ -12,7 +12,7 @@ import torch
 
 from scipy.stats import norm
 
-def gnerate_samples(model, epoch, num_grid_points=20, use_bernoulli_loss=False, latent_resolution=999):
+def gnerate_samples(model, epoch, num_grid_points=20, use_bernoulli_loss=False, latent_resolution=999, z_prev_level=0):
     if use_bernoulli_loss:
         distribution='bernoulli'
     else:
@@ -26,21 +26,16 @@ def gnerate_samples(model, epoch, num_grid_points=20, use_bernoulli_loss=False, 
             z[count, 0] = j
             z[count, 1] = i
             count += 1
-
     z = norm.ppf(z)
     inputs = torch.from_numpy(z).to(model.device)
-    mu = model.generate(inputs.float(), distribution, latent_resolution=latent_resolution)
+    mu = model.generate(inputs.float(), distribution, latent_resolution=latent_resolution, z_prev_level=z_prev_level)
 
     if mu.shape[-1] == 784:
         mu = mu.reshape(num_grid_points ** 2, 1, 28, 28)
-        if latent_resolution == 999:
-            file_path = model.folder_name + '/samples/' + str(epoch) + '_icdf'
-            plot_tensor_images(mu, max_num_images=400, nrow=20, show=False, save_as=file_path)
-            file_path = model.folder_name + '/samples/latest_icdf'
-            plot_tensor_images(mu, max_num_images=400, nrow=20, show=False, save_as=file_path)
-        else:
-            file_path = model.folder_name + '/samples/latest_icdf' + '_res_' + str(latent_resolution)
-            plot_tensor_images(mu, max_num_images=400, nrow=20, show=False, save_as=file_path)
+        file_path = model.folder_name + '/samples/' + str(epoch) + '_icdf'+'_res_'+str(latent_resolution)
+        plot_tensor_images(mu, max_num_images=400, nrow=20, show=False, save_as=file_path)
+        file_path = model.folder_name + '/samples/latest_icdf'+'_res_'+str(latent_resolution)
+        plot_tensor_images(mu, max_num_images=400, nrow=20, show=False, save_as=file_path)
     else:
         file_path = model.folder_name + '/' + 'poses_xz'
         plot_poses(mu.detach().cpu().numpy(), mu.detach().cpu().numpy(), max_num_images=num_grid_points ** 2, azim=0, evl=90, save_as=file_path)
@@ -66,7 +61,7 @@ def plot_tensor_images(image_tensor, max_num_images=25, nrow=5, show=False, save
     if show:
         plt.show()
     if not save_as == None:
-        plt.savefig(save_as)
+        plt.savefig(save_as, bbox_inches='tight')
     plt.close()
 
 
@@ -117,7 +112,7 @@ def plot_poses(xyz_gt, xyz_pred, max_num_images=25, azim=0, evl=0, save_as=None,
     fig.subplots_adjust(hspace=0)
     fig.subplots_adjust(wspace=0)
 
-    plt.savefig(save_as)
+    plt.savefig(save_as, bbox_inches='tight')
     plt.close()
 
 
