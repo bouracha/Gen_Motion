@@ -75,6 +75,7 @@ for epoch in range(opt.start_epoch, opt.n_epochs+1):
         train.eval_full_batch(model, train_loader, epoch, 'train')
         train.eval_full_batch(model, val_loader, epoch, 'val')
 
+    model.epoch_cur += 1
     model_utils.save_checkpoint_and_csv(model, epoch)
     model.writer.close()
 

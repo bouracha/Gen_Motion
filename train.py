@@ -25,6 +25,9 @@ def initialise(model, start_epoch=1, folder_name="", lr=0.0001, beta=1.0, l2_reg
     model.beta = beta
     model.clipping_value = 100.0
     model.figs_checkpoints_save_freq = figs_checkpoints_save_freq
+    model.epoch_cur = start_epoch
+    model.warmup_block_length = 200
+    model.warmup = True
     if start_epoch == 1:
         model.losses_file_exists = False
         model.kls_file_exists = False
