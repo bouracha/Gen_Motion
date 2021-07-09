@@ -127,8 +127,6 @@ class VDVAE(nn.Module):
         decoder_output_final = self.decoder_block_final(self.zs[str(len(self.feature_hierachies)-2)])
         self.reconstructions_mu, self.reconstructions_log_var = self.reparametisation_output(decoder_output_final)
 
-        self.KL = sum(self.KLs.values())
-
         sig = nn.Sigmoid()
         self.bernoulli_output = sig(self.reconstructions_mu)
 
@@ -138,8 +136,18 @@ class VDVAE(nn.Module):
         res_block_output = self.decoder_units[level]["decoder_block"](self.residuals_dict[str(level)])
         self.residuals_dict[str(level+1)] = self.residuals_dict[str(level)] + res_block_output
 
-        if train:
-            concat_for_posterior = torch.cat((self.residuals_dict[str(level+1)], self.encoder_outputs[-2-level]), dim=1)
+        latent_active = True
+        if self.warmup==True and (self.epoch_cur < (level+1)*self.warmup_block_length):
+            latent_active=False
+
+        if train==True or latent_active==False:
+            if latent_active==True:
+                encoder_output = self.encoder_outputs[-2-level]
+            else:
+                batch_n = self.residuals_dict[str(level + 1)].shape[0]
+                features_n = self.encoder_outputs[-2 - level].shape[1]
+                encoder_output = torch.zeros(batch_n, features_n).to(torch.device(self.device))
+            concat_for_posterior = torch.cat((self.residuals_dict[str(level+1)], encoder_output), dim=1)
             posterior_decoder_block_output = self.decoder_units[level]["posterior_decoder_block"](concat_for_posterior)
             self.z_posterior_mus[str(level + 1)], self.z_posterior_log_vars[str(level + 1)] = self.decoder_units[level]["reparametisation_posterior"](posterior_decoder_block_output)
 
@@ -147,7 +155,7 @@ class VDVAE(nn.Module):
         self.z_prior_mus[str(level + 1)], self.z_prior_log_vars[str(level + 1)] = self.decoder_units[level]["reparametisation_prior"](prior_decoder_block_output)
         self.residuals_dict[str(level+1)] = self.residuals_dict[str(level+1)] + prior_decoder_block_output
 
-        if train:
+        if train==True or latent_active==False:
             self.z_mus[str(level + 1)] = self.z_posterior_mus[str(level+1)]
             self.z_log_vars[str(level + 1)] = self.z_posterior_log_vars[str(level+1)]
         else:
@@ -157,6 +165,8 @@ class VDVAE(nn.Module):
         if level < latent_resolution:
             self.KLs[str(level+1)] = utils.kullback_leibler_divergence(self.z_mus[str(level+1)], self.z_log_vars[str(level+1)], mu_2=self.z_prior_mus[str(level+1)], log_var_2=self.z_prior_log_vars[str(level+1)])
             self.zs[str(level+1)] = utils.reparametisation_trick(self.z_mus[str(level+1)], self.z_log_vars[str(level+1)], self.device)
+            if latent_active == False:
+                self.zs[str(level + 1)] = self.z_mus[str(level + 1)]
         else:
             self.zs[str(level + 1)] = self.z_mus[str(level+1)]
 
@@ -205,6 +215,11 @@ class VDVAE(nn.Module):
             self.recon_loss = -self.log_lik
 
         if self.variational:
+            #self.KL = sum(self.KLs.values())
+            self.KL = 0
+            for i in range(len(self.zs)):
+                if self.epoch_cur > i*self.warmup_block_length:
+                    self.KL += self.KLs[str(i)]
             self.VLB = utils.cal_VLB(self.log_lik, self.KL, self.beta)
             self.loss = -self.VLB
         else:
