@@ -92,6 +92,7 @@ class VDVAE(nn.Module):
             self.decoder_units[i] = nn.ModuleDict(self.decoder_units[i])
         self.decoder_units = nn.ModuleList(self.decoder_units)
 
+        #self.decoder_block_final = NeuralNetworkBlock(layers=utils.define_neurons_layers(100, 100, 4), activation=self.activation, batch_norm=batch_norm, p_dropout=p_dropout)
         self.decoder_block_final = NeuralNetworkBlock(layers=utils.define_neurons_layers(self.feature_hierachies[1], 100, 4), activation=self.activation, batch_norm=batch_norm, p_dropout=p_dropout)
         self.reparametisation_output = GaussianBlock(100, input_n)
 
@@ -116,7 +117,7 @@ class VDVAE(nn.Module):
         self.z_prior_mus["0"], self.z_prior_log_vars["0"] = torch.zeros_like(self.z_posterior_mus["0"]), torch.zeros_like(self.z_posterior_log_vars["0"])
         self.z_mus["0"], self.z_log_vars["0"] = self.z_posterior_mus["0"], self.z_posterior_log_vars["0"]
 
-        self.KLs["0"] = utils.kullback_leibler_divergence(self.z_mus["0"], self.z_log_vars["0"], mu_2=torch.zeros_like(self.z_mus["0"]), log_var_2=torch.ones_like(self.z_log_vars["0"]))
+        self.KLs["0"] = utils.kullback_leibler_divergence(self.z_mus["0"], self.z_log_vars["0"], mu_2=self.z_prior_mus["0"], log_var_2=self.z_prior_log_vars["0"])
         self.zs["0"] = utils.reparametisation_trick(self.z_mus["0"], self.z_log_vars["0"], self.device)
 
         self.residuals_dict["0"] = self.reshape_z0_linearly(self.zs["0"])
@@ -124,6 +125,11 @@ class VDVAE(nn.Module):
         for i in range(len(self.feature_hierachies)-2):
             self.KLs[str(i+1)], self.zs[str(i+1)] = self.top_down_decode(level=i)
 
+        #all_residuals = 0
+        #for i in range(len(self.feature_hierachies)-1):
+            #all_residuals = all_residuals + self.residuals_dict[str(i)]
+
+        #decoder_output_final = self.decoder_block_final(self.residuals_dict[str(len(self.feature_hierachies)-2)])
         decoder_output_final = self.decoder_block_final(self.zs[str(len(self.feature_hierachies)-2)])
         self.reconstructions_mu, self.reconstructions_log_var = self.reparametisation_output(decoder_output_final)
 
@@ -187,6 +193,7 @@ class VDVAE(nn.Module):
         for i in range(z_prev_level, len(self.feature_hierachies)-2):
             self.KLs[str(i+1)], self.zs[str(i+1)] = self.top_down_decode(level=i, train=False, latent_resolution=latent_resolution)
 
+        #decoder_output_final = self.decoder_block_final(self.residuals_dict[str(len(self.feature_hierachies)-2)])
         decoder_output_final = self.decoder_block_final(self.zs[str(len(self.feature_hierachies)-2)])
         self.reconstructions_mu, self.reconstructions_log_var = self.reparametisation_output(decoder_output_final)
 
@@ -218,8 +225,11 @@ class VDVAE(nn.Module):
             #self.KL = sum(self.KLs.values())
             self.KL = 0
             for i in range(len(self.zs)):
-                if self.epoch_cur > i*self.warmup_block_length:
-                    self.KL += self.KLs[str(i)]
+                if self.warmup:
+                    if self.epoch_cur > i*self.warmup_block_length:
+                        self.KL += self.KLs[str(i)]
+                else:
+                    self.KL = sum(self.KLs.values())
             self.VLB = utils.cal_VLB(self.log_lik, self.KL, self.beta)
             self.loss = -self.VLB
         else:

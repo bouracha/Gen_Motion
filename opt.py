@@ -42,6 +42,9 @@ class Options:
         self.parser.add_argument('--n_epochs', type=int, default=50, help='Number of epochs to train for')
         self.parser.add_argument('--train_batch_size', type=int, default=100, help='Number of epochs to train for')
         self.parser.add_argument('--test_batch_size', type=int, default=100, help='If not 1, load checkpoint at this epoch')
+        self.parser.add_argument('--warmup', dest='warmup', action='store_true', help='toggle to use warmup for VDVAE')
+        self.parser.set_defaults(warmup=False)
+        self.parser.add_argument('--warmup_block_length', type=int, default=20, help='for how many epochs to warm up each latent variable')
         # ===============================================================
         #                     MNIST experiments options
         # ===============================================================

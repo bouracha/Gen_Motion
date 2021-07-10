@@ -52,8 +52,9 @@ def plot_tensor_images(image_tensor, max_num_images=25, nrow=5, show=False, save
     '''
 
     if max_num_images >50:
+        fig = plt.figure(figsize=(30, 30))
+    else:
         fig = plt.figure()
-        fig = plt.figure(figsize=(50, 50))
 
     image_unflat = image_tensor.detach().cpu()
     image_grid = make_grid(image_unflat[:max_num_images], nrow=nrow)
@@ -62,7 +63,7 @@ def plot_tensor_images(image_tensor, max_num_images=25, nrow=5, show=False, save
         plt.show()
     if not save_as == None:
         plt.savefig(save_as, bbox_inches='tight')
-    plt.close()
+    plt.close(fig)
 
 
 def plot_poses(xyz_gt, xyz_pred, max_num_images=25, azim=0, evl=0, save_as=None, one_dim_grid=False):

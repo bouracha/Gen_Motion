@@ -10,6 +10,11 @@ import models.utils as model_utils
 from opt import Options
 opt = Options().parse()
 
+import experiments.utils as experiment_utils
+import numpy as np
+import torch.multiprocessing
+torch.multiprocessing.set_sharing_strategy('file_system')
+
 l2_reg = 1e-4
 
 folder_name=opt.name
@@ -61,21 +66,24 @@ print(">>> data loaded !")
 #model = nnmodel.VAE(input_n=input_n, hidden_layers=opt.hidden_layers,  n_z=opt.n_z, variational=opt.variational, output_variance=opt.output_variance, device=device, batch_norm=opt.batch_norm, p_dropout=opt.p_drop)
 import models.VDVAE as nnmodel
 model = nnmodel.VDVAE(input_n=input_n, variational=opt.variational, output_variance=opt.output_variance, device=device, batch_norm=opt.batch_norm, p_dropout=opt.p_drop, n_zs=opt.n_zs)
-train.initialise(model, start_epoch=opt.start_epoch, folder_name=folder_name, lr=opt.lr, beta=opt.beta, l2_reg=l2_reg, train_batch_size=train_batch_size)
+train.initialise(model, start_epoch=opt.start_epoch, folder_name=folder_name, lr=opt.lr, beta=opt.beta, l2_reg=l2_reg, train_batch_size=train_batch_size, warmup=opt.warmup, warmup_block_length=opt.warmup_block_length)
 
 for epoch in range(opt.start_epoch, opt.n_epochs+1):
     print("Epoch:{}/{}".format(epoch, opt.n_epochs))
+    model.epoch_cur = epoch
 
     if opt.use_MNIST:
         train.train_epoch_mnist(model, epoch, train_loader, opt.use_bernoulli_loss)
         train.eval_full_batch_mnist(model, train_loader, epoch, 'train', opt.use_bernoulli_loss)
         train.eval_full_batch_mnist(model, val_loader, epoch, 'val', opt.use_bernoulli_loss)
+        if epoch % model.figs_checkpoints_save_freq == 0:
+            for i in range(len(model.zs)):
+                experiment_utils.gnerate_samples(model, epoch, num_grid_points=20, use_bernoulli_loss=True, latent_resolution=i, z_prev_level=np.maximum(i - 1, 0))
     else:
         train.train_epoch(model, epoch, train_loader)
         train.eval_full_batch(model, train_loader, epoch, 'train')
         train.eval_full_batch(model, val_loader, epoch, 'val')
 
-    model.epoch_cur += 1
     model_utils.save_checkpoint_and_csv(model, epoch)
     model.writer.close()
 

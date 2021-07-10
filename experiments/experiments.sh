@@ -179,6 +179,18 @@ cd ..
 #python3 main.py --use_MNIST --use_bernoulli_loss --batch_norm --variational --name "VDVAE_2_2_2" --n_zs 2 2 2 --lr 0.0001 --train_batch_size 1000 --n_epochs 5000 --start_epoch 1
 #python3 main.py --use_MNIST --use_bernoulli_loss --batch_norm --variational --name "VDVAE_4_2" --n_zs 4 2 --lr 0.0001 --train_batch_size 1000 --n_epochs 5000 --start_epoch 171
 
-python3 main.py --use_MNIST --use_bernoulli_loss --batch_norm --variational --name "reverse3_" --n_zs 14 12 10 8 6 4 2 --lr 0.0001 --train_batch_size 1000 --n_epochs 5000 --start_epoch 2011
+#python3 main.py --use_MNIST --use_bernoulli_loss --batch_norm --variational --name "reverse3_" --n_zs 14 12 10 8 6 4 2 --lr 0.0001 --train_batch_size 1000 --n_epochs 5000 --start_epoch 2011
+#python3 main.py --use_MNIST --use_bernoulli_loss --batch_norm --variational --name "reverse3_reproduce" --n_zs 14 12 10 8 6 4 2 --lr 0.0001 --train_batch_size 1000 --n_epochs 5000 --start_epoch 1 --warmup --warmup_block_length 20
+#python3 main.py --use_MNIST --use_bernoulli_loss --batch_norm --variational --name "reverse_" --n_zs 14 12 10 8 6 4 2 --lr 0.0001 --train_batch_size 1000 --n_epochs 5000 --start_epoch 301
+#python3 main.py --use_MNIST --use_bernoulli_loss --batch_norm --variational --name "reverse_friday_" --n_zs 14 12 10 8 6 4 2 --lr 0.0001 --train_batch_size 1000 --n_epochs 5000 --start_epoch 1
+
+# ===============================================================
+#                     Warmup models
+# ===============================================================
+
+#python3 main.py --use_MNIST --use_bernoulli_loss --batch_norm --variational --name "warmup_2_" --n_zs 2 --lr 0.001 --train_batch_size 1000 --n_epochs 100 --start_epoch 1
+#python3 main.py --use_MNIST --use_bernoulli_loss --batch_norm --variational --name "warmup_2_" --n_zs 2 --lr 0.001 --train_batch_size 1000 --n_epochs 100 --start_epoch 1 --warmup --warmup_block_length 50
+#python3 main.py --use_MNIST --use_bernoulli_loss --batch_norm --variational --name "warmup_2_2_" --n_zs 2 2 --lr 0.001 --train_batch_size 1000 --n_epochs 300 --start_epoch 1 --warmup --warmup_block_length 50
+python3 main.py --use_MNIST --use_bernoulli_loss --batch_norm --variational --name "warmup_2_2_2_" --n_zs 2 2 2 --lr 0.001 --train_batch_size 1000 --n_epochs 300 --start_epoch 1 --warmup --warmup_block_length 50
 
 
