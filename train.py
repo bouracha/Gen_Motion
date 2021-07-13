@@ -62,7 +62,7 @@ def train_epoch_mnist(model, epoch, train_loader, use_bernoulli_loss=False):
 
         total_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), model.clipping_value)
         model.writer.add_scalar("Gradients/total_gradient_norm", total_norm, epoch)
-        #if total_norm < 150:
+        #if (total_norm < 150) or (model.epoch_cur < 50):
         model.optimizer.step()
 
     head = ['Epoch']
@@ -114,7 +114,7 @@ def eval_full_batch_mnist(model, loader, epoch, dataset_name='val', use_bernoull
             head.append(str(dataset_name) + '_KL')
             ret_log.append(model.accum_loss[str(dataset_name) + '_VLB'].avg)
             ret_log.append(model.accum_loss[str(dataset_name) + '_KL'].avg)
-            model.writer.add_scalar(f'KLs/total_'+str(dataset_name), model.accum_loss[str(dataset_name)+'_KL_'+str(key)].avg, epoch)
+            model.writer.add_scalar(f'KLs/total_'+str(dataset_name), model.accum_loss[str(dataset_name) + '_KL'].avg, epoch)
             #model.writer.add_scalars(f'KLs/total', {str(dataset_name): model.accum_loss[str(dataset_name)+'_KL_'+str(key)].avg, }, epoch)
             for key, value in model.KLs.items():
                 kls_head.append(str(dataset_name)+key)

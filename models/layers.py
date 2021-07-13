@@ -4,6 +4,20 @@ from torch.nn.parameter import Parameter
 import math
 import numpy as np
 
+class ReZero(nn.Module):
+    def __init__(self):
+        """
+        ReZero layer, learnable weight for
+        :param self:
+        :return:
+        """
+        super(ReZero, self).__init__()
+        self.resweight = Parameter(torch.Tensor([0.0]))
+
+    def forward(self, input):
+        output = torch.mul(input, self.resweight)
+        return output
+
 class FullyConnected(nn.Module):
     def __init__(self, in_features, out_features, bias=True):
         """

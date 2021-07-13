@@ -7,13 +7,13 @@ name = sys.argv[0]
 
 def plot_losses(path_to_file, label, y='val_loss', x='Epoch', errorbar=None, need_thermalisation=False, color='b', linestyle='-'):
   #data = pd.read_csv("plot_data/"+str(path_to_file)+".csv")
-  data = pd.read_csv(str(path_to_file))[:1000]
+  data = pd.read_csv(str(path_to_file))[:300]
 
   x_plot = np.array(data[x])
   y_plot = np.array(data[y])
 
   #set max value
-  y_plot[y_plot > 15] = 15
+  y_plot[y_plot < -300] = -300
 
   if need_thermalisation:
     thermalised_history = 10
@@ -39,13 +39,22 @@ file_name="kls.csv"
 #plot_losses(path_to_file="classify_noisey_embeddings_no_bottleneck.csv", label="VAE embeddings", y='VAE', x='noise_level', errorbar='VAE_std', color='g')
 #plot_losses(path_to_file="classify_noisey_embeddings.csv", label="VAE embedding", y='VAE', x='noise_level', errorbar='VAE_std', color='y')
 
-plot_losses(path_to_file="vdvae_2_MNIST_VAE/kls.csv", label="KL 0", y="val0", x="Epoch", linestyle='dotted')
-plot_losses(path_to_file="vdvae_2_MNIST_VAE/kls.csv", label="KL 1", y="val1", x="Epoch", linestyle='dotted')
-plot_losses(path_to_file="vdvae_2_MNIST_VAE/kls.csv", label="KL 2", y="val2", x="Epoch", linestyle='dotted')
-plot_losses(path_to_file="vdvae_2_MNIST_VAE/kls.csv", label="KL 3", y="val3", x="Epoch", linestyle='dotted')
-plot_losses(path_to_file="vdvae_2_MNIST_VAE/kls.csv", label="KL 4", y="val4", x="Epoch", linestyle='dotted')
-plot_losses(path_to_file="vdvae_2_MNIST_VAE/kls.csv", label="KL 5", y="val5", x="Epoch", linestyle='dotted')
-plot_losses(path_to_file="vdvae_2_MNIST_VAE/kls.csv", label="KL 6", y="val6", x="Epoch", linestyle='dotted')
+#plot_losses(path_to_file="res_2_MNIST/losses.csv", label="VAE (2)", y="val_VLB", x="Epoch", linestyle='-')
+#plot_losses(path_to_file="res_2_2_MNIST/losses.csv", label="2-layer (2 2)", y="val_VLB", x="Epoch", linestyle='-')
+#plot_losses(path_to_file="res_2_2_2_MNIST/losses.csv", label="3-layer (2 2 2)", y="val_VLB", x="Epoch", linestyle='-')
+plot_losses(path_to_file="res_2_2_2_2_MNIST/losses.csv", label="4-layer (2 2 2 2)", y="val_VLB", x="Epoch", linestyle='-')
+#plot_losses(path_to_file="VDVAE_2_2_MNIST/losses.csv", label="2-layer (2 2) w/o res", y="val_VLB", x="Epoch", linestyle=':')
+#plot_losses(path_to_file="VDVAE_2_2_2MNIST/losses.csv", label="3-layer (2 2 2) w/o res", y="val_VLB", x="Epoch", linestyle=':')
+#plot_losses(path_to_file="res_warmup_2_2_MNIST/losses.csv", label="2-layer (2 2) with warmup", y="val_VLB", x="Epoch", linestyle=':')
+#plot_losses(path_to_file="res_warmup_2_2_2_MNIST/losses.csv", label="3-layer (2 2 2) with warmup", y="val_VLB", x="Epoch", linestyle=':')
+plot_losses(path_to_file="res_warmup_2_2_2_2_MNIST/losses.csv", label="4-layer (2 2 2 2) with warmup", y="val_VLB", x="Epoch", linestyle='solid')
+#plot_losses(path_to_file="vdvae_2_MNIST_VAE/kls.csv", label="KL 0", y="val0", x="Epoch", linestyle='dotted')
+#plot_losses(path_to_file="vdvae_2_MNIST_VAE/kls.csv", label="KL 1", y="val1", x="Epoch", linestyle='dotted')
+#plot_losses(path_to_file="vdvae_2_MNIST_VAE/kls.csv", label="KL 2", y="val2", x="Epoch", linestyle='dotted')
+#plot_losses(path_to_file="vdvae_2_MNIST_VAE/kls.csv", label="KL 3", y="val3", x="Epoch", linestyle='dotted')
+#plot_losses(path_to_file="vdvae_2_MNIST_VAE/kls.csv", label="KL 4", y="val4", x="Epoch", linestyle='dotted')
+#plot_losses(path_to_file="vdvae_2_MNIST_VAE/kls.csv", label="KL 5", y="val5", x="Epoch", linestyle='dotted')
+#plot_losses(path_to_file="vdvae_2_MNIST_VAE/kls.csv", label="KL 6", y="val6", x="Epoch", linestyle='dotted')
 
 #plot_losses(path_to_file="deep_"+str(n_z)+"_beta_VAE/"+str(file_name)+".csv", label="VAE", y='MSE', x='num_samples', errorbar='STD', color='m')
 
@@ -59,7 +68,7 @@ x = np.linspace(0, 96, 10)
 #plt.plot(x, x*0+0.527691416260059, label="", linestyle='--', color='g')
 plt.xlabel("Epoch", fontsize=fontsize)
 #plt.xlabel("Scale of Gaussian Noise Added", fontsize=fontsize)
-plt.ylabel("Loss", fontsize=fontsize)
+plt.ylabel("VLB", fontsize=fontsize)
 plt.title("", fontsize=fontsize)
 plt.legend(prop={'size': 12})
 plt.savefig('plot.png')

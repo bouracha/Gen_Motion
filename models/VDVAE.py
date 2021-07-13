@@ -11,6 +11,7 @@ import models.utils as utils
 from models.layers import NeuralNetworkBlock
 from models.layers import GaussianBlock
 from models.layers import FullyConnected
+from models.layers import ReZero
 
 
 class VDVAE(nn.Module):
@@ -32,6 +33,7 @@ class VDVAE(nn.Module):
         self.device = device
         self.batch_norm = batch_norm
         self.p_dropout = p_dropout
+        self.residual_size = 100
 
         self.feature_hierachies=[]
         self.feature_hierachies.append(input_n)
@@ -47,12 +49,15 @@ class VDVAE(nn.Module):
 
         #Bottom Up
         self.encoder_blocks = []
-        self.encoder_residual_blocks = []
+        self.encoder_reshape_residual_layer = []
+        self.encoder_rezero_operation = []
         for i in range(len(self.feature_hierachies)-1):
             self.encoder_blocks.append(NeuralNetworkBlock(layers=encoder_blocks_layers[i], activation=self.activation, batch_norm=batch_norm, p_dropout=p_dropout))
-            self.encoder_residual_blocks.append(FullyConnected(in_features=self.encoder_output_sizes[i], out_features=self.encoder_output_sizes[i+1], bias=True))
+            self.encoder_reshape_residual_layer.append(FullyConnected(in_features=self.encoder_output_sizes[i], out_features=self.encoder_output_sizes[i+1], bias=True))
+            self.encoder_rezero_operation.append(ReZero())
         self.encoder_blocks = nn.ModuleList(self.encoder_blocks)
-        self.encoder_residual_blocks = nn.ModuleList(self.encoder_residual_blocks)
+        self.encoder_reshape_residual_layer = nn.ModuleList(self.encoder_reshape_residual_layer)
+        self.encoder_rezero_operation = nn.ModuleList(self.encoder_rezero_operation)
 
         self.z_mus = {}
         self.z_log_vars = {}
@@ -66,35 +71,40 @@ class VDVAE(nn.Module):
 
         #Top Down
         self.reparametisation_latent_0 = GaussianBlock(encoder_blocks_layers[i][-1], self.feature_hierachies[-1])
-        self.reshape_z0_linearly = FullyConnected(in_features=self.feature_hierachies[-1], out_features=100, bias=True)
+        self.reshape_z0_linearly = FullyConnected(in_features=self.feature_hierachies[-1], out_features=self.residual_size, bias=True)
 
         self.decoder_units = []
         for i in range(len(self.feature_hierachies)-2):
-            self.begin_decoder_block = NeuralNetworkBlock(layers=utils.define_neurons_layers(100, 100, 4), activation=self.activation, batch_norm=batch_norm, p_dropout=p_dropout)
+            rezero1 = ReZero()
+            rezero2 = ReZero()
+            rezero3 = ReZero()
+            begin_decoder_block = NeuralNetworkBlock(layers=utils.define_neurons_layers(self.residual_size, self.residual_size, 4), activation=self.activation, batch_norm=batch_norm, p_dropout=p_dropout)
 
             print("size of encoder used at decoder level {} is {}".format(i, self.encoder_output_sizes[-2-i]))
-            self.posterior_decoder_block = NeuralNetworkBlock(layers=utils.define_neurons_layers(self.encoder_output_sizes[-2-i] + 100, 100, 4), activation=self.activation, batch_norm=batch_norm, p_dropout=p_dropout)
-            self.reparametisation_posterior = GaussianBlock(100, self.feature_hierachies[-2-i])
+            posterior_decoder_block = NeuralNetworkBlock(layers=utils.define_neurons_layers(self.encoder_output_sizes[-2-i] + self.residual_size, self.residual_size, 4), activation=self.activation, batch_norm=batch_norm, p_dropout=p_dropout)
+            reparametisation_posterior = GaussianBlock(self.residual_size, self.feature_hierachies[-2-i])
 
-            self.prior_decoder_block = NeuralNetworkBlock(layers=utils.define_neurons_layers(100, 100, 4), activation=self.activation, batch_norm=batch_norm, p_dropout=p_dropout)
-            self.reparametisation_prior = GaussianBlock(100, self.feature_hierachies[-2-i])
+            prior_decoder_block = NeuralNetworkBlock(layers=utils.define_neurons_layers(self.residual_size, self.residual_size, 4), activation=self.activation, batch_norm=batch_norm, p_dropout=p_dropout)
+            reparametisation_prior = GaussianBlock(self.residual_size, self.feature_hierachies[-2-i])
 
-            self.reshape_z_linearly = FullyConnected(in_features=self.feature_hierachies[-2-i], out_features=100, bias=True)
+            reshape_z_linearly = FullyConnected(in_features=self.feature_hierachies[-2-i], out_features=self.residual_size, bias=True)
 
             self.decoder_units.append({
-                "decoder_block":self.begin_decoder_block,
-                "posterior_decoder_block":self.posterior_decoder_block,
-                "reparametisation_posterior":self.reparametisation_posterior,
-                "prior_decoder_block":self.prior_decoder_block,
-                "reparametisation_prior": self.reparametisation_prior,
-                "reshape_z_linearly": self.reshape_z_linearly
+                "decoder_block":begin_decoder_block,
+                "posterior_decoder_block":posterior_decoder_block,
+                "reparametisation_posterior":reparametisation_posterior,
+                "prior_decoder_block":prior_decoder_block,
+                "reparametisation_prior":reparametisation_prior,
+                "reshape_z_linearly":reshape_z_linearly,
+                "rezero1":rezero1,
+                "rezero2":rezero2,
+                "rezero3":rezero3
             })
             self.decoder_units[i] = nn.ModuleDict(self.decoder_units[i])
         self.decoder_units = nn.ModuleList(self.decoder_units)
 
-        #self.decoder_block_final = NeuralNetworkBlock(layers=utils.define_neurons_layers(100, 100, 4), activation=self.activation, batch_norm=batch_norm, p_dropout=p_dropout)
-        self.decoder_block_final = NeuralNetworkBlock(layers=utils.define_neurons_layers(self.feature_hierachies[1], 100, 4), activation=self.activation, batch_norm=batch_norm, p_dropout=p_dropout)
-        self.reparametisation_output = GaussianBlock(100, input_n)
+        self.decoder_block_final = NeuralNetworkBlock(layers=utils.define_neurons_layers(self.residual_size, self.residual_size, 4), activation=self.activation, batch_norm=batch_norm, p_dropout=p_dropout)
+        self.reparametisation_output = GaussianBlock(self.residual_size, input_n)
 
         self.num_parameters = utils.num_parameters_and_place_on_device(self)
 
@@ -109,8 +119,8 @@ class VDVAE(nn.Module):
         for i in range(len(self.feature_hierachies)-1):
             encoder_output = self.encoder_blocks[i](y)
             self.encoder_outputs.append(encoder_output)
-            res = self.encoder_residual_blocks[i](y)
-            y = encoder_output + res
+            res = self.encoder_reshape_residual_layer[i](y)
+            y = res + self.encoder_rezero_operation[i](encoder_output)
 
         #Top Down
         self.z_posterior_mus["0"], self.z_posterior_log_vars["0"] = self.reparametisation_latent_0(self.encoder_outputs[-1])
@@ -125,12 +135,7 @@ class VDVAE(nn.Module):
         for i in range(len(self.feature_hierachies)-2):
             self.KLs[str(i+1)], self.zs[str(i+1)] = self.top_down_decode(level=i)
 
-        #all_residuals = 0
-        #for i in range(len(self.feature_hierachies)-1):
-            #all_residuals = all_residuals + self.residuals_dict[str(i)]
-
-        #decoder_output_final = self.decoder_block_final(self.residuals_dict[str(len(self.feature_hierachies)-2)])
-        decoder_output_final = self.decoder_block_final(self.zs[str(len(self.feature_hierachies)-2)])
+        decoder_output_final = self.decoder_block_final(self.residuals_dict[str(len(self.feature_hierachies)-2)])
         self.reconstructions_mu, self.reconstructions_log_var = self.reparametisation_output(decoder_output_final)
 
         sig = nn.Sigmoid()
@@ -140,7 +145,7 @@ class VDVAE(nn.Module):
 
     def top_down_decode(self, level, train=True, latent_resolution=999):
         res_block_output = self.decoder_units[level]["decoder_block"](self.residuals_dict[str(level)])
-        self.residuals_dict[str(level+1)] = self.residuals_dict[str(level)] + res_block_output
+        self.residuals_dict[str(level+1)] = self.residuals_dict[str(level)] + self.decoder_units[level]["rezero1"](res_block_output)
 
         latent_active = True
         if self.warmup==True and (self.epoch_cur < (level+1)*self.warmup_block_length):
@@ -150,7 +155,7 @@ class VDVAE(nn.Module):
             if latent_active==True:
                 encoder_output = self.encoder_outputs[-2-level]
             else:
-                batch_n = self.residuals_dict[str(level + 1)].shape[0]
+                batch_n = self.residuals_dict[str(level+1)].shape[0]
                 features_n = self.encoder_outputs[-2 - level].shape[1]
                 encoder_output = torch.zeros(batch_n, features_n).to(torch.device(self.device))
             concat_for_posterior = torch.cat((self.residuals_dict[str(level+1)], encoder_output), dim=1)
@@ -159,7 +164,7 @@ class VDVAE(nn.Module):
 
         prior_decoder_block_output = self.decoder_units[level]["prior_decoder_block"](self.residuals_dict[str(level+1)])
         self.z_prior_mus[str(level + 1)], self.z_prior_log_vars[str(level + 1)] = self.decoder_units[level]["reparametisation_prior"](prior_decoder_block_output)
-        self.residuals_dict[str(level+1)] = self.residuals_dict[str(level+1)] + prior_decoder_block_output
+        self.residuals_dict[str(level+1)] = self.residuals_dict[str(level+1)] + self.decoder_units[level]["rezero2"](prior_decoder_block_output)
 
         if train==True or latent_active==False:
             self.z_mus[str(level + 1)] = self.z_posterior_mus[str(level+1)]
@@ -177,7 +182,7 @@ class VDVAE(nn.Module):
             self.zs[str(level + 1)] = self.z_mus[str(level+1)]
 
         reshaped_z = self.decoder_units[level]["reshape_z_linearly"](self.zs[str(level+1)])
-        self.residuals_dict[str(level+1)] = self.residuals_dict[str(level+1)] + reshaped_z
+        self.residuals_dict[str(level+1)] = self.residuals_dict[str(level+1)] + self.decoder_units[level]["rezero3"](reshaped_z)
 
         return self.KLs[str(level+1)], self.zs[str(level+1)]
 
@@ -193,8 +198,7 @@ class VDVAE(nn.Module):
         for i in range(z_prev_level, len(self.feature_hierachies)-2):
             self.KLs[str(i+1)], self.zs[str(i+1)] = self.top_down_decode(level=i, train=False, latent_resolution=latent_resolution)
 
-        #decoder_output_final = self.decoder_block_final(self.residuals_dict[str(len(self.feature_hierachies)-2)])
-        decoder_output_final = self.decoder_block_final(self.zs[str(len(self.feature_hierachies)-2)])
+        decoder_output_final = self.decoder_block_final(self.residuals_dict[str(len(self.feature_hierachies)-2)])
         self.reconstructions_mu, self.reconstructions_log_var = self.reparametisation_output(decoder_output_final)
 
         sig = nn.Sigmoid()
