@@ -28,6 +28,7 @@ class Options:
         self.parser.add_argument('--batch_norm', dest='batch_norm', action='store_true', help='toggle use batch_norm or not')
         self.parser.set_defaults(batch_norm=False)
         self.parser.add_argument('--p_drop', type=float, default=0.0, help='dropout rate')
+        self.parser.add_argument('--highway_size', type=int, default=200, help='size of main residual highway')
         # ===============================================================
         #                    Initialise options
         # ===============================================================
@@ -42,9 +43,8 @@ class Options:
         self.parser.add_argument('--n_epochs', type=int, default=50, help='Number of epochs to train for')
         self.parser.add_argument('--train_batch_size', type=int, default=100, help='Number of epochs to train for')
         self.parser.add_argument('--test_batch_size', type=int, default=100, help='If not 1, load checkpoint at this epoch')
-        self.parser.add_argument('--warmup', dest='warmup', action='store_true', help='toggle to use warmup for VDVAE')
-        self.parser.set_defaults(warmup=False)
-        self.parser.add_argument('--warmup_block_length', type=int, default=20, help='for how many epochs to warm up each latent variable')
+        self.parser.add_argument('--warmup_time', type=int, default=0, help='number of epochs to warm up the KL')
+        self.parser.add_argument('--beta_final', type=float, default=1.0, help='Final downweighting of the KL divergence')
         # ===============================================================
         #                     MNIST experiments options
         # ===============================================================

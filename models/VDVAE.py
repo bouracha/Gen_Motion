@@ -15,7 +15,7 @@ from models.layers import ReZero
 
 
 class VDVAE(nn.Module):
-    def __init__(self, input_n=96, act_fn=nn.GELU(), variational=False, output_variance=False, device="cuda", batch_norm=False, p_dropout=0.0, n_zs=[50, 10, 5, 2]):
+    def __init__(self, input_n=96, act_fn=nn.GELU(), variational=False, output_variance=False, device="cuda", batch_norm=False, p_dropout=0.0, n_zs=[50, 10, 5, 2], residual_size=200):
         """
         :param input_n: num of input feature
         :param hidden_layers: num of hidden feature, decoder is made symmetric
@@ -33,14 +33,15 @@ class VDVAE(nn.Module):
         self.device = device
         self.batch_norm = batch_norm
         self.p_dropout = p_dropout
-        self.residual_size = 100
+        self.residual_size = residual_size
 
         self.feature_hierachies=[]
         self.feature_hierachies.append(input_n)
         for n_z in n_zs:
             self.feature_hierachies.append(n_z)
         print("Feature hierachies: ", self.feature_hierachies)
-        self.encoder_output_sizes = utils.define_neurons_layers(input_n, n_zs[-1], len(n_zs))
+        self.encoder_output_sizes = utils.define_neurons_layers(input_n, n_zs[-1], len(n_zs)-1)
+        self.encoder_output_sizes.insert(0, input_n)
         print(self.encoder_output_sizes)
         encoder_blocks_layers=[]
         for i in range(len(self.encoder_output_sizes)-1):
@@ -147,17 +148,8 @@ class VDVAE(nn.Module):
         res_block_output = self.decoder_units[level]["decoder_block"](self.residuals_dict[str(level)])
         self.residuals_dict[str(level+1)] = self.residuals_dict[str(level)] + self.decoder_units[level]["rezero1"](res_block_output)
 
-        latent_active = True
-        if self.warmup==True and (self.epoch_cur < (level+1)*self.warmup_block_length):
-            latent_active=False
-
-        if train==True or latent_active==False:
-            if latent_active==True:
-                encoder_output = self.encoder_outputs[-2-level]
-            else:
-                batch_n = self.residuals_dict[str(level+1)].shape[0]
-                features_n = self.encoder_outputs[-2 - level].shape[1]
-                encoder_output = torch.zeros(batch_n, features_n).to(torch.device(self.device))
+        if train==True:
+            encoder_output = self.encoder_outputs[-2-level]
             concat_for_posterior = torch.cat((self.residuals_dict[str(level+1)], encoder_output), dim=1)
             posterior_decoder_block_output = self.decoder_units[level]["posterior_decoder_block"](concat_for_posterior)
             self.z_posterior_mus[str(level + 1)], self.z_posterior_log_vars[str(level + 1)] = self.decoder_units[level]["reparametisation_posterior"](posterior_decoder_block_output)
@@ -166,7 +158,7 @@ class VDVAE(nn.Module):
         self.z_prior_mus[str(level + 1)], self.z_prior_log_vars[str(level + 1)] = self.decoder_units[level]["reparametisation_prior"](prior_decoder_block_output)
         self.residuals_dict[str(level+1)] = self.residuals_dict[str(level+1)] + self.decoder_units[level]["rezero2"](prior_decoder_block_output)
 
-        if train==True or latent_active==False:
+        if train==True:
             self.z_mus[str(level + 1)] = self.z_posterior_mus[str(level+1)]
             self.z_log_vars[str(level + 1)] = self.z_posterior_log_vars[str(level+1)]
         else:
@@ -176,8 +168,6 @@ class VDVAE(nn.Module):
         if level < latent_resolution:
             self.KLs[str(level+1)] = utils.kullback_leibler_divergence(self.z_mus[str(level+1)], self.z_log_vars[str(level+1)], mu_2=self.z_prior_mus[str(level+1)], log_var_2=self.z_prior_log_vars[str(level+1)])
             self.zs[str(level+1)] = utils.reparametisation_trick(self.z_mus[str(level+1)], self.z_log_vars[str(level+1)], self.device)
-            if latent_active == False:
-                self.zs[str(level + 1)] = self.z_mus[str(level + 1)]
         else:
             self.zs[str(level + 1)] = self.z_mus[str(level+1)]
 
@@ -226,14 +216,7 @@ class VDVAE(nn.Module):
             self.recon_loss = -self.log_lik
 
         if self.variational:
-            #self.KL = sum(self.KLs.values())
-            self.KL = 0
-            for i in range(len(self.zs)):
-                if self.warmup:
-                    if self.epoch_cur > i*self.warmup_block_length:
-                        self.KL += self.KLs[str(i)]
-                else:
-                    self.KL = sum(self.KLs.values())
+            self.KL = sum(self.KLs.values())
             self.VLB = utils.cal_VLB(self.log_lik, self.KL, self.beta)
             self.loss = -self.VLB
         else:

@@ -12,7 +12,43 @@ import torch
 
 from scipy.stats import norm
 
-def gnerate_samples(model, epoch, num_grid_points=20, use_bernoulli_loss=False, latent_resolution=999, z_prev_level=0):
+def poses_visualisations(model, inputs, reconstructions, dataset_name, cur_batch_size):
+    inputs_reshaped = inputs.reshape(cur_batch_size, 1, 12, 8)
+    reconstructions = reconstructions.reshape(cur_batch_size, 1, 12, 8)
+    diffs = inputs_reshaped - reconstructions
+    file_path = model.folder_name + '/images/' + str(dataset_name) + '_' + str(model.epoch_cur) + '_' + 'reals'
+    plot_tensor_images(inputs_reshaped.detach().cpu(), max_num_images=25, nrow=5, show=False, save_as=file_path)
+    file_path = model.folder_name + '/images/' + str(dataset_name) + '_' + str(model.epoch_cur) + '_' + 'reconstructions'
+    plot_tensor_images(reconstructions.detach().cpu(), max_num_images=25, nrow=5, show=False, save_as=file_path)
+    file_path = model.folder_name + '/images/' + str(dataset_name) + '_' + str(model.epoch_cur) + '_' + 'diffs'
+    plot_tensor_images(diffs.detach().cpu(), max_num_images=25, nrow=5, show=False, save_as=file_path)
+    file_path = model.folder_name + '/poses/' + str(dataset_name) + '_' + str(model.epoch_cur) + '_' + 'poses_xz'
+    plot_poses(inputs.detach().cpu().numpy(), reconstructions.detach().cpu().numpy(), max_num_images=25, azim=0, evl=90, save_as=file_path)
+    file_path = model.folder_name + '/poses/' + str(dataset_name) + '_' + str(model.epoch_cur) + '_' + 'poses_yz'
+    plot_poses(inputs.detach().cpu().numpy(), reconstructions.detach().cpu().numpy(), max_num_images=25, azim=0, evl=-0, save_as=file_path)
+    file_path = model.folder_name + '/poses/' + str(dataset_name) + '_' + str(model.epoch_cur) + '_' + 'poses_xy'
+    plot_poses(inputs.detach().cpu().numpy(), reconstructions.detach().cpu().numpy(), max_num_images=25, azim=90, evl=90, save_as=file_path)
+    file_path = model.folder_name + '/poses/' + str(dataset_name) + '_latest_' + 'poses_xz'
+    plot_poses(inputs.detach().cpu().numpy(), reconstructions.detach().cpu().numpy(), max_num_images=25, azim=0, evl=90, save_as=file_path)
+    file_path = model.folder_name + '/poses/' + str(dataset_name) + '_latest_' + 'poses_yz'
+    plot_poses(inputs.detach().cpu().numpy(), reconstructions.detach().cpu().numpy(), max_num_images=25, azim=0, evl=-0, save_as=file_path)
+    file_path = model.folder_name + '/poses/' + str(dataset_name) + '_latest_' + 'poses_xy'
+    plot_poses(inputs.detach().cpu().numpy(), reconstructions.detach().cpu().numpy(), max_num_images=25, azim=90, evl=90, save_as=file_path)
+
+def mnist_reconstructions(model, image, reconstructions, dataset_name, cur_batch_size):
+    reconstructions = reconstructions.reshape(cur_batch_size, 1, 28, 28)
+    file_path = model.folder_name + '/images/' + str(dataset_name) + '_' + str(model.epoch_cur) + '_' + 'reals'
+    plot_tensor_images(image, max_num_images=25, nrow=5, show=False, save_as=file_path)
+    file_path = model.folder_name + '/images/' + str(dataset_name) + '_' + str(
+        model.epoch_cur) + '_' + 'reconstructions'
+    plot_tensor_images(reconstructions, max_num_images=25, nrow=5, show=False, save_as=file_path)
+    file_path = model.folder_name + '/images/' + str(dataset_name) + '_latest_' + 'reals'
+    plot_tensor_images(image, max_num_images=25, nrow=5, show=False, save_as=file_path)
+    file_path = model.folder_name + '/images/' + str(dataset_name) + '_latest_' + 'reconstructions'
+    plot_tensor_images(reconstructions, max_num_images=25, nrow=5, show=False, save_as=file_path)
+
+
+def gnerate_samples(model, num_grid_points=20, use_bernoulli_loss=False, latent_resolution=999, z_prev_level=0):
     if use_bernoulli_loss:
         distribution='bernoulli'
     else:
@@ -32,16 +68,16 @@ def gnerate_samples(model, epoch, num_grid_points=20, use_bernoulli_loss=False, 
 
     if mu.shape[-1] == 784:
         mu = mu.reshape(num_grid_points ** 2, 1, 28, 28)
-        file_path = model.folder_name + '/samples/' + str(epoch) + '_icdf'+'_res_'+str(latent_resolution)
+        file_path = model.folder_name + '/samples/' + str(model.epoch_cur) + '_icdf'+'_res_'+str(latent_resolution)
         plot_tensor_images(mu, max_num_images=400, nrow=20, show=False, save_as=file_path)
         file_path = model.folder_name + '/samples/latest_icdf'+'_res_'+str(latent_resolution)
         plot_tensor_images(mu, max_num_images=400, nrow=20, show=False, save_as=file_path)
     else:
-        file_path = model.folder_name + '/' + 'poses_xz'
+        file_path = model.folder_name + '/samples/' + 'latest_poses_xz_res_'+str(latent_resolution)
         plot_poses(mu.detach().cpu().numpy(), mu.detach().cpu().numpy(), max_num_images=num_grid_points ** 2, azim=0, evl=90, save_as=file_path)
-        file_path = model.folder_name + '/' + 'poses_yz'
+        file_path = model.folder_name + '/samples/' + 'latest_poses_yz_res_'+str(latent_resolution)
         plot_poses(mu.detach().cpu().numpy(), mu.detach().cpu().numpy(), max_num_images=num_grid_points ** 2, azim=0, evl=-0, save_as=file_path)
-        file_path = model.folder_name + '/' + 'poses_xy'
+        file_path = model.folder_name + '/samples/' + 'latest_poses_xy_res_'+str(latent_resolution)
         plot_poses(mu.detach().cpu().numpy(), mu.detach().cpu().numpy(), max_num_images=num_grid_points ** 2, azim=90, evl=90, save_as=file_path)
 
 

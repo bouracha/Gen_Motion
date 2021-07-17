@@ -13,7 +13,10 @@ def plot_losses(path_to_file, label, y='val_loss', x='Epoch', errorbar=None, nee
   y_plot = np.array(data[y])
 
   #set max value
-  y_plot[y_plot < -300] = -300
+  #for i in range(50, len(y_plot)):
+  #  if y_plot[i] < -150:
+  #    y_plot[i] = y_plot[i-1]
+  #y_plot[y_plot < -150] = -150
 
   if need_thermalisation:
     thermalised_history = 10
@@ -42,12 +45,14 @@ file_name="kls.csv"
 #plot_losses(path_to_file="res_2_MNIST/losses.csv", label="VAE (2)", y="val_VLB", x="Epoch", linestyle='-')
 #plot_losses(path_to_file="res_2_2_MNIST/losses.csv", label="2-layer (2 2)", y="val_VLB", x="Epoch", linestyle='-')
 #plot_losses(path_to_file="res_2_2_2_MNIST/losses.csv", label="3-layer (2 2 2)", y="val_VLB", x="Epoch", linestyle='-')
-plot_losses(path_to_file="res_2_2_2_2_MNIST/losses.csv", label="4-layer (2 2 2 2)", y="val_VLB", x="Epoch", linestyle='-')
+#plot_losses(path_to_file="res_2_2_2_2_MNIST/losses.csv", label="4-layer (2 2 2 2)", y="val_VLB", x="Epoch", linestyle='--')
 #plot_losses(path_to_file="VDVAE_2_2_MNIST/losses.csv", label="2-layer (2 2) w/o res", y="val_VLB", x="Epoch", linestyle=':')
 #plot_losses(path_to_file="VDVAE_2_2_2MNIST/losses.csv", label="3-layer (2 2 2) w/o res", y="val_VLB", x="Epoch", linestyle=':')
 #plot_losses(path_to_file="res_warmup_2_2_MNIST/losses.csv", label="2-layer (2 2) with warmup", y="val_VLB", x="Epoch", linestyle=':')
 #plot_losses(path_to_file="res_warmup_2_2_2_MNIST/losses.csv", label="3-layer (2 2 2) with warmup", y="val_VLB", x="Epoch", linestyle=':')
-plot_losses(path_to_file="res_warmup_2_2_2_2_MNIST/losses.csv", label="4-layer (2 2 2 2) with warmup", y="val_VLB", x="Epoch", linestyle='solid')
+#plot_losses(path_to_file="res_warmup_2_2_2_2_MNIST/losses.csv", label="4-layer (2 2 2 2) with warmup", y="val_VLB", x="Epoch", linestyle='--')
+#plot_losses(path_to_file="rezero_warmup_2_2_2_2_MNIST/losses.csv", label="4-layer (2 2 2 2) ReZero & Warmup", y="val_VLB", x="Epoch", linestyle='-')
+#plot_losses(path_to_file="rezero_2_2_2_2_MNIST/losses.csv", label="4-layer (2 2 2 2) ReZero", y="val_VLB", x="Epoch", linestyle='-')
 #plot_losses(path_to_file="vdvae_2_MNIST_VAE/kls.csv", label="KL 0", y="val0", x="Epoch", linestyle='dotted')
 #plot_losses(path_to_file="vdvae_2_MNIST_VAE/kls.csv", label="KL 1", y="val1", x="Epoch", linestyle='dotted')
 #plot_losses(path_to_file="vdvae_2_MNIST_VAE/kls.csv", label="KL 2", y="val2", x="Epoch", linestyle='dotted')
@@ -55,17 +60,26 @@ plot_losses(path_to_file="res_warmup_2_2_2_2_MNIST/losses.csv", label="4-layer (
 #plot_losses(path_to_file="vdvae_2_MNIST_VAE/kls.csv", label="KL 4", y="val4", x="Epoch", linestyle='dotted')
 #plot_losses(path_to_file="vdvae_2_MNIST_VAE/kls.csv", label="KL 5", y="val5", x="Epoch", linestyle='dotted')
 #plot_losses(path_to_file="vdvae_2_MNIST_VAE/kls.csv", label="KL 6", y="val6", x="Epoch", linestyle='dotted')
+#plot_losses(path_to_file="ladder_MNIST/losses.csv", label="Train", y="train_VLB", x="Epoch", linestyle='-')
+#plot_losses(path_to_file="ladder_MNIST/losses.csv", label="Val", y="val_VLB", x="Epoch", linestyle='-')
+plot_losses(path_to_file="ladder_MNIST/losses.csv", label="Total KL", y="val_KL", x="Epoch", linestyle='-')
+plot_losses(path_to_file="ladder_MNIST/kls.csv", label="KL $z_0$", y="val0", x="Epoch", linestyle=':')
+plot_losses(path_to_file="ladder_MNIST/kls.csv", label="KL $z_1$", y="val1", x="Epoch", linestyle=':')
+plot_losses(path_to_file="ladder_MNIST/kls.csv", label="KL $z_2$", y="val2", x="Epoch", linestyle=':')
+plot_losses(path_to_file="ladder_MNIST/kls.csv", label="KL $z_3$", y="val3", x="Epoch", linestyle=':')
+plot_losses(path_to_file="ladder_MNIST/kls.csv", label="KL $z_4$", y="val4", x="Epoch", linestyle=':')
 
 #plot_losses(path_to_file="deep_"+str(n_z)+"_beta_VAE/"+str(file_name)+".csv", label="VAE", y='MSE', x='num_samples', errorbar='STD', color='m')
 
 fontsize=10
-#plt.yscale('log')
+plt.yscale('log')
 #plt.xscale('log')
-x = np.linspace(0, 96, 10)
+x = np.linspace(0, 1000, 10)
 #plt.plot(x, x*0+0.55882453918457, label="", linestyle='--', color='y')
 #plt.plot(x, x*0+0.427002441354359, label="", linestyle='--', color='b')
 #plt.plot(x, x*0+0.406370745100563, label="", linestyle='--', color='r')
 #plt.plot(x, x*0+0.527691416260059, label="", linestyle='--', color='g')
+plt.plot(x*0 + 200, x, label=r"$ \beta =1.0$", linestyle='--', color='r')
 plt.xlabel("Epoch", fontsize=fontsize)
 #plt.xlabel("Scale of Gaussian Noise Added", fontsize=fontsize)
 plt.ylabel("VLB", fontsize=fontsize)

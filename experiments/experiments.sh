@@ -207,6 +207,7 @@ cd ..
 #python3 main.py --use_MNIST --use_bernoulli_loss --batch_norm --variational --name "res_warmup_deeeeep_" --n_zs 32 16 12 10 8 6 5 4 3 2 --lr 0.001 --train_batch_size 1000 --n_epochs 1000 --start_epoch 1 --warmup --warmup_block_length 5
 #python3 main.py --use_MNIST --use_bernoulli_loss --batch_norm --variational --name "res_warmup_deeeeep_" --n_zs 32 16 12 10 8 6 5 4 3 2 --lr 0.0001 --train_batch_size 1000 --n_epochs 2000 --start_epoch 361 --warmup --warmup_block_length 5
 #python3 main.py --use_MNIST --use_bernoulli_loss --batch_norm --variational --name "res_64_" --n_zs 64 32 20 20 20 --lr 0.001 --train_batch_size 1000 --n_epochs 2000 --start_epoch 1 --warmup --warmup_block_length 5
+#python3 main.py --use_MNIST --use_bernoulli_loss --batch_norm --variational --name "rezero_warmup_64" --n_zs 64 32 16 8 4 --lr 0.001 --train_batch_size 1000 --n_epochs 1000 --start_epoch 1 --warmup --warmup_block_length 5
 
 # ===============================================================
 #                     VDVAE
@@ -224,4 +225,28 @@ cd ..
 #                     VDVAE with ReZero
 # ===============================================================
 
-python3 main.py --use_MNIST --use_bernoulli_loss --batch_norm --variational --name "rezero_2_2_2_2_" --n_zs 2 2 2 2 --lr 0.001 --train_batch_size 1000 --n_epochs 300 --start_epoch 171
+#python3 main.py --use_MNIST --use_bernoulli_loss --batch_norm --variational --name "rezero_2_2_2_2_" --n_zs 2 2 2 2 --lr 0.001 --train_batch_size 1000 --n_epochs 300 --start_epoch 1
+
+# ===============================================================
+#                     VDVAE with ReZero warmup
+# ===============================================================
+
+#python3 main.py --use_MNIST --use_bernoulli_loss --batch_norm --variational --name "rezero_warmup_2_2_2_2_" --n_zs 2 2 2 2 --lr 0.001 --train_batch_size 1000 --n_epochs 300 --start_epoch 1 --warmup --warmup_block_length 5
+#python3 main.py --use_MNIST --use_bernoulli_loss --batch_norm --variational --name "rezero_warmup_64" --n_zs 64 32 16 8 4 --lr 0.001 --train_batch_size 1000 --n_epochs 300 --start_epoch 1 --warmup --warmup_block_length 5
+#python3 main.py --use_MNIST --use_bernoulli_loss --batch_norm --variational --name "rezero_warmup-deteministic_64" --n_zs 64 32 16 8 4 --lr 0.001 --train_batch_size 1000 --n_epochs 5000 --start_epoch 1 --beta 0.0
+#python3 main.py --use_MNIST --use_bernoulli_loss --batch_norm --variational --name "rezero_warmup-deteministic_64" --n_zs 64 32 16 8 4 --lr 0.0001 --train_batch_size 1000 --n_epochs 5000 --start_epoch 941
+#python3 main.py --use_MNIST --use_bernoulli_loss --batch_norm --variational --name "rezero_warmup-deteministic_64_beta_lower" --n_zs 64 32 16 8 4 --lr 0.001 --train_batch_size 1000 --n_epochs 5000 --start_epoch 1 --beta 0.0
+#python3 main.py --use_MNIST --use_bernoulli_loss --batch_norm --variational --name "ladder_" --n_zs 64 32 16 8 4 --lr 0.001 --train_batch_size 1000 --n_epochs 5000 --start_epoch 1 --beta 0.0001
+#python3 main.py --use_MNIST --use_bernoulli_loss --batch_norm --variational --name "ladder_784_32" --n_zs 784 512 256 128 64 32 --lr 0.001 --train_batch_size 1000 --n_epochs 5000 --start_epoch 1 --beta 0.0001 --warmup --highway_size 784
+
+# ===============================================================
+#                     VDVAE on pose
+# ===============================================================
+
+#python3 main.py --batch_norm --variational --name "pose" --n_zs 2 --lr 0.001 --train_batch_size 1000 --n_epochs 5000 --start_epoch 1
+#python3 main.py --batch_norm --variational --name "ladder_pose" --n_zs 8 4 2 --lr 0.001 --train_batch_size 1000 --n_epochs 5000 --start_epoch 1 --beta 0.0001 --warmup
+#python3 main.py --batch_norm --variational --name "ladder_output_variance" --n_zs 8 4 2 --lr 0.00001 --train_batch_size 1000 --n_epochs 5000 --start_epoch 1 --beta 0.001 --warmup_time 200 --beta_final 1.0 --output_variance
+#python3 main.py --batch_norm --variational --name "ladder_beta" --n_zs 8 4 2 --lr 0.001 --train_batch_size 1000 --n_epochs 5000 --start_epoch 1 --beta 0.0001 --warmup_time 20 --beta_final 0.001
+python3 main.py --batch_norm --variational --name "temp" --n_zs 8 4 2 --lr 0.001 --train_batch_size 1000 --n_epochs 5000 --start_epoch 1 --beta 0.0001 --warmup_time 20 --beta_final 0.001
+
+

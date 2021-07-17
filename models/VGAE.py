@@ -76,7 +76,7 @@ class VGAE(nn.Module):
 
     def accum_update(self, key, val):
         if key not in self.accum_loss.keys():
-            self.accum_loss[key] = AccumLoss()
+            self.accum_loss[key] = AccumValue()
         val = val.cpu().data.numpy()
         self.accum_loss[key].update(val)
 

@@ -18,30 +18,31 @@ import numpy as np
 import models.utils as model_utils
 
 def initialise(model, start_epoch=1, folder_name="", lr=0.0001, beta=1.0, l2_reg=1e-4, train_batch_size=100,
-                figs_checkpoints_save_freq=10, warmup=False, warmup_block_length=20):
+                figs_checkpoints_save_freq=10, warmup_time=0, beta_final=1.0):
     model.optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=l2_reg)
     model.folder_name = folder_name
     model.lr = lr
+    model.l2_reg = 1e-4
     model.beta = beta
+    model.train_batch_size = train_batch_size
     model.clipping_value = 100.0
     model.figs_checkpoints_save_freq = figs_checkpoints_save_freq
     model.epoch_cur = start_epoch
-    model.warmup_block_length = warmup_block_length
-    model.warmup = warmup
-    print("warmup: {}".format(warmup))
+    model.warmup_time = warmup_time
+    model.beta_final = beta_final
     if start_epoch == 1:
         model.losses_file_exists = False
         model.kls_file_exists = False
-        model_utils.book_keeping(model, start_epoch=start_epoch, train_batch_size=train_batch_size, l2_reg=l2_reg)
+        model_utils.book_keeping(model, start_epoch=start_epoch)
     else:
         model.losses_file_exists = True
         model.kls_file_exists = True
-        model_utils.book_keeping(model, start_epoch=start_epoch, train_batch_size=train_batch_size, l2_reg=l2_reg)
+        model_utils.book_keeping(model, start_epoch=start_epoch)
         ckpt_path = model.folder_name + '/checkpoints/' + 'ckpt_' + str(start_epoch - 1) + '_weights.path.tar'
         ckpt = torch.load(ckpt_path, map_location=torch.device(model.device))
         model.load_state_dict(ckpt['state_dict'])
 
-def train_epoch_mnist(model, epoch, train_loader, use_bernoulli_loss=False):
+def train_epoch_mnist(model, train_loader, use_bernoulli_loss=False):
     model.train()
     i = 0
     for image, labels in tqdm(train_loader):
@@ -58,23 +59,16 @@ def train_epoch_mnist(model, epoch, train_loader, use_bernoulli_loss=False):
 
         model.optimizer.zero_grad()
         loss.backward()
-        #model.optimizer.step()
 
         total_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), model.clipping_value)
-        model.writer.add_scalar("Gradients/total_gradient_norm", total_norm, epoch)
+        model.writer.add_scalar("Gradients/total_gradient_norm", total_norm, model.epoch_cur)
         #if (total_norm < 150) or (model.epoch_cur < 50):
         model.optimizer.step()
 
-    head = ['Epoch']
-    ret_log = [epoch]
-    kls_log = [epoch]
-    model.head = np.append(model.head, head)
-    model.ret_log = np.append(model.ret_log, ret_log)
-    model.kls_head = np.append(model.kls_head, head)
-    model.kls_log = np.append(model.kls_log, kls_log)
+        model.beta = model_utils.warmup(model.epoch_cur, model.beta, warmup_time=model.warmup_time, beta_final=model.beta_final)
 
 
-def eval_full_batch_mnist(model, loader, epoch, dataset_name='val', use_bernoulli_loss=False):
+def eval_full_batch_mnist(model, loader, dataset_name='val', use_bernoulli_loss=False):
     with torch.no_grad():
         model.eval()
         i = 0
@@ -101,49 +95,15 @@ def eval_full_batch_mnist(model, loader, epoch, dataset_name='val', use_bernoull
                     model_utils.accum_update(model, str(dataset_name) + '_KL_' + str(key), value)
 
 
-        head = [dataset_name + '_loss', dataset_name + '_reconstruction']
-        ret_log = [model.accum_loss[str(dataset_name) + '_loss'].avg, model.accum_loss[str(dataset_name) + '_recon'].avg]
-        model.writer.add_scalar(f'loss/loss_'+str(dataset_name), model.accum_loss[str(dataset_name) + '_loss'].avg, epoch)
-        #model.writer.add_scalars(f'loss/loss', {str(dataset_name): model.accum_loss[str(dataset_name) + '_loss'].avg,}, epoch)
-        model.writer.add_scalar(f'loss/reconstructions_'+str(dataset_name), model.accum_loss[str(dataset_name) + '_recon'].avg, epoch)
-        #model.writer.add_scalars(f'loss/reconstructions', {str(dataset_name): model.accum_loss[str(dataset_name) + '_recon'].avg,}, epoch)
-        kls_head = []
-        kls_log = []
-        if model.variational:
-            head.append(str(dataset_name) + '_VLB')
-            head.append(str(dataset_name) + '_KL')
-            ret_log.append(model.accum_loss[str(dataset_name) + '_VLB'].avg)
-            ret_log.append(model.accum_loss[str(dataset_name) + '_KL'].avg)
-            model.writer.add_scalar(f'KLs/total_'+str(dataset_name), model.accum_loss[str(dataset_name) + '_KL'].avg, epoch)
-            #model.writer.add_scalars(f'KLs/total', {str(dataset_name): model.accum_loss[str(dataset_name)+'_KL_'+str(key)].avg, }, epoch)
-            for key, value in model.KLs.items():
-                kls_head.append(str(dataset_name)+key)
-                kls_log.append(model.accum_loss[str(dataset_name) + '_KL_' + str(key)].avg)
-                model.writer.add_scalar(f'KLs/'+str(dataset_name)+str(key), model.accum_loss[str(dataset_name)+'_KL_'+str(key)].avg, epoch)
-                #model.writer.add_scalars(f'KLs/'+str(dataset_name), {str(key): model.accum_loss[str(dataset_name)+'_KL_'+str(key)].avg, }, epoch)
-        model.head = np.append(model.head, head)
-        model.ret_log = np.append(model.ret_log, ret_log)
-        model.kls_head = np.append(model.kls_head, kls_head)
-        model.kls_log = np.append(model.kls_log, kls_log)
+        model_utils.log_epoch_values(model, dataset_name)
 
-        if epoch % model.figs_checkpoints_save_freq == 0:
-            reconstructions = reconstructions.reshape(cur_batch_size, 1, 28, 28)
-            file_path = model.folder_name + '/images/' + str(dataset_name) + '_' + str(epoch) + '_' + 'reals'
-            experiment_utils.plot_tensor_images(image, max_num_images=25, nrow=5, show=False, save_as=file_path)
-            file_path = model.folder_name + '/images/' + str(dataset_name) + '_' + str(epoch) + '_' + 'reconstructions'
-            experiment_utils.plot_tensor_images(reconstructions, max_num_images=25, nrow=5, show=False, save_as=file_path)
-            file_path = model.folder_name + '/images/' + str(dataset_name) + '_latest_' + 'reals'
-            experiment_utils.plot_tensor_images(image, max_num_images=25, nrow=5, show=False, save_as=file_path)
-            file_path = model.folder_name + '/images/' + str(dataset_name) + '_latest_' + 'reconstructions'
-            experiment_utils.plot_tensor_images(reconstructions, max_num_images=25, nrow=5, show=False, save_as=file_path)
+        if model.epoch_cur % model.figs_checkpoints_save_freq == 0:
+            experiment_utils.mnist_reconstructions(model, image, reconstructions, dataset_name, cur_batch_size)
 
-def train_epoch(model, epoch, train_loader):
+
+def train_epoch(model, train_loader):
     model.train()
-    bar = Bar('>>>', fill='>', max=len(train_loader))
-    st = time.time()
-    for i, (all_seq) in enumerate(train_loader):
-        bt = time.time()
-
+    for i, (all_seq) in enumerate(tqdm(train_loader)):
         inputs = all_seq.to(model.device).float()
 
         _ = model(inputs.float())
@@ -152,26 +112,17 @@ def train_epoch(model, epoch, train_loader):
         model.optimizer.zero_grad()
         loss.backward()
         total_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), model.clipping_value)
+        model.writer.add_scalar("Gradients/total_gradient_norm", total_norm, model.epoch_cur)
+        #if (total_norm < 150) or (model.epoch_cur < 50):
         model.optimizer.step()
 
-        bar.suffix = '{}/{}|batch time {:.4f}s|total time{:.2f}s'.format(i + 1, len(train_loader), time.time() - bt, time.time() - st)
-        bar.next()
-
-    head = ['Epoch']
-    ret_log = [epoch]
-    model.head = np.append(model.head, head)
-    model.ret_log = np.append(model.ret_log, ret_log)
-
-    bar.finish()
+    model.beta = model_utils.warmup(model.epoch_cur, model.beta, warmup_time=model.warmup_time, beta_final=model.beta_final)
 
 
-def eval_full_batch(model, loader, epoch, dataset_name='val'):
+def eval_full_batch(model, loader, dataset_name='val'):
     with torch.no_grad():
         model.eval()
-        bar = Bar('>>>', fill='>', max=len(loader))
-        st = time.time()
-        for i, (all_seq) in enumerate(loader):
-            bt = time.time()
+        for i, (all_seq) in enumerate(tqdm(loader)):
             cur_batch_size = len(all_seq)
 
             inputs = all_seq.to(model.device).float()
@@ -180,37 +131,13 @@ def eval_full_batch(model, loader, epoch, dataset_name='val'):
             loss = model.cal_loss(inputs, 'gaussian')
 
             model_utils.accum_update(model, str(dataset_name)+'_loss', loss)
-            model_utils.accum_update(model, str(dataset_name)+'_recon_loss', model.recon_loss)
+            model_utils.accum_update(model, str(dataset_name)+'_recon', model.recon_loss)
             if model.variational:
                 model_utils.accum_update(model, str(dataset_name)+'_KL', model.KL)
+                for key, value in model.KLs.items():
+                    model_utils.accum_update(model, str(dataset_name) + '_KL_' + str(key), value)
 
-            bar.suffix = '{}/{}|batch time {:.4f}s|total time{:.2f}s'.format(i + 1, len(loader), time.time() - bt,
-                                                                                      time.time() - st)
-            bar.next()
-        bar.finish()
+        model_utils.log_epoch_values(model, dataset_name)
 
-        head = [dataset_name+'_loss', dataset_name+'_reconstruction']
-        ret_log = [model.accum_loss[str(dataset_name)+'_loss'].avg, model.accum_loss[str(dataset_name)+'_recon_loss'].avg]
-        if model.variational:
-            head.append(str(dataset_name)+'_KL')
-            ret_log.append(model.accum_loss[str(dataset_name)+'_KL'].avg)
-        model.head = np.append(model.head, head)
-        model.ret_log = np.append(model.ret_log, ret_log)
-
-        inputs_reshaped = inputs.reshape(cur_batch_size, 1, 12, 8)
-        reconstructions = mu.reshape(cur_batch_size, 1, 12, 8)
-        diffs = inputs_reshaped - reconstructions
-
-        if epoch % model.figs_checkpoints_save_freq == 0:
-            file_path = model.folder_name + '/images/' + str(dataset_name) + '_' + str(epoch) + '_' + 'reals'
-            experiment_utils.plot_tensor_images(inputs_reshaped.detach().cpu(), max_num_images=25, nrow=5, show=False, save_as=file_path)
-            file_path = model.folder_name + '/images/' + str(dataset_name) + '_' + str(epoch) + '_' + 'reconstructions'
-            experiment_utils.plot_tensor_images(reconstructions.detach().cpu(), max_num_images=25, nrow=5, show=False, save_as=file_path)
-            file_path = model.folder_name + '/images/' + str(dataset_name) + '_' + str(epoch) + '_' + 'diffs'
-            experiment_utils.plot_tensor_images(diffs.detach().cpu(), max_num_images=25, nrow=5, show=False, save_as=file_path)
-            file_path = model.folder_name + '/poses/' + str(dataset_name) + '_' + str(epoch) + '_' + 'poses_xz'
-            experiment_utils.plot_poses(inputs.detach().cpu().numpy(), mu.detach().cpu().numpy(), max_num_images=25, azim=0, evl=90, save_as=file_path)
-            file_path = model.folder_name + '/poses/' + str(dataset_name) + '_' + str(epoch) + '_' + 'poses_yz'
-            experiment_utils.plot_poses(inputs.detach().cpu().numpy(), mu.detach().cpu().numpy(), max_num_images=25, azim=0, evl=-0, save_as=file_path)
-            file_path = model.folder_name + '/poses/' + str(dataset_name) + '_' + str(epoch) + '_' + 'poses_xy'
-            experiment_utils.plot_poses(inputs.detach().cpu().numpy(), mu.detach().cpu().numpy(), max_num_images=25, azim=90, evl=90, save_as=file_path)
+        if model.epoch_cur % model.figs_checkpoints_save_freq == 0:
+            experiment_utils.poses_visualisations(model, inputs, mu, dataset_name, cur_batch_size)

@@ -44,7 +44,7 @@ class DATA():
             self.cartesian = True
             self.node_n=96
             self.train_dataset = H36motion3D(path_to_data=self.data_dir, actions=acts_train, input_n=input_n, output_n=output_n,
-                                          split=0, sample_rate=sample_rate, dct_n=dct_n)
+                                          split=0, sample_rate=sample_rate, dct_used=dct_n)
             self.val_dataset = H36motion3D(path_to_data=self.data_dir, actions=acts_train, input_n=input_n, output_n=output_n,
                                         split=2, sample_rate=sample_rate, dct_used=dct_n)
             if self.out_of_distribution:
@@ -60,7 +60,7 @@ class DATA():
             raise Exception("Dataset name ({}) is not valid!".format(self.dataset))
         return self.out_of_distribution
 
-    def get_dataloaders(self, train_batch, test_batch, job, val_categorise=False):
+    def get_dataloaders(self, train_batch, test_batch, job=0, val_categorise=False):
         # load dadasets for training
         if val_categorise:
             train_loader = dict()
