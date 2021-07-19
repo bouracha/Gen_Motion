@@ -247,6 +247,17 @@ cd ..
 #python3 main.py --batch_norm --variational --name "ladder_pose" --n_zs 8 4 2 --lr 0.001 --train_batch_size 1000 --n_epochs 5000 --start_epoch 1 --beta 0.0001 --warmup
 #python3 main.py --batch_norm --variational --name "ladder_output_variance" --n_zs 8 4 2 --lr 0.00001 --train_batch_size 1000 --n_epochs 5000 --start_epoch 1 --beta 0.001 --warmup_time 200 --beta_final 1.0 --output_variance
 #python3 main.py --batch_norm --variational --name "ladder_beta" --n_zs 8 4 2 --lr 0.001 --train_batch_size 1000 --n_epochs 5000 --start_epoch 1 --beta 0.0001 --warmup_time 20 --beta_final 0.001
-python3 main.py --batch_norm --variational --name "temp" --n_zs 8 4 2 --lr 0.001 --train_batch_size 1000 --n_epochs 5000 --start_epoch 1 --beta 0.0001 --warmup_time 20 --beta_final 0.001
 
 
+
+
+#python3 main.py --motion --batch_norm --variational --name "motion_ae" --n_zs 4 2 --lr 0.001 --train_batch_size 1000 --n_epochs 5000 --start_epoch 1 --beta 0 #.0001 #--warmup_time 200 --beta_final 0.001
+#python3 main.py --motion --batch_norm --variational --name "motion_vae" --n_zs 2 --lr 0.001 --train_batch_size 1000 --n_epochs 5000 --start_epoch 1 --beta 0 #.0001 #--warmup_time 200 --beta_final 0.001
+#python3 main.py --motion --batch_norm --variational --name "temp" --n_zs 8 4 2 --lr 0.001 --train_batch_size 1000 --n_epochs 5000 --start_epoch 1 --beta 0 #.0001 #--warmup_time 200 --beta_final 0.001
+#python3 main.py --motion --timepoints 2 --batch_norm --variational --name "motion_ae_short" --n_zs 4 2 --lr 0.001 --train_batch_size 1000 --n_epochs 5000 --start_epoch 1 --beta 0 #.0001 #--warmup_time 200 --beta_final 0.001
+
+# ===============================================================
+#                     VDVAE refactoring tests
+# ===============================================================
+
+python3 main.py --use_MNIST --use_bernoulli_loss --batch_norm --variational --name "refactor_test_" --n_zs 64 32 16 8 4 2 --lr 0.001 --train_batch_size 1000 --n_epochs 5000 --start_epoch 1 --warmup_time 20 --beta 0.0001

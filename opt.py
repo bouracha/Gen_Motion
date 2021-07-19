@@ -15,6 +15,9 @@ class Options:
         self.parser.add_argument('--inference', dest='inference', action='store_true', help='include to run inference (classifier only)')
         self.parser.set_defaults(inference=False)
         self.parser.add_argument('--data_path', type=str, default="deep_2_wd_AE/embeddings/", help='Path to data- if applicable')
+        self.parser.add_argument('--motion', dest='motion', action='store_true', help='train on motion')
+        self.parser.set_defaults(motion=False)
+        self.parser.add_argument('--timepoints', type=int, default=10, help='Number of timepoints to use (if motion flag is on)')
         # ===============================================================
         #                     Architecture options
         # ===============================================================

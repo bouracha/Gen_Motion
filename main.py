@@ -49,11 +49,17 @@ if opt.use_MNIST:
         batch_size=train_batch_size,
         shuffle=True)
     input_n=784
-else:
+elif opt.motion:
     ### Human Motion Data
     data = data.DATA("h3.6m_3d", "h3.6m/dataset/")
+    timepoints = opt.timepoints
+    out_of_distribution = data.get_dct_and_sequences(input_n=timepoints, output_n=0, sample_rate=2, dct_n=10, out_of_distribution_action=None)
+    train_loader, val_loader, OoD_val_loader, test_loader = data.get_dataloaders(train_batch=train_batch_size, test_batch=test_batch_size)
+    input_n=data.node_n*timepoints
+else:
+    ### Human PoseData
+    data = data.DATA("h3.6m_3d", "h3.6m/dataset/")
     out_of_distribution = data.get_poses(input_n=1, output_n=1, sample_rate=2, dct_n=2, out_of_distribution_action=None)
-    #out_of_distribution = data.get_dct_and_sequences(input_n=10, output_n=0, sample_rate=2, dct_n=10, out_of_distribution_action=None)
     train_loader, val_loader, OoD_val_loader, test_loader = data.get_dataloaders(train_batch=train_batch_size, test_batch=test_batch_size)
     input_n=data.node_n
 print(">>> data loaded !")
@@ -75,14 +81,18 @@ for epoch in range(opt.start_epoch, opt.n_epochs+1):
         train.train_epoch_mnist(model, train_loader, opt.use_bernoulli_loss)
         train.eval_full_batch_mnist(model, train_loader, 'train', opt.use_bernoulli_loss)
         train.eval_full_batch_mnist(model, val_loader, 'val', opt.use_bernoulli_loss)
+    elif opt.motion:
+        train.train_motion_epoch(model, train_loader)
+        train.eval_motion_batch(model, val_loader, 'train')
+        train.eval_motion_batch(model, val_loader, 'val')
     else:
         train.train_epoch(model, train_loader)
         train.eval_full_batch(model, train_loader, 'train')
         train.eval_full_batch(model, val_loader, 'val')
 
-    #if model.epoch_cur % model.figs_checkpoints_save_freq == 0:
-    #    for i in range(len(model.zs)):
-    #        experiment_utils.gnerate_samples(model, model.epoch_cur, num_grid_points=10, use_bernoulli_loss=opt.use_bernoulli_loss, latent_resolution=i, z_prev_level=np.maximum(i - 1, 0))
+    if model.epoch_cur % model.figs_checkpoints_save_freq == 0:
+        for i in range(len(model.zs)):
+            experiment_utils.gnerate_samples(model, num_grid_points=20, use_bernoulli_loss=opt.use_bernoulli_loss, latent_resolution=i, z_prev_level=np.maximum(i - 1, 0))
 
     model_utils.save_checkpoint_and_csv(model)
     model.writer.close()

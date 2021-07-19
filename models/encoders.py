@@ -2,6 +2,60 @@ from models.layers import *
 
 import numpy as np
 
+import models.utils as utils
+
+class VDEncoder(nn.Module):
+    def __init__(self, input_n=96, act_fn=nn.GELU(), device="cuda", batch_norm=False, p_dropout=0.0, n_zs=[50, 10, 5, 2], residual_size=200):
+        """
+
+        :param input_feature: num of input feature
+        :param hidden_feature: num of hidden feature
+        :param p_dropout: drop out prob.
+        :param num_stage: number of residual blocks
+        :param node_n: number of nodes in graph
+        """
+        super(VDEncoder, self).__init__()
+        self.activation = act_fn
+        self.device = device
+        self.batch_norm = batch_norm
+        self.p_dropout = p_dropout
+        self.residual_size = residual_size
+
+        # input_n -> input_n corresponding to z_bottom -> .... -> N_{z_0} corresponding to z_top
+        self.encoder_output_sizes = utils.define_neurons_layers(input_n, n_zs[-1], len(n_zs)-1)
+        self.encoder_output_sizes.insert(0, input_n)
+        print(self.encoder_output_sizes)
+
+        self.encoder_blocks_layers=[]
+        for i in range(len(self.encoder_output_sizes)-1):
+            self.encoder_blocks_layers.append(utils.define_neurons_layers(self.encoder_output_sizes[i], self.encoder_output_sizes[i+1], 2))
+        print("Encoder_block_layers", self.encoder_blocks_layers)
+
+        #Bottom Up
+        self.encoder_blocks = []
+        self.encoder_reshape_residual_layer = []
+        self.encoder_rezero_operation = []
+        for i in range(len(self.encoder_output_sizes)-1):
+            self.encoder_blocks.append(NeuralNetworkBlock(layers=self.encoder_blocks_layers[i], activation=self.activation, batch_norm=batch_norm, p_dropout=p_dropout))
+            self.encoder_reshape_residual_layer.append(FullyConnected(in_features=self.encoder_output_sizes[i], out_features=self.encoder_output_sizes[i+1], bias=True))
+            self.encoder_rezero_operation.append(ReZero())
+        self.encoder_blocks = nn.ModuleList(self.encoder_blocks)
+        self.encoder_reshape_residual_layer = nn.ModuleList(self.encoder_reshape_residual_layer)
+        self.encoder_rezero_operation = nn.ModuleList(self.encoder_rezero_operation)
+
+    def forward(self, x):
+        #Bottom Up
+        self.activations = []
+        y = x
+        for i in range(len(self.encoder_output_sizes)-1):
+            encoder_output = self.encoder_blocks[i](y)
+            self.activations.append(encoder_output)
+            res = self.encoder_reshape_residual_layer[i](y)
+            y = res + self.encoder_rezero_operation[i](encoder_output)
+
+        return self.activations
+
+
 class EncoderBlock(nn.Module):
     def __init__(self, layers=[48, 100, 50, 2], activation=nn.LeakyReLU(0.1), variational=False, device="cuda", batch_norm=False, p_dropout=0.0):
         """

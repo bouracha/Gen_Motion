@@ -8,12 +8,7 @@ import torch
 
 import experiments.utils as experiment_utils
 
-from progress.bar import Bar
-import time
-
 from tqdm.auto import tqdm
-
-import numpy as np
 
 import models.utils as model_utils
 
@@ -78,7 +73,7 @@ def eval_full_batch_mnist(model, loader, dataset_name='val', use_bernoulli_loss=
 
             image_flattened = image.reshape(cur_batch_size, -1).to(model.device).float()
 
-            reconstructions = model(image_flattened.float())
+            reconstructions, _, _ = model(image_flattened.float())
             if use_bernoulli_loss:
                 loss = model.cal_loss(image_flattened, 'bernoulli')
                 sig = nn.Sigmoid()
@@ -141,3 +136,49 @@ def eval_full_batch(model, loader, dataset_name='val'):
 
         if model.epoch_cur % model.figs_checkpoints_save_freq == 0:
             experiment_utils.poses_visualisations(model, inputs, mu, dataset_name, cur_batch_size)
+
+
+def train_motion_epoch(model, train_loader):
+    model.train()
+    for i, (dct_inputs, dct_targets, all_seq) in enumerate(tqdm(train_loader)):
+        #print(dct_inputs.shape)
+        #print(dct_targets.shape)
+        #print(all_seq.shape)
+        b_n, t_n, f_n = all_seq.shape
+        all_seq = all_seq.reshape(b_n, t_n*f_n)
+        #print(all_seq.shape)
+
+        inputs = all_seq.to(model.device).float()
+
+        _ = model(inputs.float())
+        loss = model.cal_loss(inputs, 'gaussian')
+
+        model.optimizer.zero_grad()
+        loss.backward()
+        total_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), model.clipping_value)
+        model.writer.add_scalar("Gradients/total_gradient_norm", total_norm, model.epoch_cur)
+        #if (total_norm < 150) or (model.epoch_cur < 50):
+        model.optimizer.step()
+
+def eval_motion_batch(model, loader, dataset_name='val'):
+    with torch.no_grad():
+        model.eval()
+        for i, (dct_inputs, dct_targets, all_seq) in enumerate(tqdm(loader)):
+
+            b_n, t_n, f_n = all_seq.shape
+            all_seq = all_seq.reshape(b_n, t_n * f_n)
+
+            inputs = all_seq.to(model.device).float()
+
+            mu = model(inputs.float())
+            loss = model.cal_loss(inputs, 'gaussian')
+
+            model_utils.accum_update(model, str(dataset_name)+'_loss', loss)
+            model_utils.accum_update(model, str(dataset_name)+'_recon', model.recon_loss)
+            if model.variational:
+                model_utils.accum_update(model, str(dataset_name)+'_KL', model.KL)
+                for key, value in model.KLs.items():
+                    model_utils.accum_update(model, str(dataset_name) + '_KL_' + str(key), value)
+
+        model_utils.log_epoch_values(model, dataset_name)
+

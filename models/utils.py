@@ -249,7 +249,7 @@ def save_checkpoint_and_csv(model):
         df_kls.to_csv(model.folder_name + '/' + 'kls.csv', header=model.kls.heads, index=False)
         model.kls_file_exists = True
     state = {'epoch': model.epoch_cur + 1,
-             'err': model.accum_loss['train_loss'].avg,
+             'err': model.accum_loss['val_loss'].avg,
              'state_dict': model.state_dict()}
     if model.epoch_cur % model.figs_checkpoints_save_freq == 0:
         print("Saving checkpoint....")
