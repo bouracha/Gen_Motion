@@ -7,6 +7,7 @@ import numpy as np
 
 from torch.utils.tensorboard import SummaryWriter
 
+from utils import data_utils
 class AccumValue(object):
     """Object for each variable about which
     we want to accumulate updates
@@ -66,8 +67,6 @@ class CsvLog(object):
         self.values = []
 
 
-
-
 def num_parameters_and_place_on_device(model):
     """PLace model on appropriate device and
     return number of model parameters
@@ -97,7 +96,7 @@ def define_neurons_layers(n_z_pre, n_z_next, num_layers):
     nn_layers = list(map(int, nn_layers))
     return nn_layers
 
-def warmup(epoch, cur_beta, warmup_time=200, beta_final=1.0):
+def warmup(model, cur_beta, warmup_time=200, beta_final=1.0):
     """
 
     :param epoch: current beta
@@ -106,12 +105,14 @@ def warmup(epoch, cur_beta, warmup_time=200, beta_final=1.0):
     :param beta_final: final beta to which to warm up
     :return: beta after update (if update was required)
     """
-    if warmup_time < epoch:
+    model.writer.add_scalar("Gradients/beta", cur_beta, model.epoch_cur)
+    if model.epoch_cur < warmup_time:
         if cur_beta < beta_final:
             cur_beta += (beta_final - cur_beta)/(1.0*warmup_time)
         if cur_beta >= beta_final:
             cur_beta = beta_final
     return cur_beta
+
 # ===============================================================
 #                     VAE specific functions
 # ===============================================================
@@ -129,7 +130,7 @@ def reparametisation_trick(mu, log_var, device):
 
     return z
 
-def kullback_leibler_divergence(mu_1, log_var_1, mu_2=None, log_var_2=None):
+def kullback_leibler_divergence(mu_1, log_var_1, mu_2=None, log_var_2=None, graph=False):
     """
 
     :param mu: The mean of the latent variable to be formed (nbatch, n_z)
@@ -140,7 +141,11 @@ def kullback_leibler_divergence(mu_1, log_var_1, mu_2=None, log_var_2=None):
     if mu_2 is None and log_var_2 is None:
         mu_2 = torch.zeros_like(mu_1)
         log_var_2 = torch.zeros_like(log_var_1)
-    KL_per_datapoint = 0.5 * torch.sum(-1 + log_var_2 - log_var_1 + (torch.exp(log_var_1) + torch.pow((mu_1 - mu_2), 2))/(torch.exp(log_var_2)), axis=1)
+    if graph:
+        axis_to_sum = (1, 2)
+    else:
+        axis_to_sum = 1
+    KL_per_datapoint = 0.5 * torch.sum(-1 + log_var_2 - log_var_1 + (torch.exp(log_var_1) + torch.pow((mu_1 - mu_2), 2))/(torch.exp(log_var_2)), axis=axis_to_sum)
     KL = torch.mean(KL_per_datapoint)
 
     return KL
@@ -184,6 +189,28 @@ def cal_VLB(p_log_x, KL, beta=1.0):
     return VLB
 
 # ===============================================================
+#                     Transfoirmations in torch
+# ===============================================================
+
+def dct(model, in_tensor, inverse=False):
+    """
+    :param model: the model instance
+    :param in_tensor: tensor to have it's temproal component DCT'ed assumes
+    that the last dim of in_tenosr is the temporal one
+    :param inverse: toggle to inverse the transformation (boole)
+    """
+    t_n = in_tensor.size()[-1]
+    dct_matrix, idct_matrix = data_utils.get_dct_matrix(t_n)
+    if not inverse:
+        dct_matrix = torch.from_numpy(dct_matrix).to(model.device).float()
+        tensor_dct = torch.matmul(in_tensor, dct_matrix)
+        return tensor_dct
+    else:
+        idct_matrix = torch.from_numpy(idct_matrix).to(model.device).float()
+        tensor_idct = torch.matmul(in_tensor, idct_matrix)
+        return tensor_idct
+
+# ===============================================================
 #                     VDVAE bookkeeping functions
 # ===============================================================
 
@@ -209,8 +236,8 @@ def book_keeping(model, start_epoch=1):
     original_stdout = sys.stdout
     with open(str(model.folder_name)+'/'+'architecture.txt', write_type) as f:
         sys.stdout = f
-        if start_epoch==1:
-            print(model)
+        #if start_epoch==1:
+        #    print(model)
         print("Start epoch:{}".format(start_epoch))
         print("Learning rate:{}".format(model.lr))
         print("Training batch size:{}".format(model.train_batch_size))

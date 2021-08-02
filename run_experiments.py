@@ -5,6 +5,7 @@ import torch.optim
 from data import DATA
 
 import experiments.experiments as experiments
+import experiments.utils as experiment_utils
 
 import train as train
 
@@ -26,7 +27,7 @@ else:
 if opt.use_MNIST:
     ### MNIST
     folder_name = folder_name+"MNIST"
-if not opt.icdf:
+if not opt.icdf and not opt.motion_samples:
     train_batch_size=opt.train_batch_size
     test_batch_size=opt.test_batch_size
     data = DATA("h3.6m_3d", "h3.6m/dataset/")
@@ -40,11 +41,15 @@ if not opt.icdf:
 #import models.VAE as nnmodel
 #model = nnmodel.VAE(input_n=96, hidden_layers=opt.hidden_layers, n_z=opt.n_z, variational=opt.variational, output_variance=opt.output_variance, device=device, batch_norm=opt.batch_norm, p_dropout=opt.p_drop)
 import models.VDVAE as nnmodel
-model = nnmodel.VDVAE(input_n=784, variational=opt.variational, output_variance=opt.output_variance, device=device, batch_norm=opt.batch_norm, p_dropout=opt.p_drop, n_zs=opt.n_zs)
 
-train.initialise(model, start_epoch=opt.start_epoch, folder_name=folder_name, lr=opt.lr, beta=opt.beta, l2_reg=1e-4, train_batch_size=opt.train_batch_size)
+model = nnmodel.VDVAE(input_n=[96, opt.timepoints], variational=opt.variational, output_variance=opt.output_variance, device=device, batch_norm=opt.batch_norm, p_dropout=opt.p_drop, n_zs=opt.n_zs, residual_size=opt.highway_size)
+train.initialise(model, start_epoch=opt.start_epoch, folder_name=folder_name, lr=opt.lr, beta=opt.beta, l2_reg=opt.l2_reg, train_batch_size=opt.train_batch_size, warmup_time=opt.warmup_time, beta_final=opt.beta_final)
+
 
 model.eval()
+
+if opt.motion_samples:
+    experiment_utils.generate_motion_frames(model, use_bernoulli_loss=False, graph=True)
 
 if opt.degradation_experiment:
     #experiments.degradation_experiments_occlude(model, data.acts_train, val_loader, alpha=0, num_samples=10)

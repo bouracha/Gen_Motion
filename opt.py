@@ -18,6 +18,7 @@ class Options:
         self.parser.add_argument('--motion', dest='motion', action='store_true', help='train on motion')
         self.parser.set_defaults(motion=False)
         self.parser.add_argument('--timepoints', type=int, default=10, help='Number of timepoints to use (if motion flag is on)')
+        self.parser.add_argument('--sample_rate', type=int, default=2, help='Take every nth frame')
         # ===============================================================
         #                     Architecture options
         # ===============================================================
@@ -31,7 +32,7 @@ class Options:
         self.parser.add_argument('--batch_norm', dest='batch_norm', action='store_true', help='toggle use batch_norm or not')
         self.parser.set_defaults(batch_norm=False)
         self.parser.add_argument('--p_drop', type=float, default=0.0, help='dropout rate')
-        self.parser.add_argument('--highway_size', type=int, default=200, help='size of main residual highway')
+        self.parser.add_argument('--highway_size', type=int, default=256, help='size of main residual highway')
         # ===============================================================
         #                    Initialise options
         # ===============================================================
@@ -72,6 +73,8 @@ class Options:
         self.parser.set_defaults(noise_to_embeddings=False)
         self.parser.add_argument('--de_noise', dest='de_noise', action='store_true', help='add noise to inputs and save dataframes of embeddings')
         self.parser.set_defaults(de_noise=False)
+        self.parser.add_argument('--motion_samples', dest='motion_samples', action='store_true', help='generate frame by frame motion samples for gifs')
+        self.parser.set_defaults(motion_samples=False)
         # ===============================================================
         #                     Experiment options
         # ===============================================================

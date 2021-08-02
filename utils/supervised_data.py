@@ -47,3 +47,24 @@ class ClassifierDataset(Dataset):
         idx2class = {v: k for k, v in class2idx.items()}
         num_classes = len(class2idx)
         return class2idx, idx2class, num_classes
+
+
+def initialise_motion_class_and_index_map():
+    class2idx = {
+        'walking': 0,
+        'eating': 1,
+        'smoking': 2,
+        'directions': 3,
+        'greeting': 4,
+        'posing': 5,
+        'purchases': 6,
+        'sitting': 7,
+        'sittingdown': 8,
+        'takingphoto': 9,
+        'waiting': 10,
+        'walkingdog': 11,
+        'walkingtogether': 12
+    }
+    idx2class = {v: k for k, v in class2idx.items()}
+    num_classes = len(class2idx)
+    return class2idx, idx2class, num_classes

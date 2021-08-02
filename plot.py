@@ -5,10 +5,10 @@ import numpy as np
 
 name = sys.argv[0]
 
-def plot_losses(path_to_file, label, y='val_loss', x='Epoch', errorbar=None, need_thermalisation=False, color='b', linestyle='-', y2=None, y2_label='KL'):
+def plot_2_scales(path_to_file, label, y='val_loss', x='Epoch', errorbar=None, need_thermalisation=False, color='b', linestyle='-', y2=None, y2_label='KL'):
   fontsize = 10
   #data = pd.read_csv("plot_data/"+str(path_to_file)+".csv")
-  data = pd.read_csv(str(path_to_file))[:300]
+  data = pd.read_csv(str(path_to_file))[2:]
 
   fig, ax1 = plt.subplots()
 
@@ -39,19 +39,57 @@ def plot_losses(path_to_file, label, y='val_loss', x='Epoch', errorbar=None, nee
     y2_plot = np.array(data[y2])
     ax2.plot(x_plot, y2_plot, label=y2_label, color='r', linestyle=linestyle)
     ax2.set_ylabel('KL')
+    x = np.linspace(0, 800, 10)
+    ax2.plot(x * 0 + 20, x, label=r"$ \beta =0.00001$", linestyle='--', color='r')
+    ax2.legend(prop={'size': 12}, bbox_to_anchor=(0.5, 0., 0.45, 0.4))
 
-  x = np.linspace(25, 65, 10)
-  ax2.plot(x * 0 + 20, x, label=r"$ \beta =0.001$", linestyle='--', color='r')
 
   plt.xlabel("Epoch", fontsize=fontsize)
   # plt.xlabel("Scale of Gaussian Noise Added", fontsize=fontsize)
   # plt.ylabel("VLB", fontsize=fontsize)
   plt.title("", fontsize=fontsize)
-  ax1.legend(prop={'size': 12}, bbox_to_anchor=(0.5, 0., 0.5, 0.5))
-  ax2.legend(prop={'size': 12}, bbox_to_anchor=(0.5, 0., 0.5, 0.3))
+  ax1.legend(prop={'size': 12}, bbox_to_anchor=(0.5, 0.0, 0.31, 0.5))
   plt.savefig('plot.png')
 
+def plot_losses(path_to_file, label, y='val_loss', x='Epoch', errorbar=None, need_thermalisation=False, color='b', linestyle='-'):
+  #data = pd.read_csv("plot_data/"+str(path_to_file)+".csv")
+  data = pd.read_csv(str(path_to_file))[:300]
 
+  x_plot = np.array(data[x])
+  y_plot = np.array(data[y])
+
+  #set max value
+  #for i in range(50, len(y_plot)):
+  #  if y_plot[i] < -150:
+  #    y_plot[i] = y_plot[i-1]
+  #y_plot[y_plot < -150] = -150
+
+  if need_thermalisation:
+    thermalised_history = 10
+    print("{} thermalised mean: {}".format(label, np.mean(y_plot[-thermalised_history:])))
+    print("{} thermalised STD: {}".format(label, np.std(y_plot[-thermalised_history:])))
+
+  if errorbar is None:
+    plt.plot(x_plot, y_plot, label=label, linestyle=linestyle)
+  else:
+    yerr = np.array(data[errorbar])
+    plt.errorbar(x_plot, y_plot, yerr=yerr, label=label, color=color, linestyle=linestyle)
+
+  fontsize = 10
+  plt.yscale('log')
+  # plt.xscale('log')
+  x = np.linspace(0, 1000, 10)
+  # plt.plot(x, x*0+0.55882453918457, label="", linestyle='--', color='y')
+  # plt.plot(x, x*0+0.427002441354359, label="", linestyle='--', color='b')
+  # plt.plot(x, x*0+0.406370745100563, label="", linestyle='--', color='r')
+  # plt.plot(x, x*0+0.527691416260059, label="", linestyle='--', color='g')
+  #plt.plot(x * 0 + 200, x, label=r"$ \beta =1.0$", linestyle='--', color='r')
+  plt.xlabel("Epoch", fontsize=fontsize)
+  # plt.xlabel("Scale of Gaussian Noise Added", fontsize=fontsize)
+  plt.ylabel("Reconstruction MSE", fontsize=fontsize)
+  plt.title("", fontsize=fontsize)
+  plt.legend(prop={'size': 12})
+  plt.savefig('plot.png')
 
 n_z = 10
 file_name="kls.csv"
@@ -92,11 +130,18 @@ file_name="kls.csv"
 #plot_losses(path_to_file="ladder_MNIST/kls.csv", label="KL $z_2$", y="val2", x="Epoch", linestyle=':')
 #plot_losses(path_to_file="ladder_MNIST/kls.csv", label="KL $z_3$", y="val3", x="Epoch", linestyle=':')
 #plot_losses(path_to_file="ladder_MNIST/kls.csv", label="KL $z_4$", y="val4", x="Epoch", linestyle=':')
-plot_losses(path_to_file="ladder_beta/losses.csv", label="VLB", y="val_loss", x="Epoch", linestyle='-', y2='val_KL')
+#plot_losses(path_to_file="ladder_beta/losses.csv", label="VLB", y="val_loss", x="Epoch", linestyle='-', y2='val_KL')
 #plot_losses(path_to_file="ladder_MNIST/losses.csv", label="Val", y="val_VLB", x="Epoch", linestyle='-')
 #plot_losses(path_to_file="ladder_MNIST/losses.csv", label="Total KL", y="val_KL", x="Epoch", linestyle='-')
 
+#plot_losses(path_to_file="no_dct_ae/losses.csv", label="Original", y="val_reconstruction", x="Epoch", linestyle='-')
+#plot_losses(path_to_file="dct_ae/losses.csv", label="DCT", y="val_reconstruction", x="Epoch", linestyle='-')
+#plot_losses(path_to_file="dct_beta-5/losses.csv", label="DCT", y="val_reconstruction", x="Epoch", linestyle='-')
+
+plot_2_scales(path_to_file="dct_beta-5/losses.csv", label="VLB", y="val_loss", x="Epoch", linestyle='-', y2='val_KL')
+
 #plot_losses(path_to_file="deep_"+str(n_z)+"_beta_VAE/"+str(file_name)+".csv", label="VAE", y='MSE', x='num_samples', errorbar='STD', color='m')
+
 
 
 #plt.yscale('log')

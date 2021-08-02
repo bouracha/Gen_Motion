@@ -12,6 +12,12 @@ import torch
 
 from scipy.stats import norm
 
+import models.utils as model_utils
+
+import os
+
+import imageio
+
 def poses_visualisations(model, inputs, reconstructions, dataset_name, cur_batch_size):
     inputs_reshaped = inputs.reshape(cur_batch_size, 1, 12, 8)
     reconstructions = reconstructions.reshape(cur_batch_size, 1, 12, 8)
@@ -48,7 +54,7 @@ def mnist_reconstructions(model, image, reconstructions, dataset_name, cur_batch
     plot_tensor_images(reconstructions, max_num_images=25, nrow=5, show=False, save_as=file_path)
 
 
-def gnerate_samples(model, num_grid_points=20, use_bernoulli_loss=False, latent_resolution=999, z_prev_level=0):
+def gnerate_samples(model, num_grid_points=20, use_bernoulli_loss=False):
     if use_bernoulli_loss:
         distribution='bernoulli'
     else:
@@ -64,21 +70,130 @@ def gnerate_samples(model, num_grid_points=20, use_bernoulli_loss=False, latent_
             count += 1
     z = norm.ppf(z)
     inputs = torch.from_numpy(z).to(model.device)
-    mu = model.generate(inputs.float(), distribution, latent_resolution=latent_resolution, z_prev_level=z_prev_level)
+    for i in range(len(model.zs)):
+        latent_resolution = i
+        mu = model.generate(inputs.float(), distribution, latent_resolution=i, z_prev_level=np.maximum(i - 1, 0))
 
-    if mu.shape[-1] == 784:
-        mu = mu.reshape(num_grid_points ** 2, 1, 28, 28)
-        file_path = model.folder_name + '/samples/' + str(model.epoch_cur) + '_icdf'+'_res_'+str(latent_resolution)
-        plot_tensor_images(mu, max_num_images=400, nrow=20, show=False, save_as=file_path)
-        file_path = model.folder_name + '/samples/latest_icdf'+'_res_'+str(latent_resolution)
-        plot_tensor_images(mu, max_num_images=400, nrow=20, show=False, save_as=file_path)
+        if mu.shape[-1] == 784:
+            mu = mu.reshape(num_grid_points ** 2, 1, 28, 28)
+            file_path = model.folder_name + '/samples/' + str(model.epoch_cur) + '_icdf'+'_res_'+str(latent_resolution)
+            plot_tensor_images(mu, max_num_images=400, nrow=20, show=False, save_as=file_path)
+            file_path = model.folder_name + '/samples/latest_icdf'+'_res_'+str(latent_resolution)
+            plot_tensor_images(mu, max_num_images=400, nrow=20, show=False, save_as=file_path)
+        else:
+            file_path = model.folder_name + '/samples/' + 'latest_poses_xz_res_'+str(latent_resolution)
+            plot_poses(mu.detach().cpu().numpy(), mu.detach().cpu().numpy(), max_num_images=num_grid_points ** 2, azim=0, evl=90, save_as=file_path)
+            file_path = model.folder_name + '/samples/' + 'latest_poses_yz_res_'+str(latent_resolution)
+            plot_poses(mu.detach().cpu().numpy(), mu.detach().cpu().numpy(), max_num_images=num_grid_points ** 2, azim=0, evl=-0, save_as=file_path)
+            file_path = model.folder_name + '/samples/' + 'latest_poses_xy_res_'+str(latent_resolution)
+            plot_poses(mu.detach().cpu().numpy(), mu.detach().cpu().numpy(), max_num_images=num_grid_points ** 2, azim=90, evl=90, save_as=file_path)
+
+def generate_motion_frames(model, use_bernoulli_loss=False, graph=True):
+    if use_bernoulli_loss:
+        distribution='bernoulli'
     else:
-        file_path = model.folder_name + '/samples/' + 'latest_poses_xz_res_'+str(latent_resolution)
-        plot_poses(mu.detach().cpu().numpy(), mu.detach().cpu().numpy(), max_num_images=num_grid_points ** 2, azim=0, evl=90, save_as=file_path)
-        file_path = model.folder_name + '/samples/' + 'latest_poses_yz_res_'+str(latent_resolution)
-        plot_poses(mu.detach().cpu().numpy(), mu.detach().cpu().numpy(), max_num_images=num_grid_points ** 2, azim=0, evl=-0, save_as=file_path)
-        file_path = model.folder_name + '/samples/' + 'latest_poses_xy_res_'+str(latent_resolution)
-        plot_poses(mu.detach().cpu().numpy(), mu.detach().cpu().numpy(), max_num_images=num_grid_points ** 2, azim=90, evl=90, save_as=file_path)
+        distribution='gaussian'
+
+    if graph:
+        z = np.random.randn(5, 1, 256)
+        z = z.reshape(5, 1, 256)
+    else:
+        z = np.random.randn(5, 2)
+        z = z.reshape(5, 2)
+    z = torch.from_numpy(z).to(model.device)
+
+    node_n = model.decoder.node_input_n
+    t_n = model.decoder.input_temp_n
+
+    inputs_dct_hat = model.generate(z.float(), distribution, latent_resolution=999, z_prev_level=0)
+    inputs_dct_hat = inputs_dct_hat.reshape(5, node_n, t_n)
+    inputs_hat = model_utils.dct(model, inputs_dct_hat, inverse=True)
+    inputs_hat = np.asarray(inputs_hat.detach().cpu().numpy())
+
+    for i in range(5):
+        file_path = model.folder_name + '/samples/'
+        if not os.path.isdir(file_path+'sample{}'.format(i)):
+            os.makedirs(os.path.join(file_path, 'sample{}'.format(i)))
+        file_path = file_path + 'sample{}'.format(i) + '/'
+
+        motion = inputs_hat[i, :, :]
+        motion = motion.reshape(-1, 32, 3)
+        with imageio.get_writer(file_path+'movie.gif', mode='I', duration=0.1) as writer:
+            for j in range(t_n):
+                pose = motion[j]
+                t_file_path = file_path + 't_{}'.format(j)
+                plot_poses_by_frame_angles(pose, pose, max_num_images=5, save_as=t_file_path)
+
+                image = imageio.imread(file_path + 't_{}.png'.format(j), pilmode="RGB")
+                writer.append_data(image)
+
+
+def generate_motion_samples(model, use_bernoulli_loss=False, graph=True):
+    if use_bernoulli_loss:
+        distribution='bernoulli'
+    else:
+        distribution='gaussian'
+
+    if graph:
+        z = np.random.randn(5, 1, 256)
+        z = z.reshape(5, 1, 256)
+    else:
+        z = np.random.randn(5, 2)
+        z = z.reshape(5, 2)
+    z = torch.from_numpy(z).to(model.device)
+
+    inputs_dct_hat = model.generate(z.float(), distribution, latent_resolution=999, z_prev_level=0)
+    inputs_dct_hat = inputs_dct_hat.reshape(5, model.f_n, model.t_n)
+    inputs_hat = model_utils.dct(model, inputs_dct_hat, inverse=True)
+    inputs_hat = np.asarray(inputs_hat.detach().cpu().numpy())
+
+    file_path = model.folder_name + '/samples/' + str(model.epoch_cur) +  'motion_xz_'
+    plot_motion(inputs_hat, inputs_hat, azim=0, evl=90, save_as=file_path)
+    file_path = model.folder_name + '/samples/' + str(model.epoch_cur) +  '_motion_yz_'
+    plot_motion(inputs_hat, inputs_hat, azim=0, evl=-0, save_as=file_path)
+    file_path = model.folder_name + '/samples/' + str(model.epoch_cur) + '_motion_xy_'
+    plot_motion(inputs_hat, inputs_hat, azim=90, evl=90, save_as=file_path)
+    file_path = model.folder_name + '/samples/' + 'latest_motion_xz_'
+    plot_motion(inputs_hat, inputs_hat, azim=0, evl=90, save_as=file_path)
+    file_path = model.folder_name + '/samples/' + 'latest_motion_yz_'
+    plot_motion(inputs_hat, inputs_hat, azim=0, evl=-0, save_as=file_path)
+    file_path = model.folder_name + '/samples/' + 'latest_motion_xy_'
+    plot_motion(inputs_hat, inputs_hat, azim=90, evl=90, save_as=file_path)
+
+def generate_motion_samples_resolution(model, use_bernoulli_loss=False, graph=True):
+    if use_bernoulli_loss:
+        distribution='bernoulli'
+    else:
+        distribution='gaussian'
+
+    if graph:
+        z = np.random.randn(1, 1, 256)
+        z = z.reshape(1, 1, 256)
+    else:
+        z = np.random.randn(1, 2)
+        z = z.reshape(1, 2)
+    z = torch.from_numpy(z).to(model.device)
+
+    inputs_hat = []
+    for i in range(len(model.zs)):
+        input_dct_hat = model.generate(z.float(), distribution, latent_resolution=i, z_prev_level=np.maximum(i - 1, 0))
+        input_dct_hat = input_dct_hat.reshape(model.f_n, model.t_n)
+        input_hat = model_utils.dct(model, input_dct_hat, inverse=True)
+        inputs_hat.append(input_hat.detach().cpu().numpy())
+    inputs_hat = np.asarray(inputs_hat)
+
+    file_path = model.folder_name + '/samples/' + str(model.epoch_cur) +  'motion_xz_res_'
+    plot_motion(inputs_hat, inputs_hat, azim=0, evl=90, save_as=file_path)
+    file_path = model.folder_name + '/samples/' + str(model.epoch_cur) +  '_motion_yz_res_'
+    plot_motion(inputs_hat, inputs_hat, azim=0, evl=-0, save_as=file_path)
+    file_path = model.folder_name + '/samples/' + str(model.epoch_cur) + '_motion_xy_res_'
+    plot_motion(inputs_hat, inputs_hat, azim=90, evl=90, save_as=file_path)
+    file_path = model.folder_name + '/samples/' + 'latest_motion_xz_res_'
+    plot_motion(inputs_hat, inputs_hat, azim=0, evl=90, save_as=file_path)
+    file_path = model.folder_name + '/samples/' + 'latest_motion_yz_res_'
+    plot_motion(inputs_hat, inputs_hat, azim=0, evl=-0, save_as=file_path)
+    file_path = model.folder_name + '/samples/' + 'latest_motion_xy_res_'
+    plot_motion(inputs_hat, inputs_hat, azim=90, evl=90, save_as=file_path)
 
 
 def plot_tensor_images(image_tensor, max_num_images=25, nrow=5, show=False, save_as=None):
@@ -152,6 +267,84 @@ def plot_poses(xyz_gt, xyz_pred, max_num_images=25, azim=0, evl=0, save_as=None,
     plt.savefig(save_as, bbox_inches='tight')
     plt.close()
 
+def plot_poses_by_frame_angles(xyz_gt, xyz_pred, max_num_images=25, save_as=None):
+    '''
+    Function for visualizing poses: saves grid of poses.
+    Assumes poses are normalised between 0 and 1
+    :param xyz_gt: set of ground truth 3D joint positions (batch_size, 96)
+    :param xyz_pred: set of predicted 3D joint positions (batch_size, 96)
+    :param max_num_images: number of poses to plotted from given set (int)
+    :param azim: azimuthal angle for viewing (int)
+    :param evl: angle of elevation for viewing (int)
+    :param save_as: path and name to save (str)
+    '''
+
+    fig = plt.figure(figsize=(18, 6))
+
+    i = -1
+    for angle in [(0,90), (0,0), (90,90)]:
+        i+=1
+        ax = fig.add_subplot(1, 3, i + 1, projection='3d')
+        ax.set_xlim3d([0, 1])
+        ax.set_ylim3d([0, 1])
+        ax.set_zlim3d([0, 1])
+
+        ob = viz_3d.Ax3DPose(ax)
+        ob.update(xyz_gt, xyz_pred)
+
+        ob.ax.set_axis_off()
+        azim = angle[0]
+        evl = angle[1]
+        ob.ax.view_init(azim, evl)
+
+    fig.subplots_adjust(hspace=0)
+    fig.subplots_adjust(wspace=0)
+
+    plt.savefig(save_as, bbox_inches='tight')
+    plt.close()
+
+def plot_motion(xyz_gt, xyz_pred, azim=0, evl=0, save_as=None):
+    '''
+    Function for visualizing poses: saves grid of poses.
+    Assumes poses are normalised between 0 and 1
+    :param xyz_gt: set of ground truth 3D joint positions (batch_size, 96)
+    :param xyz_pred: set of predicted 3D joint positions (batch_size, 96)
+    :param max_num_images: number of poses to plotted from given set (int)
+    :param azim: azimuthal angle for viewing (int)
+    :param evl: angle of elevation for viewing (int)
+    :param save_as: path and name to save (str)
+    '''
+    b_n, f_n, t_n = np.array(xyz_gt).shape
+    xyz_gt = xyz_gt.reshape(b_n*t_n, 32, 3)
+    xyz_pred = xyz_pred.reshape(b_n*t_n, 32, 3)
+    if b_n >5:
+        b_n = 5
+
+    xyz_gt = xyz_gt[:b_n*t_n]
+    xyz_pred = xyz_pred[:b_n*t_n]
+    num_images = xyz_gt.shape[0]
+
+    fig = plt.figure(figsize=(30, 20))
+    grid_dim_y = b_n
+    grid_dim_x = int(num_images/b_n)
+
+    for i in range(num_images):
+        ax = fig.add_subplot(grid_dim_y, grid_dim_x, i + 1, projection='3d')
+        ax.set_xlim3d([0, 1])
+        ax.set_ylim3d([0, 1])
+        ax.set_zlim3d([0, 1])
+
+        ob = viz_3d.Ax3DPose(ax)
+        ob.update(xyz_gt[i], xyz_pred[i])
+
+        ob.ax.set_axis_off()
+        ob.ax.view_init(azim, evl)
+
+    fig.subplots_adjust(hspace=0)
+    fig.subplots_adjust(wspace=0)
+
+    plt.savefig(save_as, bbox_inches='tight')
+    plt.close()
 
 def simulate_occlusions(X, num_occlusions=10, folder_name=""):
     '''

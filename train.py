@@ -3,14 +3,19 @@
 from __future__ import absolute_import
 from __future__ import print_function
 
+import pandas as pd
+import numpy as np
 import torch.nn as nn
 import torch
+import torch.nn.functional as F
 
 import experiments.utils as experiment_utils
 
 from tqdm.auto import tqdm
 
 import models.utils as model_utils
+
+from utils import supervised_data
 
 def initialise(model, start_epoch=1, folder_name="", lr=0.0001, beta=1.0, l2_reg=1e-4, train_batch_size=100,
                 figs_checkpoints_save_freq=10, warmup_time=0, beta_final=1.0):
@@ -46,11 +51,11 @@ def train_epoch_mnist(model, train_loader, use_bernoulli_loss=False):
 
         image_flattened = image.reshape(cur_batch_size, -1).to(model.device).float()
 
-        _ = model(image_flattened.float())
+        mu_hat, logvar_hat, zs, kls = model(image_flattened.float())
         if use_bernoulli_loss:
-            loss = model.cal_loss(image_flattened, 'bernoulli')
+            loss = model.cal_loss(image_flattened, mu_hat, logvar_hat, kls, 'bernoulli')
         else:
-            loss = model.cal_loss(image_flattened, 'gaussian')
+            loss = model.cal_loss(image_flattened, mu_hat, logvar_hat, kls, 'gaussian')
 
         model.optimizer.zero_grad()
         loss.backward()
@@ -60,7 +65,7 @@ def train_epoch_mnist(model, train_loader, use_bernoulli_loss=False):
         #if (total_norm < 150) or (model.epoch_cur < 50):
         model.optimizer.step()
 
-        model.beta = model_utils.warmup(model.epoch_cur, model.beta, warmup_time=model.warmup_time, beta_final=model.beta_final)
+    model.beta = model_utils.warmup(model, model.beta, warmup_time=model.warmup_time, beta_final=model.beta_final)
 
 
 def eval_full_batch_mnist(model, loader, dataset_name='val', use_bernoulli_loss=False):
@@ -73,13 +78,13 @@ def eval_full_batch_mnist(model, loader, dataset_name='val', use_bernoulli_loss=
 
             image_flattened = image.reshape(cur_batch_size, -1).to(model.device).float()
 
-            reconstructions, _, _ = model(image_flattened.float())
+            mu_hat, logvar_hat, zs, kls = model(image_flattened.float())
             if use_bernoulli_loss:
-                loss = model.cal_loss(image_flattened, 'bernoulli')
+                loss = model.cal_loss(image_flattened, mu_hat, logvar_hat, kls, 'bernoulli')
                 sig = nn.Sigmoid()
-                reconstructions = sig(reconstructions)
+                reconstructions = sig(mu_hat)
             else:
-                loss = model.cal_loss(image_flattened, 'gaussian')
+                loss = model.cal_loss(image_flattened, mu_hat, logvar_hat, kls, 'gaussian')
 
             model_utils.accum_update(model, str(dataset_name) + '_loss', loss)
             model_utils.accum_update(model, str(dataset_name) + '_recon', model.recon_loss)
@@ -111,7 +116,7 @@ def train_epoch(model, train_loader):
         #if (total_norm < 150) or (model.epoch_cur < 50):
         model.optimizer.step()
 
-    model.beta = model_utils.warmup(model.epoch_cur, model.beta, warmup_time=model.warmup_time, beta_final=model.beta_final)
+    model.beta = model_utils.warmup(model, model.beta, warmup_time=model.warmup_time, beta_final=model.beta_final)
 
 
 def eval_full_batch(model, loader, dataset_name='val'):
@@ -138,20 +143,38 @@ def eval_full_batch(model, loader, dataset_name='val'):
             experiment_utils.poses_visualisations(model, inputs, mu, dataset_name, cur_batch_size)
 
 
-def train_motion_epoch(model, train_loader):
+def train_motion_epoch(model, train_loader, use_dct=False):
     model.train()
-    for i, (dct_inputs, dct_targets, all_seq) in enumerate(tqdm(train_loader)):
-        #print(dct_inputs.shape)
-        #print(dct_targets.shape)
-        #print(all_seq.shape)
-        b_n, t_n, f_n = all_seq.shape
-        all_seq = all_seq.reshape(b_n, t_n*f_n)
-        #print(all_seq.shape)
+    for i, (all_seq, labels) in enumerate(tqdm(train_loader)):
+
+        print(len(labels))
+        print(labels[0], labels[2], labels[-1])
+        print(all_seq.shape)
+
+        class2idx, idx2class, num_classes = supervised_data.initialise_motion_class_and_index_map()
+        labels = pd.DataFrame(labels)
+        labels.replace(class2idx, inplace=True)
+        labels = torch.from_numpy(np.array(labels)).long()
+        labels = F.one_hot(labels, num_classes=num_classes)
+
+        print(len(labels))
+        print(labels)
+        print(all_seq.shape)
+
+        b_n, f_n, t_n = all_seq.shape
+        model.b_n, model.f_n, model.t_n = b_n, f_n, t_n
 
         inputs = all_seq.to(model.device).float()
+        if use_dct:
+            inputs_dct = model_utils.dct(model, inputs)
 
-        _ = model(inputs.float())
-        loss = model.cal_loss(inputs, 'gaussian')
+            mu_hat, logvar_hat, zs, kls = model(inputs_dct.float())
+
+            inputs_hat = model_utils.dct(model, mu_hat, inverse=True)
+        else:
+            inputs = inputs.reshape(b_n, f_n * t_n)
+            inputs_hat, logvar_hat, zs, kls = model(inputs.float())
+        loss = model.cal_loss(inputs, inputs_hat, logvar_hat, kls, 'gaussian')
 
         model.optimizer.zero_grad()
         loss.backward()
@@ -160,18 +183,26 @@ def train_motion_epoch(model, train_loader):
         #if (total_norm < 150) or (model.epoch_cur < 50):
         model.optimizer.step()
 
-def eval_motion_batch(model, loader, dataset_name='val'):
+    model.beta = model_utils.warmup(model, model.beta, warmup_time=model.warmup_time, beta_final=model.beta_final)
+
+def eval_motion_batch(model, loader, dataset_name='val', use_dct=False):
     with torch.no_grad():
         model.eval()
-        for i, (dct_inputs, dct_targets, all_seq) in enumerate(tqdm(loader)):
+        for i, (all_seq, labels) in enumerate(tqdm(loader)):
 
-            b_n, t_n, f_n = all_seq.shape
-            all_seq = all_seq.reshape(b_n, t_n * f_n)
+            b_n, f_n, t_n = all_seq.shape
 
             inputs = all_seq.to(model.device).float()
+            if use_dct:
+                inputs_dct = model_utils.dct(model, inputs)
 
-            mu = model(inputs.float())
-            loss = model.cal_loss(inputs, 'gaussian')
+                mu_hat, logvar_hat, zs, kls = model(inputs_dct.float())
+
+                inputs_hat = model_utils.dct(model, mu_hat, inverse=True)
+            else:
+                inputs = inputs.reshape(b_n, f_n * t_n)
+                inputs_hat, logvar_hat, zs, kls = model(inputs.float())
+            loss = model.cal_loss(inputs, inputs_hat, logvar_hat, kls, 'gaussian')
 
             model_utils.accum_update(model, str(dataset_name)+'_loss', loss)
             model_utils.accum_update(model, str(dataset_name)+'_recon', model.recon_loss)
@@ -181,4 +212,14 @@ def eval_motion_batch(model, loader, dataset_name='val'):
                     model_utils.accum_update(model, str(dataset_name) + '_KL_' + str(key), value)
 
         model_utils.log_epoch_values(model, dataset_name)
+
+        if model.epoch_cur % model.figs_checkpoints_save_freq == 0:
+            inputs = inputs.reshape(b_n, f_n, t_n)
+            inputs_hat = inputs_hat.reshape(b_n, f_n, t_n)
+            file_path = model.folder_name + '/poses/' + str(dataset_name) + '_latest_' + 'poses_yz'
+            experiment_utils.plot_motion(inputs.detach().cpu().numpy(), inputs_hat.detach().cpu().numpy(), azim=0, evl=-0, save_as=file_path)
+            file_path = model.folder_name + '/poses/' + str(dataset_name) + '_latest_' + 'poses_xz'
+            experiment_utils.plot_motion(inputs.detach().cpu().numpy(), inputs_hat.detach().cpu().numpy(), azim=0, evl=-90, save_as=file_path)
+            file_path = model.folder_name + '/poses/' + str(dataset_name) + '_latest_' + 'poses_xy'
+            experiment_utils.plot_motion(inputs.detach().cpu().numpy(), inputs_hat.detach().cpu().numpy(), azim=90, evl=-90, save_as=file_path)
 

@@ -43,18 +43,18 @@ class DATA():
         elif self.dataset == 'h3.6m_3d':
             self.cartesian = True
             self.node_n=96
-            self.train_dataset = H36motion3D(path_to_data=self.data_dir, actions=acts_train, input_n=input_n, output_n=output_n,
+            self.train_dataset = H36motion3D(path_to_data=self.data_dir, actions=acts_train, input_n=input_n,
                                           split=0, sample_rate=sample_rate, dct_used=dct_n)
-            self.val_dataset = H36motion3D(path_to_data=self.data_dir, actions=acts_train, input_n=input_n, output_n=output_n,
+            self.val_dataset = H36motion3D(path_to_data=self.data_dir, actions=acts_train, input_n=input_n,
                                         split=2, sample_rate=sample_rate, dct_used=dct_n)
             if self.out_of_distribution:
-                  self.OoD_val_dataset = H36motion3D(path_to_data=self.data_dir, actions=self.acts_OoD, input_n=input_n, output_n=output_n,
+                  self.OoD_val_dataset = H36motion3D(path_to_data=self.data_dir, actions=self.acts_OoD, input_n=input_n,
                                           split=2, sample_rate=sample_rate, dct_used=dct_n)
             else:
                   self.OoD_val_dataset = None
             self.test_dataset = dict()
             for act in self.acts_test:
-                self.test_dataset[act] = H36motion3D(path_to_data=self.data_dir, actions=act, input_n=input_n, output_n=output_n,
+                self.test_dataset[act] = H36motion3D(path_to_data=self.data_dir, actions=act, input_n=input_n,
                                          split=1, sample_rate=sample_rate, dct_used=dct_n)
         else:
             raise Exception("Dataset name ({}) is not valid!".format(self.dataset))

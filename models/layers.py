@@ -83,6 +83,30 @@ class NeuralNetworkBlock(nn.Module):
 
         return y
 
+class GraphGaussianBlock(nn.Module):
+    def __init__(self, in_nodes, in_features, n_z_nodes, n_z_features):
+        """
+        :param input_feature: num of input feature
+        :param n_z: dim of distribution
+        """
+        super(GraphGaussianBlock, self).__init__()
+        self.in_features = in_features
+        self.in_nodes = in_nodes
+        self.n_z_features = n_z_features
+        self.n_z_nodes = n_z_nodes
+
+        self.z_mu_graphconv = GraphConvolution(in_features, n_z_features, bias=True, node_n=in_nodes, out_node_n=n_z_nodes) #FullyConnected(self.n_x, self.n_z)
+        self.z_log_var_graphconv = GraphConvolution(in_features, n_z_features, bias=True, node_n=in_nodes, out_node_n=n_z_nodes)
+
+    def forward(self, x):
+        y = x
+
+        mu = self.z_mu_graphconv(y)
+        log_var = self.z_log_var_graphconv(y)
+        log_var = torch.clamp(log_var, min=-20.0, max=3.0)
+
+        return mu, log_var
+
 class GaussianBlock(nn.Module):
     def __init__(self, in_features, n_z):
         """
@@ -105,11 +129,63 @@ class GaussianBlock(nn.Module):
 
         return mu, log_var
 
+class GraphLayer(nn.Module):
+
+    def __init__(self, node_n=48, out_node_n=None):
+        super(GraphConvolution, self).__init__()
+        if out_node_n is None:
+            out_node_n = node_n
+        self.att = Parameter(torch.FloatTensor(out_node_n, node_n))
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        stdv = 1. / math.sqrt(self.weight.size(1))
+        self.weight.data.uniform_(-stdv, stdv)
+        self.att.data.uniform_(-stdv, stdv)
+        if self.bias is not None:
+            self.bias.data.uniform_(-stdv, stdv)
+
+    def forward(self, input):
+        output = torch.matmul(self.att, input)
+        return output
+
+    def __repr__(self):
+        return self.__class__.__name__ + ' (' \
+               + str(self.in_features) + ' -> ' \
+               + str(self.out_features) + ')'
+
+class Graph_Block(nn.Module):
+    def __init__(self, p_dropout, node_n=48, activation=nn.GELU()):
+        """
+        Define a residual block of GCN
+        """
+        super(GC_Block, self).__init__()
+
+        self.g1 = GraphLayer(node_n=node_n)
+        self.g2 = GraphLayer(node_n=node_n)
+        self.rezero = ReZero()
+
+        self.do = nn.Dropout(p_dropout)
+        self.act_f = activation
+
+    def forward(self, x):
+        y = self.g1(x)
+        y = self.act_f(y)
+        y = self.do(y)
+
+        y = self.g2(y)
+        y = self.act_f(y)
+        y = self.do(y)
+
+        return x + self.rezero(y)
+
+    def __repr__(self):
+        return self.__class__.__name__ + ' (' \
+               + str(self.in_features) + ' -> ' \
+               + str(self.out_features) + ')'
+
 
 class GraphConvolution(nn.Module):
-    """
-    adapted from : https://github.com/tkipf/gcn/blob/92600c39797c2bfb61a508e52b88fb554df30177/gcn/layers.py#L132
-    """
 
     def __init__(self, in_features, out_features, bias=True, node_n=48, out_node_n=None):
         super(GraphConvolution, self).__init__()
@@ -147,7 +223,7 @@ class GraphConvolution(nn.Module):
 
 
 class GC_Block(nn.Module):
-    def __init__(self, in_features, p_dropout, bias=True, node_n=48):
+    def __init__(self, in_features, p_dropout, bias=True, node_n=48, activation=nn.GELU()):
         """
         Define a residual block of GCN
         """
@@ -156,28 +232,22 @@ class GC_Block(nn.Module):
         self.out_features = in_features
 
         self.gc1 = GraphConvolution(in_features, in_features, node_n=node_n, bias=bias)
-        self.bn1 = nn.BatchNorm1d(node_n * in_features)
-
         self.gc2 = GraphConvolution(in_features, in_features, node_n=node_n, bias=bias)
-        self.bn2 = nn.BatchNorm1d(node_n * in_features)
+        self.rezero = ReZero()
 
         self.do = nn.Dropout(p_dropout)
-        self.act_f = nn.LeakyReLU(0.1)
+        self.act_f = activation
 
     def forward(self, x):
         y = self.gc1(x)
-        b, n, f = y.shape
-        y = self.bn1(y.view(b, -1)).view(b, n, f)
         y = self.act_f(y)
         y = self.do(y)
 
         y = self.gc2(y)
-        b, n, f = y.shape
-        y = self.bn2(y.view(b, -1)).view(b, n, f)
         y = self.act_f(y)
         y = self.do(y)
 
-        return y + x
+        return x + self.rezero(y)
 
     def __repr__(self):
         return self.__class__.__name__ + ' (' \
