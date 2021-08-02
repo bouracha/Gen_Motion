@@ -143,23 +143,19 @@ def eval_full_batch(model, loader, dataset_name='val'):
             experiment_utils.poses_visualisations(model, inputs, mu, dataset_name, cur_batch_size)
 
 
-def train_motion_epoch(model, train_loader, use_dct=False):
+def train_motion_epoch(model, train_loader, use_dct=False, gen_disc=False):
     model.train()
     for i, (all_seq, labels) in enumerate(tqdm(train_loader)):
 
-        print(len(labels))
-        print(labels[0], labels[2], labels[-1])
-        print(all_seq.shape)
-
-        class2idx, idx2class, num_classes = supervised_data.initialise_motion_class_and_index_map()
-        labels = pd.DataFrame(labels)
-        labels.replace(class2idx, inplace=True)
-        labels = torch.from_numpy(np.array(labels)).long()
-        labels = F.one_hot(labels, num_classes=num_classes)
-
-        print(len(labels))
-        print(labels)
-        print(all_seq.shape)
+        if gen_disc:
+            class2idx, idx2class, num_classes = supervised_data.initialise_motion_class_and_index_map()
+            labels = pd.DataFrame(labels)
+            labels.replace(class2idx, inplace=True)
+            labels = torch.from_numpy(np.array(labels)).long()
+            labels = F.one_hot(labels, num_classes=num_classes)
+            labels = labels.to(model.device).float()
+        else:
+            labels=None
 
         b_n, f_n, t_n = all_seq.shape
         model.b_n, model.f_n, model.t_n = b_n, f_n, t_n
@@ -168,7 +164,7 @@ def train_motion_epoch(model, train_loader, use_dct=False):
         if use_dct:
             inputs_dct = model_utils.dct(model, inputs)
 
-            mu_hat, logvar_hat, zs, kls = model(inputs_dct.float())
+            mu_hat, logvar_hat, zs, kls = model(inputs_dct.float(), one_hot_labels=labels)
 
             inputs_hat = model_utils.dct(model, mu_hat, inverse=True)
         else:
@@ -185,18 +181,29 @@ def train_motion_epoch(model, train_loader, use_dct=False):
 
     model.beta = model_utils.warmup(model, model.beta, warmup_time=model.warmup_time, beta_final=model.beta_final)
 
-def eval_motion_batch(model, loader, dataset_name='val', use_dct=False):
+def eval_motion_batch(model, loader, dataset_name='val', use_dct=False, gen_disc=False):
     with torch.no_grad():
         model.eval()
         for i, (all_seq, labels) in enumerate(tqdm(loader)):
 
+            if gen_disc:
+                class2idx, idx2class, num_classes = supervised_data.initialise_motion_class_and_index_map()
+                labels = pd.DataFrame(labels)
+                labels.replace(class2idx, inplace=True)
+                labels = torch.from_numpy(np.array(labels)).long()
+                labels = F.one_hot(labels, num_classes=num_classes)
+                labels = labels.to(model.device).float()
+            else:
+                labels = None
+
             b_n, f_n, t_n = all_seq.shape
+            model.b_n, model.f_n, model.t_n = b_n, f_n, t_n
 
             inputs = all_seq.to(model.device).float()
             if use_dct:
                 inputs_dct = model_utils.dct(model, inputs)
 
-                mu_hat, logvar_hat, zs, kls = model(inputs_dct.float())
+                mu_hat, logvar_hat, zs, kls = model(inputs_dct.float(), one_hot_labels=labels)
 
                 inputs_hat = model_utils.dct(model, mu_hat, inverse=True)
             else:

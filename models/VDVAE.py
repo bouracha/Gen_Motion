@@ -21,7 +21,7 @@ from models.decoders import GraphVDDecoder
 
 
 class VDVAE(nn.Module):
-    def __init__(self, input_n=96, act_fn=nn.GELU(), variational=False, output_variance=False, device="cuda", batch_norm=False, p_dropout=0.0, n_zs=[50, 10, 5, 2], residual_size=200):
+    def __init__(self, input_n=96, act_fn=nn.GELU(), variational=False, output_variance=False, device="cuda", batch_norm=False, p_dropout=0.0, n_zs=[50, 10, 5, 2], residual_size=200, gen_disc=False):
         """
         :param input_n: num of input feature
         :param hidden_layers: num of hidden feature, decoder is made symmetric
@@ -40,15 +40,16 @@ class VDVAE(nn.Module):
         self.batch_norm = batch_norm
         self.p_dropout = p_dropout
         self.residual_size = residual_size
+        self.gen_disc = gen_disc
 
         #self.encoder = VDEncoder(input_n=input_n, act_fn=self.activation, device=self.device, batch_norm=self.batch_norm, p_dropout=self.p_dropout, n_zs=n_zs, residual_size=self.residual_size)
         self.encoder = GraphVDEncoder(input_n=input_n, act_fn=self.activation, device=self.device, batch_norm=self.batch_norm, p_dropout=self.p_dropout)
         #self.decoder = VDDecoder(input_n=input_n, encoder_activation_sizes=self.encoder.encoder_output_sizes, act_fn=self.activation, device=self.device, batch_norm=self.batch_norm, p_dropout=self.p_dropout, n_zs=n_zs, residual_size=self.residual_size)
-        self.decoder = GraphVDDecoder(input_n=input_n, encoder_activation_sizes=self.encoder.level_output_sizes, act_fn=self.activation, device=self.device, batch_norm=self.batch_norm, p_dropout=self.p_dropout, residual_size=self.residual_size)
+        self.decoder = GraphVDDecoder(input_n=input_n, encoder_activation_sizes=self.encoder.level_output_sizes, act_fn=self.activation, device=self.device, batch_norm=self.batch_norm, p_dropout=self.p_dropout, residual_size=self.residual_size, gen_dsic=gen_disc)
 
         self.num_parameters = utils.num_parameters_and_place_on_device(self)
 
-    def forward(self, x, label=None):
+    def forward(self, x, z_0=None, one_hot_labels=None):
         """
         :param x: batch of samples
         :return: reconstructions and latent value
@@ -57,20 +58,21 @@ class VDVAE(nn.Module):
         encoder_activations = self.encoder.forward(x)
 
         # Top Down
-        self.reconstructions_mu, self.reconstructions_log_var, self.zs, self.KLs = self.decoder(encoder_activations, label)
+        self.reconstructions_mu, self.reconstructions_log_var, self.zs, self.KLs = self.decoder(encoder_activations=encoder_activations, one_hot_labels=one_hot_labels)
 
 
         return self.reconstructions_mu, self.reconstructions_log_var, self.zs, self.KLs
 
 
 
-    def generate(self, z, distribution='gaussian', latent_resolution=0, z_prev_level=0):
+    def generate(self, z, distribution='gaussian', latent_resolution=0, z_prev_level=0, one_hot_labels=None):
         """
         :param z: batch of random variables
         :return: batch of generated samples
         """
         if z_prev_level==0 and z!=None:
             self.decoder.zs["0"] = z
+            self.zs["0"] = torch.cat((self.zs["0"], one_hot_labels), dim=2)
             self.decoder.residuals_dict["0"] = self.decoder.resize_conv_0(self.decoder.zs["0"])
 
         for i in range(z_prev_level, len(self.decoder.encoder_activation_sizes)-2):

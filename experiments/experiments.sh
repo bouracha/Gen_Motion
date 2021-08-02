@@ -307,5 +307,5 @@ cd ..
 # ===============================================================
 
 #python3 main.py --motion --timepoints 8 --sample_rate 8 --batch_norm --variational --name "gen_discrim" --lr 0.001 --train_batch_size 100 --n_epochs 500 --start_epoch 1 --beta 0.0001 --warmup_time 200 --beta_final 0.001
-python3 main.py --motion --timepoints 8 --sample_rate 8 --batch_norm --variational --name "gen_discrim_temp" --lr 0.001 --train_batch_size 100 --n_epochs 500 --start_epoch 1 --beta 0.0001 --warmup_time 200 --beta_final 0.001
+python3 main.py --motion --timepoints 8 --sample_rate 8 --variational --name "gen_discrim_temp" --lr 0.001 --train_batch_size 100 --n_epochs 500 --start_epoch 1 --beta 0.0001 --warmup_time 200 --beta_final 0.001 --gen_disc
 

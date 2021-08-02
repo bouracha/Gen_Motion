@@ -17,6 +17,8 @@ class Options:
         self.parser.add_argument('--data_path', type=str, default="deep_2_wd_AE/embeddings/", help='Path to data- if applicable')
         self.parser.add_argument('--motion', dest='motion', action='store_true', help='train on motion')
         self.parser.set_defaults(motion=False)
+        self.parser.add_argument('--gen_disc', dest='gen_disc', action='store_true', help='train as a generative discriminator')
+        self.parser.set_defaults(gen_disc=False)
         self.parser.add_argument('--timepoints', type=int, default=10, help='Number of timepoints to use (if motion flag is on)')
         self.parser.add_argument('--sample_rate', type=int, default=2, help='Take every nth frame')
         # ===============================================================

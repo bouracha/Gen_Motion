@@ -72,7 +72,7 @@ print(">>> data loaded !")
 #import models.VAE as nnmodel
 #model = nnmodel.VAE(input_n=input_n, hidden_layers=opt.hidden_layers,  n_z=opt.n_z, variational=opt.variational, output_variance=opt.output_variance, device=device, batch_norm=opt.batch_norm, p_dropout=opt.p_drop)
 import models.VDVAE as nnmodel
-model = nnmodel.VDVAE(input_n=input_n, variational=opt.variational, output_variance=opt.output_variance, device=device, batch_norm=opt.batch_norm, p_dropout=opt.p_drop, n_zs=opt.n_zs, residual_size=opt.highway_size)
+model = nnmodel.VDVAE(input_n=input_n, variational=opt.variational, output_variance=opt.output_variance, device=device, batch_norm=opt.batch_norm, p_dropout=opt.p_drop, n_zs=opt.n_zs, residual_size=opt.highway_size, gen_disc=opt.gen_disc)
 train.initialise(model, start_epoch=opt.start_epoch, folder_name=folder_name, lr=opt.lr, beta=opt.beta, l2_reg=l2_reg, train_batch_size=train_batch_size, warmup_time=opt.warmup_time, beta_final=opt.beta_final)
 
 for epoch in range(opt.start_epoch, opt.n_epochs+1):
@@ -85,9 +85,9 @@ for epoch in range(opt.start_epoch, opt.n_epochs+1):
         train.eval_full_batch_mnist(model, val_loader, 'val', opt.use_bernoulli_loss)
     elif opt.motion:
         use_dct = True
-        train.train_motion_epoch(model, train_loader, use_dct=use_dct)
-        train.eval_motion_batch(model, val_loader, 'train', use_dct=use_dct)
-        train.eval_motion_batch(model, val_loader, 'val', use_dct=use_dct)
+        train.train_motion_epoch(model, train_loader, use_dct=use_dct, gen_disc=opt.gen_disc)
+        train.eval_motion_batch(model, val_loader, 'train', use_dct=use_dct, gen_disc=opt.gen_disc)
+        train.eval_motion_batch(model, val_loader, 'val', use_dct=use_dct, gen_disc=opt.gen_disc)
     else:
         train.train_epoch(model, train_loader)
         train.eval_full_batch(model, train_loader, 'train')
@@ -95,9 +95,9 @@ for epoch in range(opt.start_epoch, opt.n_epochs+1):
 
     if model.epoch_cur % model.figs_checkpoints_save_freq == 0:
         #experiment_utils.generate_samples(model, num_grid_points=20, use_bernoulli_loss=opt.use_bernoulli_loss)
-        experiment_utils.generate_motion_frames(model, use_bernoulli_loss=opt.use_bernoulli_loss)
-        experiment_utils.generate_motion_samples(model, use_bernoulli_loss=opt.use_bernoulli_loss)
-        experiment_utils.generate_motion_samples_resolution(model, use_bernoulli_loss=opt.use_bernoulli_loss)
+        experiment_utils.generate_motion_frames(model, use_bernoulli_loss=opt.use_bernoulli_loss, gen_disc=opt.gen_disc)
+        experiment_utils.generate_motion_samples(model, use_bernoulli_loss=opt.use_bernoulli_loss, gen_disc=opt.gen_disc)
+        experiment_utils.generate_motion_samples_resolution(model, use_bernoulli_loss=opt.use_bernoulli_loss, gen_disc=opt.gen_disc)
 
     model_utils.save_checkpoint_and_csv(model)
     model.writer.close()

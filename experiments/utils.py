@@ -18,6 +18,10 @@ import os
 
 import imageio
 
+import torch.nn.functional as F
+import utils.supervised_data as supervised_data
+import pandas as pd
+
 def poses_visualisations(model, inputs, reconstructions, dataset_name, cur_batch_size):
     inputs_reshaped = inputs.reshape(cur_batch_size, 1, 12, 8)
     reconstructions = reconstructions.reshape(cur_batch_size, 1, 12, 8)
@@ -88,7 +92,7 @@ def gnerate_samples(model, num_grid_points=20, use_bernoulli_loss=False):
             file_path = model.folder_name + '/samples/' + 'latest_poses_xy_res_'+str(latent_resolution)
             plot_poses(mu.detach().cpu().numpy(), mu.detach().cpu().numpy(), max_num_images=num_grid_points ** 2, azim=90, evl=90, save_as=file_path)
 
-def generate_motion_frames(model, use_bernoulli_loss=False, graph=True):
+def generate_motion_frames(model, use_bernoulli_loss=False, graph=True, gen_disc=False):
     if use_bernoulli_loss:
         distribution='bernoulli'
     else:
@@ -97,6 +101,14 @@ def generate_motion_frames(model, use_bernoulli_loss=False, graph=True):
     if graph:
         z = np.random.randn(5, 1, 256)
         z = z.reshape(5, 1, 256)
+        if gen_disc:
+            class2idx, idx2class, num_classes = supervised_data.initialise_motion_class_and_index_map()
+            labels = ['walking', 'walking', 'sitting', 'smoking', 'eating']
+            labels = pd.DataFrame(labels)
+            labels.replace(class2idx, inplace=True)
+            labels = torch.from_numpy(np.array(labels)).long()
+            labels = F.one_hot(labels, num_classes=num_classes)
+            labels = labels.to(model.device).float()
     else:
         z = np.random.randn(5, 2)
         z = z.reshape(5, 2)
@@ -105,7 +117,7 @@ def generate_motion_frames(model, use_bernoulli_loss=False, graph=True):
     node_n = model.decoder.node_input_n
     t_n = model.decoder.input_temp_n
 
-    inputs_dct_hat = model.generate(z.float(), distribution, latent_resolution=999, z_prev_level=0)
+    inputs_dct_hat = model.generate(z.float(), distribution, latent_resolution=999, z_prev_level=0, one_hot_labels=labels)
     inputs_dct_hat = inputs_dct_hat.reshape(5, node_n, t_n)
     inputs_hat = model_utils.dct(model, inputs_dct_hat, inverse=True)
     inputs_hat = np.asarray(inputs_hat.detach().cpu().numpy())
@@ -128,7 +140,7 @@ def generate_motion_frames(model, use_bernoulli_loss=False, graph=True):
                 writer.append_data(image)
 
 
-def generate_motion_samples(model, use_bernoulli_loss=False, graph=True):
+def generate_motion_samples(model, use_bernoulli_loss=False, graph=True, gen_disc=False):
     if use_bernoulli_loss:
         distribution='bernoulli'
     else:
@@ -137,12 +149,20 @@ def generate_motion_samples(model, use_bernoulli_loss=False, graph=True):
     if graph:
         z = np.random.randn(5, 1, 256)
         z = z.reshape(5, 1, 256)
+        if gen_disc:
+            class2idx, idx2class, num_classes = supervised_data.initialise_motion_class_and_index_map()
+            labels = ['walking', 'walking', 'sitting', 'smoking', 'eating']
+            labels = pd.DataFrame(labels)
+            labels.replace(class2idx, inplace=True)
+            labels = torch.from_numpy(np.array(labels)).long()
+            labels = F.one_hot(labels, num_classes=num_classes)
+            labels = labels.to(model.device).float()
     else:
         z = np.random.randn(5, 2)
         z = z.reshape(5, 2)
     z = torch.from_numpy(z).to(model.device)
 
-    inputs_dct_hat = model.generate(z.float(), distribution, latent_resolution=999, z_prev_level=0)
+    inputs_dct_hat = model.generate(z.float(), distribution, latent_resolution=999, z_prev_level=0, one_hot_labels=labels)
     inputs_dct_hat = inputs_dct_hat.reshape(5, model.f_n, model.t_n)
     inputs_hat = model_utils.dct(model, inputs_dct_hat, inverse=True)
     inputs_hat = np.asarray(inputs_hat.detach().cpu().numpy())
@@ -160,7 +180,7 @@ def generate_motion_samples(model, use_bernoulli_loss=False, graph=True):
     file_path = model.folder_name + '/samples/' + 'latest_motion_xy_'
     plot_motion(inputs_hat, inputs_hat, azim=90, evl=90, save_as=file_path)
 
-def generate_motion_samples_resolution(model, use_bernoulli_loss=False, graph=True):
+def generate_motion_samples_resolution(model, use_bernoulli_loss=False, graph=True, gen_disc=False):
     if use_bernoulli_loss:
         distribution='bernoulli'
     else:
@@ -169,6 +189,14 @@ def generate_motion_samples_resolution(model, use_bernoulli_loss=False, graph=Tr
     if graph:
         z = np.random.randn(1, 1, 256)
         z = z.reshape(1, 1, 256)
+        if gen_disc:
+            class2idx, idx2class, num_classes = supervised_data.initialise_motion_class_and_index_map()
+            labels = ['walking']
+            labels = pd.DataFrame(labels)
+            labels.replace(class2idx, inplace=True)
+            labels = torch.from_numpy(np.array(labels)).long()
+            labels = F.one_hot(labels, num_classes=num_classes)
+            labels = labels.to(model.device).float()
     else:
         z = np.random.randn(1, 2)
         z = z.reshape(1, 2)
@@ -176,7 +204,7 @@ def generate_motion_samples_resolution(model, use_bernoulli_loss=False, graph=Tr
 
     inputs_hat = []
     for i in range(len(model.zs)):
-        input_dct_hat = model.generate(z.float(), distribution, latent_resolution=i, z_prev_level=np.maximum(i - 1, 0))
+        input_dct_hat = model.generate(z.float(), distribution, latent_resolution=i, z_prev_level=np.maximum(i - 1, 0), one_hot_labels=labels)
         input_dct_hat = input_dct_hat.reshape(model.f_n, model.t_n)
         input_hat = model_utils.dct(model, input_dct_hat, inverse=True)
         inputs_hat.append(input_hat.detach().cpu().numpy())

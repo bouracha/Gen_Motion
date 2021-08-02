@@ -52,8 +52,9 @@ class GraphVDDecoder(nn.Module):
         #Top Down
         n_z_0_nodes = encoder_activation_sizes[-1][0]
         n_z_0_features = encoder_activation_sizes[-1][1]
-        self.reparametisation_latent_0 = GraphGaussianBlock(in_nodes=n_z_0_nodes, in_features=n_z_0_features, n_z_nodes=n_z_0_nodes, n_z_features=self.residual_size)
-        self.resize_conv_0 = GraphConvolution(self.residual_size, self.residual_size, bias=True, node_n=n_z_0_nodes, out_node_n=self.node_input_n)
+        print("n_z_0_features: ", n_z_0_features)
+        self.reparametisation_latent_0 = GraphGaussianBlock(in_nodes=n_z_0_nodes, in_features=n_z_0_features, n_z_nodes=n_z_0_nodes, n_z_features=n_z_0_features)
+        self.resize_conv_0 = GraphConvolution(in_features=n_z_0_features+self.num_classes, out_features=self.residual_size, bias=True, node_n=n_z_0_nodes, out_node_n=self.node_input_n)
         #self.reshape_z0_linearly = FullyConnected(in_features=self.feature_hierachies[-1], out_features=self.residual_size, bias=True)
 
         self.decoder_units = []
@@ -96,7 +97,7 @@ class GraphVDDecoder(nn.Module):
         self.decoder_block_final = GC_Block(self.residual_size, p_dropout, bias=True, node_n=self.node_input_n, activation=nn.GELU())
         self.reparametisation_output = GraphGaussianBlock(in_nodes=self.node_input_n, in_features=self.residual_size, n_z_nodes=self.node_input_n, n_z_features=self.input_temp_n)
 
-    def forward(self, encoder_activations=None, z_0=None):
+    def forward(self, encoder_activations=None, z_0=None, one_hot_labels=None):
         if z_0 is None:
             self.z_posterior_mus["0"], self.z_posterior_log_vars["0"] = self.reparametisation_latent_0(encoder_activations[-1])
             self.z_prior_mus["0"], self.z_prior_log_vars["0"] = torch.zeros_like(self.z_posterior_mus["0"]), torch.zeros_like(self.z_posterior_log_vars["0"])
@@ -106,6 +107,8 @@ class GraphVDDecoder(nn.Module):
             self.zs["0"] = utils.reparametisation_trick(self.z_mus["0"], self.z_log_vars["0"], self.device)
         else:
             self.zs["0"] = z_0
+
+        self.zs["0"] = torch.cat((self.zs["0"], one_hot_labels), dim=2)
 
         self.residuals_dict["0"] = self.resize_conv_0(self.zs["0"])
 
@@ -127,12 +130,7 @@ class GraphVDDecoder(nn.Module):
         #Posterior Route
         if X_supplied==True:
             posterior_decoder_resize_output = self.decoder_units[level]["posterior_decoder_resize"](self.residuals_dict[str(level+1)])
-            #print("posterior_decoder_resize_output: ", posterior_decoder_resize_output.shape)
-            #print("encoder_activation: ", encoder_activation.shape)
-            #print(posterior_decoder_resize_output.shape)
-            #print(encoder_activation.shape)
             concat_for_posterior = torch.cat((posterior_decoder_resize_output, encoder_activation), dim=2)
-            #print("concated: ", concat_for_posterior.shape)
             posterior_decoder_block_output = self.decoder_units[level]["posterior_decoder_block"](concat_for_posterior)
             self.z_posterior_mus[str(level + 1)], self.z_posterior_log_vars[str(level + 1)] = self.decoder_units[level]["reparametisation_posterior"](posterior_decoder_block_output)
 

@@ -25,20 +25,20 @@ class H36motion3D(Dataset):
 
         labels = []
         all_seqs = np.array([])
-        print(acts)
+        #print(acts)
         for act in acts:
-            print(act)
+            #print(act)
             action_seq, dim_ignore, dim_used = data_utils.load_data_3d(path_to_data, subjs, [act], sample_rate, input_n)
-            print(action_seq.shape)
+            #print(action_seq.shape)
             try:
                 all_seqs = np.concatenate((all_seqs, action_seq), axis=0)
             except:
                 all_seqs = action_seq
             label = [str(act)] * action_seq.shape[0]
             labels = labels + label
-            print(len(labels))
-            print(all_seqs.shape)
-            print(labels[0], labels[-1])
+            #print(len(labels))
+            #print(all_seqs.shape)
+            #print(labels[0], labels[-1])
         #all_seqs, dim_ignore, dim_used = data_utils.load_data_3d(path_to_data, subjs, acts, sample_rate, input_n )
 
         self.labels = labels
