@@ -17,7 +17,7 @@ torch.multiprocessing.set_sharing_strategy('file_system')
 
 l2_reg = 1e-4
 
-folder_name=opt.name
+folder_name="saved_models/"+opt.name
 is_cuda = torch.cuda.is_available()
 if is_cuda:
     device = "cuda"
