@@ -150,7 +150,6 @@ class GraphVDDecoder(nn.Module):
         #Sample z_level, or take the mean
         if level < latent_resolution:
             self.KLs[str(level+1)] = utils.kullback_leibler_divergence(self.z_mus[str(level+1)], self.z_log_vars[str(level+1)], mu_2=self.z_prior_mus[str(level+1)], log_var_2=self.z_prior_log_vars[str(level+1)], graph=True)
-            #print("At level {}, KL={}, kls={}".format((level+1), self.KLs[str(level+1)], self.KLs[str(level+1)]))
             self.zs[str(level+1)] = utils.reparametisation_trick(self.z_mus[str(level+1)], self.z_log_vars[str(level+1)], self.device)
         else:
             self.zs[str(level + 1)] = self.z_mus[str(level+1)]

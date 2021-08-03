@@ -22,9 +22,10 @@ class GraphVDEncoder(nn.Module):
         self.node_n, self.features = input_n[0], input_n[1]
 
         # input_n -> input_n corresponding to z_bottom -> .... -> N_{z_0} corresponding to z_top
+        self.level_output_sizes = [[self.node_n, self.features], [self.node_n, 128], [8, 128], [1, 256]]
         #self.level_output_sizes = [[self.node_n, self.features], [24, 64], [8, 128], [1, 256]]
         #self.level_output_sizes = [[self.node_n, self.features], [96, 8], [48, 16], [32, 32], [16, 64], [8, 128], [4, 256], [2, 256], [1, 256]]
-        self.level_output_sizes = [[self.node_n, self.features], [96, 256], [48, 256], [32, 256], [16, 256], [8, 256], [4, 256], [2, 256], [1, 256]]
+        #self.level_output_sizes = [[self.node_n, self.features], [96, 256], [48, 256], [32, 256], [16, 256], [8, 256], [4, 256], [2, 256], [1, 256]]
         print(self.level_output_sizes)
 
         #Bottom Up
@@ -37,8 +38,8 @@ class GraphVDEncoder(nn.Module):
             in_feature_size = self.level_output_sizes[i][1]
             out_graph_size = self.level_output_sizes[i+1][0]
             out_feature_size = self.level_output_sizes[i+1][1]
-            self.graphconv_blocks.append(GC_Block(in_feature_size, p_dropout, bias=True, node_n=in_graph_size, activation=nn.GELU()))
             self.graphconv_reductions.append(GraphConvolution(in_feature_size, out_feature_size, bias=True, node_n=in_graph_size, out_node_n=out_graph_size))
+            self.graphconv_blocks.append(GC_Block(out_feature_size, p_dropout, bias=True, node_n=out_graph_size, activation=nn.GELU()))
             self.graphconv_residual_reductions.append(GraphConvolution(in_feature_size, out_feature_size, bias=True, node_n=in_graph_size, out_node_n=out_graph_size))
             self.rezeros.append(ReZero())
         self.graphconv_blocks = nn.ModuleList(self.graphconv_blocks)
@@ -51,12 +52,9 @@ class GraphVDEncoder(nn.Module):
         self.activations = []
         y = x
         for i in range(len(self.level_output_sizes)-1):
-            graphconv_out = self.graphconv_blocks[i](y)
-            encoder_output = self.graphconv_reductions[i](graphconv_out)
+            conv_y = self.graphconv_reductions[i](y)
+            encoder_output = self.graphconv_blocks[i](conv_y)
 
-            #num_dcts_coef_kept = self.level_output_sizes[i+1][1]
-            #print("Number of DCT coeff retained at encoder level {} is {}".format(num_dcts_coef_kept, i))
-            #self.activations.append(encoder_output[:, :num_dcts_coef_kept])
             self.activations.append(encoder_output)
 
             res = self.graphconv_residual_reductions[i](y)
