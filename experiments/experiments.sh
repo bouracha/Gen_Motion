@@ -293,6 +293,8 @@ cd ..
 #python3 main.py --motion --timepoints 8 --sample_rate 8 --batch_norm --variational --name "graph_deep2" --lr 0.001 --train_batch_size 100 --n_epochs 500 --start_epoch 1 --beta 0.0001 --warmup_time 200 --beta_final 0.001
 #python3 main.py --motion --timepoints 8 --sample_rate 8 --batch_norm --variational --name "graph_deep3" --lr 0.001 --train_batch_size 100 --n_epochs 500 --start_epoch 1 --beta 0.0001 --warmup_time 200 --beta_final 1.0
 
+python3 main.py --motion --timepoints 8 --sample_rate 8 --batch_norm --variational --name "graph_learnsig" --lr 0.001 --train_batch_size 100 --n_epochs 500 --start_epoch 1 --beta 0.0001 --warmup_time 200 --beta_final 1.0 --output_variance
+
 #graph_deep2 is good; as is graph
 
 # ===============================================================
@@ -301,7 +303,7 @@ cd ..
 
 #python3 run_experiments.py --motion --motion_samples --timepoints 8 --sample_rate 8 --batch_norm --variational --name "graph" --lr 0.0001 --train_batch_size 1000 --n_epochs 5000 --start_epoch 4561 --beta 0.001 --warmup_time 200 --beta_final 0.01
 #python3 run_experiments.py --motion --motion_samples --timepoints 20 --batch_norm --variational --name "graph_20" --lr 0.0001 --train_batch_size 1000 --n_epochs 5000 --start_epoch 31 --beta 0.001 --warmup_time 200 --beta_final 0.01
-python3 main.py --motion --timepoints 32 --sample_rate 2 --variational --name "long" --lr 0.001 --train_batch_size 1000 --n_epochs 500 --start_epoch 1 --beta 0.0001 --warmup_time 200 --beta_final 0.001
+#python3 main.py --motion --timepoints 32 --sample_rate 2 --variational --name "long" --lr 0.001 --train_batch_size 1000 --n_epochs 500 --start_epoch 1 --beta 0.0001 --warmup_time 200 --beta_final 0.001
 
 # ===============================================================
 #                     VDVAE Gen-Dsicrim

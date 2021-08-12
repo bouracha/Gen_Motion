@@ -100,6 +100,9 @@ class VDVAE(nn.Module):
                 logvar_hat = Parameter(torch.FloatTensor(mu_hat.shape)).to(self.device).float()
                 stdv = 1. / math.sqrt(logvar_hat.size(1))
                 logvar_hat.data.uniform_(-stdv, stdv)
+                logvar_hat = torch.clamp(logvar_hat, min=-20.0, max=3.0)
+            print(logvar_hat.shape)
+            print(logvar_hat[0, 0])
             self.log_lik, self.mse = utils.cal_gauss_log_lik(x, mu_hat, logvar_hat)
             self.recon_loss = self.mse
         elif distribution=='bernoulli':
