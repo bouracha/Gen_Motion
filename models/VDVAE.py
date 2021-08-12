@@ -102,8 +102,8 @@ class VDVAE(nn.Module):
 
         if distribution=='gaussian':
             if not self.output_variance:
-                b_n, node_n, f_n = mu_hat.shape
-                logvar_hat = torch.ones((b_n, node_n*f_n)).to(self.device).float()
+                b_n, f_n = mu_hat.shape
+                logvar_hat = torch.ones((b_n, f_n)).to(self.device).float()
                 logvar_hat = self.implicit_logvar_hat(logvar_hat)
                 logvar_hat = torch.clamp(logvar_hat, min=-20.0, max=3.0)
             self.log_lik, self.mse = utils.cal_gauss_log_lik(x, mu_hat, logvar_hat)

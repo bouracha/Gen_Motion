@@ -173,7 +173,6 @@ def train_motion_epoch(model, train_loader, use_dct=False, gen_disc=False):
         inputs = inputs.reshape(b_n, f_n*t_n)
         inputs_hat = inputs_hat.reshape(b_n, f_n*t_n)
         logvar_hat = logvar_hat.reshape(b_n, f_n*t_n)
-        kls = kls.reshape(b_n, f_n*t_n)
         loss = model.cal_loss(inputs, inputs_hat, logvar_hat, kls, 'gaussian')
 
         model.optimizer.zero_grad()
@@ -213,6 +212,9 @@ def eval_motion_batch(model, loader, dataset_name='val', use_dct=False, gen_disc
             else:
                 inputs = inputs.reshape(b_n, f_n * t_n)
                 inputs_hat, logvar_hat, zs, kls = model(inputs.float())
+            inputs = inputs.reshape(b_n, f_n * t_n)
+            inputs_hat = inputs_hat.reshape(b_n, f_n * t_n)
+            logvar_hat = logvar_hat.reshape(b_n, f_n * t_n)
             loss = model.cal_loss(inputs, inputs_hat, logvar_hat, kls, 'gaussian')
 
             model_utils.accum_update(model, str(dataset_name)+'_loss', loss)
