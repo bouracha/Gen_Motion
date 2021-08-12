@@ -74,7 +74,7 @@ def num_parameters_and_place_on_device(model):
     :param model: the model instance
     :return: number of learnable parameters
     """
-    print(model)
+    #print(model)
     num_parameters = sum(p.numel() for p in model.parameters())
     print(">>> total params: {:.2f}M".format(num_parameters / 1000000.0))
     if model.device == "cuda":
@@ -160,13 +160,9 @@ def cal_gauss_log_lik(x, mu, log_var=0.0):
     :return: gaussian log likelihood, and the mean squared error
     """
     MSE = torch.pow((mu - x), 2)
-    print(log_var.shape)
-    print(log_var[0, 0])
     gauss_log_lik = -0.5*(log_var + np.log(2*np.pi) + (MSE/(1e-8 + torch.exp(log_var))))
     MSE = torch.mean(torch.sum(MSE, axis=1))
     gauss_log_lik = torch.mean(torch.sum(gauss_log_lik, axis=1))
-    print("MSE ", MSE)
-    print("log_lik ", gauss_log_lik)
 
     return gauss_log_lik, MSE
 

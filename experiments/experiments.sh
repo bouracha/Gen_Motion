@@ -293,7 +293,7 @@ cd ..
 #python3 main.py --motion --timepoints 8 --sample_rate 8 --batch_norm --variational --name "graph_deep2" --lr 0.001 --train_batch_size 100 --n_epochs 500 --start_epoch 1 --beta 0.0001 --warmup_time 200 --beta_final 0.001
 #python3 main.py --motion --timepoints 8 --sample_rate 8 --batch_norm --variational --name "graph_deep3" --lr 0.001 --train_batch_size 100 --n_epochs 500 --start_epoch 1 --beta 0.0001 --warmup_time 200 --beta_final 1.0
 
-python3 main.py --motion --timepoints 8 --sample_rate 8 --batch_norm --variational --name "graph_learnsig" --lr 0.001 --train_batch_size 100 --n_epochs 500 --start_epoch 1 --beta 0.0001 --warmup_time 200 --beta_final 1.0 --output_variance
+python3 main.py --motion --timepoints 8 --sample_rate 8 --variational --name "graph_learnsig" --lr 0.001 --train_batch_size 100 --n_epochs 500 --start_epoch 1 --beta 0.0001 --warmup_time 200 --beta_final 1.0
 
 #graph_deep2 is good; as is graph
 

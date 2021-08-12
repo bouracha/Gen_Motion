@@ -97,11 +97,6 @@ class GraphVDDecoder(nn.Module):
         self.decoder_block_final = GC_Block(self.residual_size, p_dropout, bias=True, node_n=self.node_input_n, activation=nn.GELU())
         self.reparametisation_output = GraphGaussianBlock(in_nodes=self.node_input_n, in_features=self.residual_size, n_z_nodes=self.node_input_n, n_z_features=self.input_temp_n)
 
-        if not super.output_variance:
-            self.implicit_logvar_hat = Parameter(torch.FloatTensor((self.node_input_n, self.residual_size))).to(self.device).float()
-            stdv = 1. / math.sqrt(self.implicit_logvar_hat.size(1))
-            self.implicit_logvar_hat.data.uniform_(-stdv, stdv)
-
     def forward(self, encoder_activations=None, z_0=None, one_hot_labels=None):
         if z_0 is None:
             self.z_posterior_mus["0"], self.z_posterior_log_vars["0"] = self.reparametisation_latent_0(encoder_activations[-1])
