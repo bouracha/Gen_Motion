@@ -8,16 +8,14 @@ import torch
 
 import models.utils as utils
 
-from models.layers import NeuralNetworkBlock
-from models.layers import GaussianBlock
-from models.layers import FullyConnected
-from models.layers import ReZero
-
 from models.encoders import VDEncoder
 from models.decoders import VDDecoder
 
 from models.encoders import GraphVDEncoder
 from models.decoders import GraphVDDecoder
+
+from torch.nn.parameter import Parameter
+import math
 
 
 class VDVAE(nn.Module):
@@ -99,7 +97,9 @@ class VDVAE(nn.Module):
 
         if distribution=='gaussian':
             if not self.output_variance:
-                logvar_hat = torch.zeros_like(mu_hat)
+                logvar_hat = Parameter(torch.FloatTensor(mu_hat.shape)).to(self.device).float()
+                stdv = 1. / math.sqrt(logvar_hat.size(1))
+                logvar_hat.data.uniform_(-stdv, stdv)
             self.log_lik, self.mse = utils.cal_gauss_log_lik(x, mu_hat, logvar_hat)
             self.recon_loss = self.mse
         elif distribution=='bernoulli':
