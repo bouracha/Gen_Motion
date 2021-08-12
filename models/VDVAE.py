@@ -17,7 +17,7 @@ from models.decoders import GraphVDDecoder
 from torch.nn.parameter import Parameter
 import math
 
-from models.layers import GraphConvolution
+from models.layers import FullyConnected
 
 
 class VDVAE(nn.Module):
@@ -48,7 +48,7 @@ class VDVAE(nn.Module):
         self.decoder = GraphVDDecoder(input_n=input_n, encoder_activation_sizes=self.encoder.level_output_sizes, act_fn=self.activation, device=self.device, batch_norm=self.batch_norm, p_dropout=self.p_dropout, residual_size=self.residual_size, gen_dsic=gen_disc)
 
         if not self.output_variance:
-            self.implicit_logvar_hat = GraphConvolution(input_n[1], input_n[1], bias=True, node_n=input_n[0], out_node_n=input_n[0])
+            self.implicit_logvar_hat = FullyConnected(input_n[1]*input_n[0])
 
         self.num_parameters = utils.num_parameters_and_place_on_device(self)
 
@@ -103,7 +103,7 @@ class VDVAE(nn.Module):
         if distribution=='gaussian':
             if not self.output_variance:
                 b_n, node_n, f_n = mu_hat.shape
-                logvar_hat = torch.ones((b_n, node_n, f_n)).to(self.device).float()
+                logvar_hat = torch.ones((b_n, node_n*f_n)).to(self.device).float()
                 logvar_hat = self.implicit_logvar_hat(logvar_hat)
                 logvar_hat = torch.clamp(logvar_hat, min=-20.0, max=3.0)
             self.log_lik, self.mse = utils.cal_gauss_log_lik(x, mu_hat, logvar_hat)

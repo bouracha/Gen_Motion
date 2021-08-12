@@ -170,6 +170,10 @@ def train_motion_epoch(model, train_loader, use_dct=False, gen_disc=False):
         else:
             inputs = inputs.reshape(b_n, f_n * t_n)
             inputs_hat, logvar_hat, zs, kls = model(inputs.float())
+        inputs = inputs.reshape(b_n, f_n*t_n)
+        inputs_hat = inputs_hat.reshape(b_n, f_n*t_n)
+        logvar_hat = logvar_hat.reshape(b_n, f_n*t_n)
+        kls = kls.reshape(b_n, f_n*t_n)
         loss = model.cal_loss(inputs, inputs_hat, logvar_hat, kls, 'gaussian')
 
         model.optimizer.zero_grad()
