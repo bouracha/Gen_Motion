@@ -108,7 +108,8 @@ class GraphVDDecoder(nn.Module):
         else:
             self.zs["0"] = z_0
 
-        self.zs["0"] = torch.cat((self.zs["0"], one_hot_labels), dim=2)
+        if one_hot_labels is not None:
+            self.zs["0"] = torch.cat((self.zs["0"], one_hot_labels), dim=2)
 
         self.residuals_dict["0"] = self.resize_conv_0(self.zs["0"])
 

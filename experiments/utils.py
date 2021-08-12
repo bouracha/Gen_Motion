@@ -99,34 +99,37 @@ def generate_motion_frames(model, use_bernoulli_loss=False, graph=True, gen_disc
         distribution='gaussian'
 
     if graph:
-        z = np.random.randn(5, 1, 256)
-        z = z.reshape(5, 1, 256)
+        z = np.random.randn(13, 1, 256)
+        z = z.reshape(13, 1, 256)
         if gen_disc:
             class2idx, idx2class, num_classes = supervised_data.initialise_motion_class_and_index_map()
-            labels = ['walking', 'walking', 'sitting', 'smoking', 'eating']
-            labels = pd.DataFrame(labels)
+            labels_words = ['walking','eating', 'smoking', 'directions', 'greeting', 'posing', 'purchases', 'sitting', 'sittingdown', 'takingphoto', 'waiting', 'walkingdog', 'walkingtogether']
+            labels = pd.DataFrame(labels_words)
             labels.replace(class2idx, inplace=True)
             labels = torch.from_numpy(np.array(labels)).long()
             labels = F.one_hot(labels, num_classes=num_classes)
             labels = labels.to(model.device).float()
+        else:
+            labels=None
+            labels_words = [str(i) for i in range(13)]
     else:
-        z = np.random.randn(5, 2)
-        z = z.reshape(5, 2)
+        z = np.random.randn(13, 2)
+        z = z.reshape(13, 2)
     z = torch.from_numpy(z).to(model.device)
 
     node_n = model.decoder.node_input_n
     t_n = model.decoder.input_temp_n
 
     inputs_dct_hat = model.generate(z.float(), distribution, latent_resolution=999, z_prev_level=0, one_hot_labels=labels)
-    inputs_dct_hat = inputs_dct_hat.reshape(5, node_n, t_n)
+    inputs_dct_hat = inputs_dct_hat.reshape(13, node_n, t_n)
     inputs_hat = model_utils.dct(model, inputs_dct_hat, inverse=True)
     inputs_hat = np.asarray(inputs_hat.detach().cpu().numpy())
 
-    for i in range(5):
+    for i in range(13):
         file_path = model.folder_name + '/samples/'
-        if not os.path.isdir(file_path+'sample{}'.format(i)):
-            os.makedirs(os.path.join(file_path, 'sample{}'.format(i)))
-        file_path = file_path + 'sample{}'.format(i) + '/'
+        if not os.path.isdir(file_path+labels_words[i]):
+            os.makedirs(os.path.join(file_path, labels_words[i]))
+        file_path = file_path + labels_words[i] + '/'
 
         motion = inputs_hat[i, :, :]
         motion = motion.reshape(-1, 32, 3)
@@ -134,7 +137,7 @@ def generate_motion_frames(model, use_bernoulli_loss=False, graph=True, gen_disc
             for j in range(t_n):
                 pose = motion[j]
                 t_file_path = file_path + 't_{}'.format(j)
-                plot_poses_by_frame_angles(pose, pose, max_num_images=5, save_as=t_file_path)
+                plot_poses_by_frame_angles(pose, pose, max_num_images=8, save_as=t_file_path)
 
                 image = imageio.imread(file_path + 't_{}.png'.format(j), pilmode="RGB")
                 writer.append_data(image)
@@ -151,12 +154,14 @@ def generate_motion_samples(model, use_bernoulli_loss=False, graph=True, gen_dis
         z = z.reshape(5, 1, 256)
         if gen_disc:
             class2idx, idx2class, num_classes = supervised_data.initialise_motion_class_and_index_map()
-            labels = ['walking', 'walking', 'sitting', 'smoking', 'eating']
+            labels = ['walking', 'eating', 'sitting', 'smoking', 'sittingdown']
             labels = pd.DataFrame(labels)
             labels.replace(class2idx, inplace=True)
             labels = torch.from_numpy(np.array(labels)).long()
             labels = F.one_hot(labels, num_classes=num_classes)
             labels = labels.to(model.device).float()
+        else:
+            labels=None
     else:
         z = np.random.randn(5, 2)
         z = z.reshape(5, 2)
@@ -197,6 +202,8 @@ def generate_motion_samples_resolution(model, use_bernoulli_loss=False, graph=Tr
             labels = torch.from_numpy(np.array(labels)).long()
             labels = F.one_hot(labels, num_classes=num_classes)
             labels = labels.to(model.device).float()
+        else:
+            labels=None
     else:
         z = np.random.randn(1, 2)
         z = z.reshape(1, 2)

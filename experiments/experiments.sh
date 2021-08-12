@@ -301,12 +301,14 @@ cd ..
 
 #python3 run_experiments.py --motion --motion_samples --timepoints 8 --sample_rate 8 --batch_norm --variational --name "graph" --lr 0.0001 --train_batch_size 1000 --n_epochs 5000 --start_epoch 4561 --beta 0.001 --warmup_time 200 --beta_final 0.01
 #python3 run_experiments.py --motion --motion_samples --timepoints 20 --batch_norm --variational --name "graph_20" --lr 0.0001 --train_batch_size 1000 --n_epochs 5000 --start_epoch 31 --beta 0.001 --warmup_time 200 --beta_final 0.01
+python3 main.py --motion --timepoints 32 --sample_rate 2 --variational --name "long" --lr 0.001 --train_batch_size 1000 --n_epochs 500 --start_epoch 1 --beta 0.0001 --warmup_time 200 --beta_final 0.001
 
 # ===============================================================
 #                     VDVAE Gen-Dsicrim
 # ===============================================================
 
-python3 main.py --motion --timepoints 8 --sample_rate 8 --variational --name "gen_discrim_temp" --lr 0.001 --train_batch_size 100 --n_epochs 500 --start_epoch 1 --beta 0.0001 --warmup_time 200 --beta_final 0.001 --gen_disc
+#python3 main.py --motion --timepoints 8 --sample_rate 8 --variational --name "gen_discrim_temp" --lr 0.001 --train_batch_size 1000 --n_epochs 500 --start_epoch 1 --beta 0.0001 --warmup_time 200 --beta_final 0.001 --gen_disc
 #python3 main.py --motion --timepoints 8 --sample_rate 8 --variational --name "gen_discrim" --lr 0.001 --train_batch_size 500 --n_epochs 5000 --start_epoch 1 --beta 0.0001 --warmup_time 200 --beta_final 0.001 --gen_disc
-
+#python3 main.py --motion --timepoints 8 --sample_rate 8 --variational --name "gen_discrim_4" --lr 0.001 --train_batch_size 1000 --n_epochs 500 --start_epoch 1 --beta 0.0001 --warmup_time 200 --beta_final 0.001 --gen_disc
+#python3 main.py --motion --timepoints 8 --sample_rate 8 --variational --name "gen_discrim_4_beta.01" --lr 0.001 --train_batch_size 1000 --n_epochs 5000 --start_epoch 1 --beta 0.0001 --warmup_time 2000 --beta_final 0.01 --gen_disc
 

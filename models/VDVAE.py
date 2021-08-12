@@ -72,7 +72,8 @@ class VDVAE(nn.Module):
         """
         if z_prev_level==0 and z!=None:
             self.decoder.zs["0"] = z
-            self.zs["0"] = torch.cat((self.zs["0"], one_hot_labels), dim=2)
+            if one_hot_labels is not None:
+                self.zs["0"] = torch.cat((self.zs["0"], one_hot_labels), dim=2)
             self.decoder.residuals_dict["0"] = self.decoder.resize_conv_0(self.decoder.zs["0"])
 
         for i in range(z_prev_level, len(self.decoder.encoder_activation_sizes)-2):

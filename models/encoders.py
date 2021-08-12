@@ -22,7 +22,7 @@ class GraphVDEncoder(nn.Module):
         self.node_n, self.features = input_n[0], input_n[1]
 
         # input_n -> input_n corresponding to z_bottom -> .... -> N_{z_0} corresponding to z_top
-        self.level_output_sizes = [[self.node_n, self.features], [self.node_n, 128], [8, 128], [1, 256]]
+        self.level_output_sizes = [[self.node_n, self.features], [self.node_n, 128], [24, 128], [8, 128], [1, 256]]
         #self.level_output_sizes = [[self.node_n, self.features], [24, 64], [8, 128], [1, 256]]
         #self.level_output_sizes = [[self.node_n, self.features], [96, 8], [48, 16], [32, 32], [16, 64], [8, 128], [4, 256], [2, 256], [1, 256]]
         #self.level_output_sizes = [[self.node_n, self.features], [96, 256], [48, 256], [32, 256], [16, 256], [8, 256], [4, 256], [2, 256], [1, 256]]
