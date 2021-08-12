@@ -48,7 +48,7 @@ class VDVAE(nn.Module):
         self.decoder = GraphVDDecoder(input_n=input_n, encoder_activation_sizes=self.encoder.level_output_sizes, act_fn=self.activation, device=self.device, batch_norm=self.batch_norm, p_dropout=self.p_dropout, residual_size=self.residual_size, gen_dsic=gen_disc)
 
         if not self.output_variance:
-            self.implicit_logvar_hat = FullyConnected(input_n[1]*input_n[0])
+            self.implicit_logvar_hat = FullyConnected(input_n[1]*input_n[0], input_n[1]*input_n[0])
 
         self.num_parameters = utils.num_parameters_and_place_on_device(self)
 
