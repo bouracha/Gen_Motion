@@ -293,8 +293,10 @@ cd ..
 #python3 main.py --motion --timepoints 8 --sample_rate 8 --batch_norm --variational --name "graph_deep2" --lr 0.001 --train_batch_size 100 --n_epochs 500 --start_epoch 1 --beta 0.0001 --warmup_time 200 --beta_final 0.001
 #python3 main.py --motion --timepoints 8 --sample_rate 8 --batch_norm --variational --name "graph_deep3" --lr 0.001 --train_batch_size 100 --n_epochs 500 --start_epoch 1 --beta 0.0001 --warmup_time 200 --beta_final 1.0
 
+#python3 main.py --motion --timepoints 8 --sample_rate 8 --variational --name "graph_outvar2" --lr 0.001 --train_batch_size 100 --n_epochs 500 --start_epoch 1 --beta 0.01 --warmup_time 200 --beta_final 1.0 --output_variance
 #python3 main.py --motion --timepoints 8 --sample_rate 8 --variational --name "graph_learnsig" --lr 0.001 --train_batch_size 100 --n_epochs 500 --start_epoch 1 --beta 0.01 --warmup_time 200 --beta_final 1.0
-python3 main.py --motion --timepoints 8 --sample_rate 8 --variational --name "graph_learnsig2" --lr 0.001 --train_batch_size 100 --n_epochs 500 --start_epoch 1 --beta 0.01 --warmup_time 200 --beta_final 1.0
+#python3 main.py --motion --timepoints 8 --sample_rate 8 --variational --name "graph_learnsig2" --lr 0.001 --train_batch_size 100 --n_epochs 500 --start_epoch 1 --beta 0.01 --warmup_time 200 --beta_final 1.0
+#python3 main.py --motion --timepoints 8 --sample_rate 8 --variational --name "graph_learnsig2" --lr 0.0001 --train_batch_size 100 --n_epochs 500 --start_epoch 51 --beta 0.25 --warmup_time 200 --beta_final 1.0
 
 #graph_deep2 is good; as is graph
 
@@ -315,3 +317,9 @@ python3 main.py --motion --timepoints 8 --sample_rate 8 --variational --name "gr
 #python3 main.py --motion --timepoints 8 --sample_rate 8 --variational --name "gen_discrim_4" --lr 0.001 --train_batch_size 1000 --n_epochs 500 --start_epoch 1 --beta 0.0001 --warmup_time 200 --beta_final 0.001 --gen_disc
 #python3 main.py --motion --timepoints 8 --sample_rate 8 --variational --name "gen_discrim_4_beta.01" --lr 0.001 --train_batch_size 1000 --n_epochs 5000 --start_epoch 1 --beta 0.0001 --warmup_time 2000 --beta_final 0.01 --gen_disc
 
+# ===============================================================
+#                     VDVAE out variance
+# ===============================================================
+
+#python3 main.py --motion --timepoints 10 --sample_rate 2 --variational --name "learn_variance" --lr 0.001 --train_batch_size 100 --n_epochs 500 --start_epoch 1 --beta 0.01 --warmup_time 200 --beta_final 1.0
+python3 main.py --motion --timepoints 10 --sample_rate 2 --variational --name "output_variance" --lr 0.001 --train_batch_size 256 --n_epochs 500 --start_epoch 1 --beta 1.0 --warmup_time 20 --beta_final 1.0 --output_variance

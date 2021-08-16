@@ -107,7 +107,7 @@ def warmup(model, cur_beta, warmup_time=200, beta_final=1.0):
     """
     model.writer.add_scalar("Gradients/beta", cur_beta, model.epoch_cur)
     if cur_beta < beta_final:
-        cur_beta += (beta_final - cur_beta)/(1.0*warmup_time)
+        cur_beta += beta_final/(1.0*warmup_time)
     if cur_beta >= beta_final:
         cur_beta = beta_final
     return cur_beta
@@ -290,6 +290,7 @@ def log_epoch_values(model, dataset_name):
     model.losses.update_log(dataset_name + '_loss', model.accum_loss[str(dataset_name) + '_loss'].avg)
     model.losses.update_log(dataset_name + '_reconstruction', model.accum_loss[str(dataset_name) + '_recon'].avg)
     model.kls.update_log('Epoch', model.epoch_cur)
+    model.kls.update_log('Beta', model.beta)
     model.writer.add_scalar(f'loss/loss_' + str(dataset_name), model.accum_loss[str(dataset_name) + '_loss'].avg,
                             model.epoch_cur)
     model.writer.add_scalar(f'loss/reconstructions_' + str(dataset_name),
