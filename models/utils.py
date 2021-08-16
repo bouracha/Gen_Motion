@@ -106,11 +106,10 @@ def warmup(model, cur_beta, warmup_time=200, beta_final=1.0):
     :return: beta after update (if update was required)
     """
     model.writer.add_scalar("Gradients/beta", cur_beta, model.epoch_cur)
-    if model.epoch_cur < warmup_time:
-        if cur_beta < beta_final:
-            cur_beta += (beta_final - cur_beta)/(1.0*warmup_time)
-        if cur_beta >= beta_final:
-            cur_beta = beta_final
+    if cur_beta < beta_final:
+        cur_beta += (beta_final - cur_beta)/(1.0*warmup_time)
+    if cur_beta >= beta_final:
+        cur_beta = beta_final
     return cur_beta
 
 # ===============================================================
